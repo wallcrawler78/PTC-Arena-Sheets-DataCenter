@@ -1500,6 +1500,8 @@ function createRowItems(rowData, rowLocationAttr, rowCategory) {
 
       var rowItem = client.createItem(createItemPayload);
 
+      Logger.log('Full response from createItem: ' + JSON.stringify(rowItem));
+
       var rowItemGuid = rowItem.guid || rowItem.Guid;
       var rowItemNumber = rowItem.number || rowItem.Number;
 

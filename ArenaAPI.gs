@@ -218,16 +218,26 @@ ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
  */
 ArenaAPIClient.prototype.setItemAttribute = function(itemId, attributeGuid, value) {
   var endpoint = '/items/' + encodeURIComponent(itemId);
+
+  Logger.log('Setting attribute on item: ' + itemId);
+  Logger.log('Attribute GUID: ' + attributeGuid);
+  Logger.log('Value: ' + value);
+
+  // Arena API uses "additionalAttributes" not "attributes"
+  var payload = {
+    additionalAttributes: [
+      {
+        guid: attributeGuid,
+        value: value
+      }
+    ]
+  };
+
+  Logger.log('setItemAttribute payload: ' + JSON.stringify(payload));
+
   return this.makeRequest(endpoint, {
     method: 'PUT',
-    payload: {
-      attributes: [
-        {
-          guid: attributeGuid,
-          value: value
-        }
-      ]
-    }
+    payload: payload
   });
 };
 
