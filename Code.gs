@@ -436,39 +436,56 @@ function pushBOMToArena() {
  * @return {Object} Object with items, categories, and colors
  */
 function loadItemPickerData() {
-  var arenaClient = new ArenaAPIClient();
+  try {
+    var arenaClient = new ArenaAPIClient();
 
-  // Fetch all items from Arena
-  var rawItems = arenaClient.getAllItems(400);
+    // Fetch all items from Arena
+    Logger.log('Fetching items from Arena...');
+    var rawItems = arenaClient.getAllItems(400);
+    Logger.log('Received ' + rawItems.length + ' raw items from Arena');
 
-  // Map Arena API response to format expected by Item Picker
-  var mappedItems = rawItems.map(function(item) {
-    // Handle both lowercase and capitalized property names from Arena API
-    var categoryObj = item.category || item.Category || {};
-    var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
+    // Map Arena API response to format expected by Item Picker
+    var mappedItems = rawItems.map(function(item) {
+      // Handle both lowercase and capitalized property names from Arena API
+      var categoryObj = item.category || item.Category || {};
+      var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
+
+      return {
+        guid: item.guid || item.Guid,
+        number: item.number || item.Number || '',
+        name: item.name || item.Name || '',
+        description: item.description || item.Description || '',
+        revisionNumber: item.revisionNumber || item.RevisionNumber || item.revision || item.Revision || '',
+        categoryGuid: categoryObj.guid || categoryObj.Guid || '',
+        categoryName: categoryObj.name || categoryObj.Name || '',
+        categoryPath: categoryObj.path || categoryObj.Path || '',
+        lifecyclePhase: lifecycleObj.name || lifecycleObj.Name || '',
+        lifecyclePhaseGuid: lifecycleObj.guid || lifecycleObj.Guid || '',
+        attributes: item.attributes || item.Attributes || []
+      };
+    });
+
+    Logger.log('Mapped ' + mappedItems.length + ' items for Item Picker');
+
+    // Log first item for debugging
+    if (mappedItems.length > 0) {
+      Logger.log('Sample item: ' + JSON.stringify(mappedItems[0]));
+    }
+
+    var categories = getCategoriesWithFavorites();
+    var colors = getCategoryColors();
+
+    Logger.log('Loaded ' + categories.length + ' categories');
 
     return {
-      guid: item.guid || item.Guid,
-      number: item.number || item.Number || '',
-      name: item.name || item.Name || '',
-      description: item.description || item.Description || '',
-      revisionNumber: item.revisionNumber || item.RevisionNumber || item.revision || item.Revision || '',
-      categoryGuid: categoryObj.guid || categoryObj.Guid || '',
-      categoryName: categoryObj.name || categoryObj.Name || '',
-      categoryPath: categoryObj.path || categoryObj.Path || '',
-      lifecyclePhase: lifecycleObj.name || lifecycleObj.Name || '',
-      lifecyclePhaseGuid: lifecycleObj.guid || lifecycleObj.Guid || '',
-      attributes: item.attributes || item.Attributes || []
+      items: mappedItems,
+      categories: categories,
+      colors: colors
     };
-  });
-
-  Logger.log('Mapped ' + mappedItems.length + ' items for Item Picker');
-
-  return {
-    items: mappedItems,
-    categories: getCategoriesWithFavorites(),
-    colors: getCategoryColors()
-  };
+  } catch (error) {
+    Logger.log('ERROR in loadItemPickerData: ' + error.message + '\n' + error.stack);
+    throw error;
+  }
 }
 
 /**

@@ -528,8 +528,8 @@
         <div class="filter-group">
           <label class="filter-label">Lifecycle Phase</label>
           <select id="lifecycleFilter">
-            <option value="">All Phases</option>
-            <option value="Production" selected>Production</option>
+            <option value="" selected>All Phases</option>
+            <option value="Production">Production</option>
             <option value="Prototype">Prototype</option>
             <option value="In Development">In Development</option>
             <option value="Obsolete">Obsolete</option>
@@ -583,10 +583,18 @@
 
       google.script.run
         .withSuccessHandler(function(data) {
+          console.log('Received data from server:', data);
           categories = data.categories || [];
           allCategories = categories; // Store for category search
           categoryColors = data.colors || {};
           allItems = data.items || [];
+
+          console.log('Total items loaded:', allItems.length);
+          console.log('Total categories:', categories.length);
+
+          if (allItems.length > 0) {
+            console.log('Sample item:', allItems[0]);
+          }
 
           populateFavoriteButtons();
           populateCategoryFilter();
@@ -595,6 +603,7 @@
           showLoading(false);
         })
         .withFailureHandler(function(error) {
+          console.error('Error loading items:', error);
           showError('Failed to load items: ' + error.message);
           showLoading(false);
         })
@@ -677,6 +686,13 @@
       var lifecycle = document.getElementById('lifecycleFilter').value;
       var searchQuery = document.getElementById('searchInput').value.toLowerCase();
 
+      console.log('Applying filters:', {
+        categoryGuid: categoryGuid,
+        lifecycle: lifecycle,
+        searchQuery: searchQuery,
+        totalItems: allItems.length
+      });
+
       filteredItems = allItems.filter(function(item) {
         // Category filter
         if (categoryGuid && item.categoryGuid !== categoryGuid) {
@@ -703,6 +719,8 @@
 
         return true;
       });
+
+      console.log('Filtered to ' + filteredItems.length + ' items');
 
       renderItems();
       updateItemCount();
