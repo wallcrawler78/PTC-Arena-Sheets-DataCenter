@@ -1,187 +1,213 @@
-# PTC Arena Sheets Data Center
+# Arena Data Center
 
-Google Sheets Add-on for integrating with PTC Arena API.
+A Google Sheets-based application for managing data center infrastructure configurations with PTC Arena PLM integration.
 
-## Features
+## What It Does
 
-- **Complete Arena API Authorization** with workspace ID support
-- Secure credential storage using Google Apps Script Properties Service
-- User-friendly configuration wizard
-- Connection testing and validation
-- Workspace-scoped API requests
+Arena Data Center helps you:
+- **Design rack configurations** with components from Arena
+- **Create visual data center layouts** with rack placements in an overview grid
+- **Generate consolidated BOMs** that aggregate materials across all racks
+- **Push complete POD/Row/Rack hierarchies to Arena** with proper BOM structures and Row Location tracking
 
-## Configuration
+## Quick Start
 
-The add-on requires three pieces of information to connect to Arena API:
-
-1. **API Endpoint** - The base URL for your Arena API instance (e.g., `https://api.arenasolutions.com`)
-2. **Workspace ID** - Your Arena workspace identifier
-3. **API Key** - Your Arena API authentication key
-
-### How to Configure
+### For Users
 
 1. Open your Google Sheet
-2. Click on **Arena Data Center** menu → **Configure Arena Connection**
-3. Fill in all three required fields:
-   - API Endpoint
-   - Workspace ID
-   - API Key
-4. Click **Save & Test Connection**
-5. The wizard will automatically test the connection and close if successful
+2. **Arena Data Center** menu → **Configure Arena Connection**
+3. Enter your Arena credentials
+4. Start creating rack configurations and layouts!
+5. Need help? **Arena Data Center** menu → **Help & Documentation**
 
-## Files
+### For Developers
 
-### Code.gs
-Main entry point for the add-on. Contains:
-- Menu initialization
-- Login wizard display
-- Connection testing
-- Credential management UI
+1. Clone this repository
+2. Install Clasp: `npm install -g @google/clasp`
+3. Push to Apps Script: `clasp push`
+4. Read the [Developer Guide](./docs/DEVELOPER_GUIDE.md)
 
-### Authorization.gs
-Handles credential storage and retrieval. Manages:
-- API Endpoint
-- **Workspace ID** (required for all Arena API operations)
-- API Key
-- Credential validation
+## Key Features
 
-### LoginWizard.html
-User interface for credential configuration. Features:
-- Form validation
-- Visual feedback
-- Automatic connection testing
-- Current configuration loading
+### Rack Configuration Management
+- Create racks from existing Arena items or build from scratch
+- Use **Item Picker** to browse and add components
+- Automatically populate rack BOMs from Arena
+- Configure custom attributes to display
 
-### ArenaAPI.gs
-Arena API client implementation. Includes:
-- Authenticated API requests with workspace ID in headers
-- Workspace-scoped endpoint construction
-- Error handling
-- Helper methods for common operations:
-  - `testConnection()` - Verify API connectivity
-  - `getItems()` - Get items from workspace
-  - `getItem(itemId)` - Get specific item
-  - `createItem(itemData)` - Create new item
-  - `updateItem(itemId, itemData)` - Update existing item
-  - `getWorkspaceInfo()` - Get workspace details
+### Visual Layout Design
+- Create overview grids representing data center rows and positions
+- Drag and drop (via **Rack Picker**) racks into positions
+- Color-coded racks by category
+- Automatic hyperlinking between overview and rack sheets
 
-## Workspace ID Usage
+### BOM Operations
+- **Consolidated BOM**: Aggregates all components across rack instances
+- Hierarchical organization by BOM levels
+- Category-based color coding
+- Export to Arena
 
-The workspace ID is used in two ways:
+### POD Structure Publishing
+- Creates hierarchical structure in Arena:
+  - **POD** (top-level assembly)
+  - **Rows** (with Row Location attribute: "Pos 1, Pos 3, Pos 5")
+  - **Racks** (with full component BOMs)
+- Automatically handles custom rack creation
+- Updates overview sheet with Arena links
 
-1. **HTTP Header**: Sent as `X-Arena-Workspace-Id` in all API requests
-2. **URL Path**: Included in API endpoints (e.g., `/api/workspaces/{workspaceId}/items`)
+### Configuration
+- **Category Colors**: Visual coding for component categories
+- **Rack Colors**: Color-code racks by type
+- **BOM Levels**: Configure hierarchical levels
+- **Item Columns**: Choose which Arena attributes to display
+- **Favorites**: Mark favorite categories for quick access
 
-This ensures all API operations are properly scoped to the correct Arena workspace.
+## Documentation
 
-## Security
+### For Developers
 
-- Credentials are stored using `PropertiesService.getUserProperties()`, which is user-specific and encrypted
-- API keys are never logged or displayed in the UI after initial entry
-- Credentials can be cleared at any time via the menu
+Comprehensive technical documentation is available in the [`/docs`](./docs) folder:
+
+- **[Technical Overview](./docs/TECHNICAL_OVERVIEW.md)** - System architecture and core concepts
+- **[Arena API Guide](./docs/ARENA_API_GUIDE.md)** - Complete API integration reference with lessons learned
+- **[Architecture](./docs/ARCHITECTURE.md)** - Detailed code structure and module breakdown
+- **[Developer Guide](./docs/DEVELOPER_GUIDE.md)** - Setup, workflow, and development tasks
+- **[Lessons Learned](./docs/LESSONS_LEARNED.md)** - Common pitfalls and best practices
+
+**Start with**: [docs/README.md](./docs/README.md)
+
+## Technology Stack
+
+- **Google Apps Script** - Server-side JavaScript runtime
+- **Google Sheets** - Data storage and UI
+- **HTML Service** - Custom UI components (sidebars, modals)
+- **PTC Arena PLM API** - REST API integration
+- **Clasp** - Local development and deployment
+
+## Project Structure
+
+```
+├── Code.gs                    # Main entry point, menu, events
+├── ArenaAPI.gs               # Arena API client
+├── Authorization.gs          # Auth & session management
+├── BOMBuilder.gs            # BOM operations, POD structure
+├── RackConfigManager.gs     # Rack management
+├── LayoutManager.gs         # Overview layouts
+├── CategoryManager.gs       # Category, color, BOM levels
+├── Config.gs                # Configuration storage
+├── *.html                   # UI components
+├── docs/                    # Comprehensive documentation
+│   ├── README.md
+│   ├── TECHNICAL_OVERVIEW.md
+│   ├── ARENA_API_GUIDE.md
+│   ├── ARCHITECTURE.md
+│   ├── DEVELOPER_GUIDE.md
+│   └── LESSONS_LEARNED.md
+└── README.md               # This file
+```
 
 ## Development
 
-This is a Google Apps Script project. To deploy:
+### Requirements
 
-1. Create a new Google Sheets document
-2. Open **Extensions** → **Apps Script**
-3. Copy the contents of each `.gs` and `.html` file to the script editor
-4. Save and reload the spreadsheet
-5. The **Arena Data Center** menu will appear
+- Node.js (v14+)
+- Google Account
+- PTC Arena Account
+- Clasp CLI
 
-## API Endpoint Examples
+### Setup
 
-The client includes workspace-aware API methods:
+```bash
+# Clone repository
+git clone https://github.com/wallcrawler78/PTC-Arena-Sheets-DataCenter.git
+cd PTC-Arena-Sheets-DataCenter
 
-```javascript
-var client = new ArenaAPIClient();
+# Install Clasp
+npm install -g @google/clasp
 
-// Get all items in the workspace
-var items = client.getItems();
+# Login to Google
+clasp login
 
-// Get a specific item
-var item = client.getItem('ITEM-12345');
+# Push code to Apps Script
+clasp push
 
-// Create a new item
-var newItem = client.createItem({
-  name: 'New Part',
-  description: 'Part description'
-});
-
-// Get workspace information
-var workspace = client.getWorkspaceInfo();
+# Open in browser
+clasp open
 ```
 
-All requests automatically include the configured workspace ID.
+See [Developer Guide](./docs/DEVELOPER_GUIDE.md) for detailed setup instructions.
 
-## Multi-Tab Datacenter BOM Features
+### Deployment
 
-The add-on now includes comprehensive support for multi-tab datacenter Bill of Materials (BOM) management:
+```bash
+# Push changes to Apps Script
+clasp push
 
-### Sheet Structure
+# Commit to Git
+git add .
+git commit -m "Description"
+git push
+```
 
-The add-on automatically manages three types of sheets:
+## Security
 
-1. **Legend-NET** - Summary view showing categorized items with color-coded rack types
-2. **Overhead** - Layout grid showing physical rack positions in the datacenter floor plan
-3. **Rack Configuration Tabs** - Individual tabs for each rack type (Full Rack A, B, C, etc.)
+- Credentials stored securely in `PropertiesService` (encrypted by Google)
+- Session-based authentication with automatic re-login
+- No credentials in code or sheet data
+- User-specific storage (credentials not shared between users)
 
-### Data Import Process
+## Arena Setup Requirements
 
-When you click **Import Data** from the menu:
+Before using POD structure features, create a custom attribute in Arena:
 
-1. Fetches all items from your Arena workspace
-2. Categorizes items by rack type using intelligent keyword matching
-3. Populates individual rack tabs with:
-   - Quantity
-   - Item Number (Arena part number)
-   - Item Name (Arena description)
-   - Item Category
-4. Generates the Overhead layout with:
-   - Color-coded rack positions
-   - Clickable links to individual rack tabs
-   - Physical layout representation
-5. Creates Legend-NET summary with:
-   - Category groupings (ETH, SPINE, GRID-POD)
-   - Color-coded visualization
-   - Totals for each category
+1. In Arena: Settings → Item Attributes
+2. Create attribute:
+   - **Name**: `Row Location`
+   - **Type**: `SINGLE_LINE_TEXT`
+3. This stores position information (e.g., "Pos 1, Pos 3, Pos 5")
 
-### File Structure
+## Use Cases
 
-- **Config.gs** - Configuration constants for colors, categories, and rack types
-- **FormattingUtils.gs** - Formatting helpers for consistent styling
-- **SheetManager.gs** - Tab creation and management
-- **DataMapper.gs** - Arena API data transformation
-- **RackPopulator.gs** - Rack tab population logic
-- **OverheadManager.gs** - Overhead layout generation
-- **LegendManager.gs** - Legend-NET summary creation
-- **ArenaAPI.gs** - Enhanced with filtering, search, and bulk operations
-- **Code.gs** - Main entry point with import orchestration
+### Data Center Designers
+- Design rack configurations with real Arena components
+- Visualize data center layouts
+- Generate accurate material requirements
+- Push designs to Arena for procurement
 
-### Customization
+### Procurement Teams
+- Get consolidated BOMs for entire data center sections
+- Track quantities across multiple rack instances
+- Export to Arena for ordering
 
-You can customize the following in **Config.gs**:
+### Engineering Teams
+- Manage rack standards and configurations
+- Maintain BOM hierarchy
+- Collaborate on designs using Google Sheets
 
-- Rack type colors and classifications
-- Category keywords for automatic categorization
-- Overhead grid layout (rows, columns, positions)
-- Header styles and formatting
+## Support
 
-### Advanced Features
+- **User Help**: Menu → Help & Documentation (in-app)
+- **Developer Docs**: [/docs](./docs)
+- **Issues**: [GitHub Issues](https://github.com/wallcrawler78/PTC-Arena-Sheets-DataCenter/issues)
 
-- **Automatic Categorization** - Items are categorized based on keywords in their names/descriptions
-- **Duplicate Consolidation** - Same items are consolidated with summed quantities
-- **Color Coding** - Racks and categories are color-coded for easy identification
-- **Cross-Tab Linking** - Overhead grid links to individual rack tabs
-- **Pagination Support** - Handles large datasets from Arena efficiently
-- **Error Handling** - Comprehensive error handling and user feedback
+## License
 
-## Future Enhancements
+[Add license information]
 
-- Real-time sync with Arena changes
-- Export to various formats (CSV, PDF)
-- Custom rack layout designer
-- Inventory tracking and change history
-- Advanced filtering and search in sheets
-- Custom field mapping configuration UI
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make changes with tests
+4. Update documentation
+5. Submit pull request
+
+See [Developer Guide](./docs/DEVELOPER_GUIDE.md) for details.
+
+## Acknowledgments
+
+Built with Google Apps Script and PTC Arena PLM API.
+
+---
+
+**For detailed technical information, see the [documentation](./docs/README.md).**
