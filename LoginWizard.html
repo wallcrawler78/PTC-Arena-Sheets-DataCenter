@@ -32,6 +32,7 @@
     }
 
     input[type="text"],
+    input[type="email"],
     input[type="password"] {
       width: 100%;
       padding: 8px;
@@ -42,6 +43,7 @@
     }
 
     input[type="text"]:focus,
+    input[type="email"]:focus,
     input[type="password"]:focus {
       outline: none;
       border-color: #1a73e8;
@@ -126,27 +128,54 @@
     .required {
       color: #c5221f;
     }
+
+    .info-box {
+      background-color: #f8f9fa;
+      border-left: 4px solid #1a73e8;
+      padding: 12px;
+      margin-bottom: 20px;
+      font-size: 13px;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <h2>Configure Arena API Connection</h2>
 
+    <div class="info-box">
+      <strong>Session-Based Authentication</strong><br>
+      Your credentials will be used to log in to Arena. Sessions expire after 90 minutes of inactivity.
+    </div>
+
     <div id="message" class="message hidden"></div>
 
     <form id="credentialsForm">
       <div class="form-group">
-        <label for="apiEndpoint">
-          API Endpoint <span class="required">*</span>
+        <label for="email">
+          Email <span class="required">*</span>
         </label>
         <input
-          type="text"
-          id="apiEndpoint"
-          name="apiEndpoint"
-          placeholder="https://api.arenasolutions.com"
+          type="email"
+          id="email"
+          name="email"
+          placeholder="your.email@company.com"
           required
         />
-        <div class="help-text">The base URL for your Arena API instance</div>
+        <div class="help-text">Your Arena account email address</div>
+      </div>
+
+      <div class="form-group">
+        <label for="password">
+          Password <span class="required">*</span>
+        </label>
+        <input
+          type="password"
+          id="password"
+          name="password"
+          placeholder="Enter your password"
+          required
+        />
+        <div class="help-text">Your Arena account password</div>
       </div>
 
       <div class="form-group">
@@ -163,23 +192,9 @@
         <div class="help-text">Your Arena workspace identifier</div>
       </div>
 
-      <div class="form-group">
-        <label for="apiKey">
-          API Key <span class="required">*</span>
-        </label>
-        <input
-          type="password"
-          id="apiKey"
-          name="apiKey"
-          placeholder="Enter your API key"
-          required
-        />
-        <div class="help-text">Your Arena API authentication key</div>
-      </div>
-
       <div class="button-group">
         <button type="submit" class="btn-primary" id="saveButton">
-          Save & Test Connection
+          Save & Login
         </button>
         <button type="button" class="btn-secondary" onclick="google.script.host.close()">
           Cancel
@@ -197,9 +212,11 @@
 
     function populateForm(status) {
       if (status.isConfigured) {
-        document.getElementById('apiEndpoint').value = status.apiEndpoint || '';
+        document.getElementById('email').value = status.email || '';
         document.getElementById('workspaceId').value = status.workspaceId || '';
-        showMessage('Current configuration loaded. Update fields as needed.', 'info');
+
+        var sessionStatus = status.hasSession ? 'Active session found' : 'No active session';
+        showMessage('Current configuration loaded. ' + sessionStatus + '.', 'info');
       }
     }
 
@@ -207,30 +224,31 @@
     document.getElementById('credentialsForm').addEventListener('submit', function(e) {
       e.preventDefault();
 
-      var apiEndpoint = document.getElementById('apiEndpoint').value.trim();
+      var email = document.getElementById('email').value.trim();
+      var password = document.getElementById('password').value.trim();
       var workspaceId = document.getElementById('workspaceId').value.trim();
-      var apiKey = document.getElementById('apiKey').value.trim();
 
       // Validate inputs
-      if (!apiEndpoint || !workspaceId || !apiKey) {
+      if (!email || !password || !workspaceId) {
         showMessage('Please fill in all required fields.', 'error');
         return;
       }
 
-      // Validate API endpoint format
-      if (!apiEndpoint.startsWith('http://') && !apiEndpoint.startsWith('https://')) {
-        showMessage('API Endpoint must start with http:// or https://', 'error');
+      // Validate email format
+      var emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) {
+        showMessage('Please enter a valid email address.', 'error');
         return;
       }
 
       // Disable button while saving
       var saveButton = document.getElementById('saveButton');
       saveButton.disabled = true;
-      saveButton.textContent = 'Saving...';
+      saveButton.textContent = 'Saving & Logging in...';
 
       var credentials = {
-        apiEndpoint: apiEndpoint,
-        apiKey: apiKey,
+        email: email,
+        password: password,
         workspaceId: workspaceId
       };
 
@@ -245,16 +263,16 @@
       var saveButton = document.getElementById('saveButton');
 
       if (result.success) {
-        showMessage('Configuration saved successfully! Testing connection...', 'success');
+        showMessage('Credentials saved! Attempting login to Arena...', 'success');
 
-        // Test the connection
+        // Attempt login to validate credentials
         google.script.run
-          .withSuccessHandler(handleTestSuccess)
-          .withFailureHandler(handleTestError)
-          .testArenaConnection();
+          .withSuccessHandler(handleLoginSuccess)
+          .withFailureHandler(handleLoginError)
+          .loginToArena();
       } else {
         saveButton.disabled = false;
-        saveButton.textContent = 'Save & Test Connection';
+        saveButton.textContent = 'Save & Login';
         showMessage('Error: ' + result.error, 'error');
       }
     }
@@ -262,32 +280,39 @@
     function handleSaveError(error) {
       var saveButton = document.getElementById('saveButton');
       saveButton.disabled = false;
-      saveButton.textContent = 'Save & Test Connection';
+      saveButton.textContent = 'Save & Login';
       showMessage('Failed to save credentials: ' + error.message, 'error');
     }
 
-    function handleTestSuccess(result) {
+    function handleLoginSuccess(result) {
       var saveButton = document.getElementById('saveButton');
       saveButton.disabled = false;
-      saveButton.textContent = 'Save & Test Connection';
+      saveButton.textContent = 'Save & Login';
 
       if (result.success) {
-        showMessage('Success! Connection to Arena API verified. You can now close this window.', 'success');
+        var successMsg = 'Success! Logged in to Arena.\n\n' +
+                        'Workspace: ' + (result.workspaceName || result.workspaceId) + '\n' +
+                        'Session ID obtained.\n\n' +
+                        'You can now close this window.';
+        showMessage(successMsg, 'success');
 
         // Auto-close after 2 seconds
         setTimeout(function() {
           google.script.host.close();
         }, 2000);
       } else {
-        showMessage('Configuration saved, but connection test failed: ' + result.error, 'error');
+        showMessage('Credentials saved, but login failed: ' + (result.error || 'Unknown error'), 'error');
       }
     }
 
-    function handleTestError(error) {
+    function handleLoginError(error) {
       var saveButton = document.getElementById('saveButton');
       saveButton.disabled = false;
-      saveButton.textContent = 'Save & Test Connection';
-      showMessage('Configuration saved, but connection test failed: ' + error.message, 'error');
+      saveButton.textContent = 'Save & Login';
+
+      var errorMsg = 'Login failed: ' + error.message + '\n\n' +
+                    'Please verify your email, password, and workspace ID are correct.';
+      showMessage(errorMsg, 'error');
     }
 
     function handleError(error) {

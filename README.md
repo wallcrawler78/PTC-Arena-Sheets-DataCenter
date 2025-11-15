@@ -115,10 +115,73 @@ var workspace = client.getWorkspaceInfo();
 
 All requests automatically include the configured workspace ID.
 
+## Multi-Tab Datacenter BOM Features
+
+The add-on now includes comprehensive support for multi-tab datacenter Bill of Materials (BOM) management:
+
+### Sheet Structure
+
+The add-on automatically manages three types of sheets:
+
+1. **Legend-NET** - Summary view showing categorized items with color-coded rack types
+2. **Overhead** - Layout grid showing physical rack positions in the datacenter floor plan
+3. **Rack Configuration Tabs** - Individual tabs for each rack type (Full Rack A, B, C, etc.)
+
+### Data Import Process
+
+When you click **Import Data** from the menu:
+
+1. Fetches all items from your Arena workspace
+2. Categorizes items by rack type using intelligent keyword matching
+3. Populates individual rack tabs with:
+   - Quantity
+   - Item Number (Arena part number)
+   - Item Name (Arena description)
+   - Item Category
+4. Generates the Overhead layout with:
+   - Color-coded rack positions
+   - Clickable links to individual rack tabs
+   - Physical layout representation
+5. Creates Legend-NET summary with:
+   - Category groupings (ETH, SPINE, GRID-POD)
+   - Color-coded visualization
+   - Totals for each category
+
+### File Structure
+
+- **Config.gs** - Configuration constants for colors, categories, and rack types
+- **FormattingUtils.gs** - Formatting helpers for consistent styling
+- **SheetManager.gs** - Tab creation and management
+- **DataMapper.gs** - Arena API data transformation
+- **RackPopulator.gs** - Rack tab population logic
+- **OverheadManager.gs** - Overhead layout generation
+- **LegendManager.gs** - Legend-NET summary creation
+- **ArenaAPI.gs** - Enhanced with filtering, search, and bulk operations
+- **Code.gs** - Main entry point with import orchestration
+
+### Customization
+
+You can customize the following in **Config.gs**:
+
+- Rack type colors and classifications
+- Category keywords for automatic categorization
+- Overhead grid layout (rows, columns, positions)
+- Header styles and formatting
+
+### Advanced Features
+
+- **Automatic Categorization** - Items are categorized based on keywords in their names/descriptions
+- **Duplicate Consolidation** - Same items are consolidated with summed quantities
+- **Color Coding** - Racks and categories are color-coded for easy identification
+- **Cross-Tab Linking** - Overhead grid links to individual rack tabs
+- **Pagination Support** - Handles large datasets from Arena efficiently
+- **Error Handling** - Comprehensive error handling and user feedback
+
 ## Future Enhancements
 
-- Data import/export functionality
-- Batch operations
-- Custom field mapping
-- Automated sync schedules
-- Advanced filtering and querying
+- Real-time sync with Arena changes
+- Export to various formats (CSV, PDF)
+- Custom rack layout designer
+- Inventory tracking and change history
+- Advanced filtering and search in sheets
+- Custom field mapping configuration UI

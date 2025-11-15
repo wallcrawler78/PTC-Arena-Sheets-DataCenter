@@ -16,12 +16,40 @@ function onInstall(e) {
 function onOpen(e) {
   var ui = SpreadsheetApp.getUi();
   ui.createMenu('Arena Data Center')
-    .addItem('Configure Arena Connection', 'showLoginWizard')
-    .addItem('Test Connection', 'testArenaConnection')
+    .addSubMenu(ui.createMenu('Configuration')
+      .addItem('Configure Arena Connection', 'showLoginWizard')
+      .addItem('Configure Item Columns', 'showConfigureColumns')
+      .addItem('Configure Category Colors', 'showConfigureColors')
+      .addItem('Configure BOM Levels', 'showConfigureBOMLevels'))
     .addSeparator()
-    .addItem('Import Data', 'importArenaData')
+    .addItem('Show Item Picker', 'showItemPicker')
+    .addSeparator()
+    .addSubMenu(ui.createMenu('BOM Operations')
+      .addItem('Pull BOM from Arena', 'pullBOMFromArena')
+      .addItem('Push BOM to Arena', 'pushBOMToArena'))
+    .addSeparator()
+    .addItem('Test Connection', 'testArenaConnection')
     .addItem('Clear Credentials', 'clearCredentials')
     .addToUi();
+}
+
+/**
+ * Runs when a cell is edited
+ * Used to trigger item insertion when user clicks a cell after selecting an item
+ */
+function onSelectionChange(e) {
+  var selectedItem = getSelectedItem();
+
+  if (selectedItem) {
+    // User has an item selected from the picker and clicked a cell
+    // Show a prompt to insert the item
+    var sheet = SpreadsheetApp.getActiveSheet();
+    var cell = sheet.getActiveCell();
+
+    if (cell) {
+      insertSelectedItem();
+    }
+  }
 }
 
 /**
@@ -62,7 +90,7 @@ function testArenaConnection() {
 }
 
 /**
- * Imports data from Arena (placeholder function)
+ * Imports data from Arena and populates all sheets
  */
 function importArenaData() {
   var ui = SpreadsheetApp.getUi();
@@ -73,7 +101,106 @@ function importArenaData() {
     return;
   }
 
-  ui.alert('Import Data', 'Data import functionality coming soon!', ui.ButtonSet.OK);
+  // Confirm with user
+  var response = ui.alert(
+    'Import Arena Data',
+    'This will fetch all items from Arena and populate the datacenter BOM sheets.\n\n' +
+    'This may take a few minutes depending on the number of items.\n\n' +
+    'Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  try {
+    // Show progress message
+    var progressMsg = 'Importing data from Arena...\n\n' +
+                     'Step 1: Fetching items from Arena API...\n' +
+                     'Please wait, this may take a few minutes.';
+
+    showProgressDialog(progressMsg);
+
+    // Create Arena API client
+    var arenaClient = new ArenaAPIClient();
+
+    // Fetch all items from Arena
+    Logger.log('Starting Arena data import...');
+    var arenaItems = arenaClient.getAllItems(100);
+
+    if (!arenaItems || arenaItems.length === 0) {
+      ui.alert('No Data', 'No items were found in Arena workspace.', ui.ButtonSet.OK);
+      return;
+    }
+
+    Logger.log('Fetched ' + arenaItems.length + ' items from Arena');
+
+    // Group items by rack type
+    Logger.log('Step 2: Categorizing items by rack type...');
+    var groupedItems = groupItemsByRackType(arenaItems);
+
+    // Populate individual rack tabs
+    Logger.log('Step 3: Populating rack tabs...');
+    var rackResults = populateAllRackTabs(groupedItems);
+
+    // Generate overhead layout
+    Logger.log('Step 4: Generating overhead layout...');
+    var overheadResult = generateOverheadLayout();
+
+    // Generate Legend-NET summary
+    Logger.log('Step 5: Generating Legend-NET summary...');
+    var legendResult = updateNetworkingLegend();
+
+    // Reorder sheets for better organization
+    Logger.log('Step 6: Organizing sheets...');
+    reorderSheets();
+
+    // Build summary message
+    var successCount = 0;
+    var totalItems = 0;
+
+    rackResults.forEach(function(result) {
+      if (result.success) {
+        successCount++;
+        totalItems += result.rowsAdded || 0;
+      }
+    });
+
+    var summaryMsg = 'Data import completed successfully!\n\n' +
+                    'Items fetched from Arena: ' + arenaItems.length + '\n' +
+                    'Rack tabs populated: ' + successCount + '\n' +
+                    'Total items populated: ' + totalItems + '\n\n' +
+                    'Sheets have been organized and formatted.';
+
+    ui.alert('Import Complete', summaryMsg, ui.ButtonSet.OK);
+
+    Logger.log('Arena data import completed successfully');
+
+  } catch (error) {
+    Logger.log('Error importing Arena data: ' + error.message);
+    ui.alert('Import Error', 'An error occurred while importing data:\n\n' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Shows a progress dialog (HTML-based for better UX)
+ * @param {string} message - Progress message to display
+ */
+function showProgressDialog(message) {
+  var html = '<div style="padding: 20px; font-family: Arial, sans-serif;">' +
+            '<h3 style="color: #1a73e8;">Arena Data Import</h3>' +
+            '<p>' + message.replace(/\n/g, '<br>') + '</p>' +
+            '<p style="color: #666; font-size: 12px;">This dialog will close automatically when complete.</p>' +
+            '</div>';
+
+  var htmlOutput = HtmlService.createHtmlOutput(html)
+    .setWidth(400)
+    .setHeight(200);
+
+  // Note: This dialog will appear but won't update dynamically in Apps Script
+  // For a better progress indicator, consider using a sidebar instead
+  SpreadsheetApp.getUi().showModelessDialog(htmlOutput, 'Importing...');
 }
 
 /**
@@ -89,4 +216,348 @@ function clearCredentials() {
     clearArenaCredentials();
     ui.alert('Cleared', 'Arena API credentials have been cleared.', ui.ButtonSet.OK);
   }
+}
+
+/**
+ * Shows the category color configuration dialog
+ */
+function showConfigureColors() {
+  var html = HtmlService.createHtmlOutputFromFile('ConfigureColors')
+    .setWidth(650)
+    .setHeight(600)
+    .setTitle('Configure Category Colors');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Category Colors');
+}
+
+/**
+ * Loads category and color data for the configuration dialog
+ * @return {Object} Object with categories and colors
+ */
+function loadCategoryColorData() {
+  return {
+    categories: getArenaCategories(),
+    colors: getCategoryColors()
+  };
+}
+
+/**
+ * Shows the configure item columns dialog
+ */
+function showConfigureColumns() {
+  var html = HtmlService.createHtmlOutputFromFile('ConfigureColumns')
+    .setWidth(750)
+    .setHeight(650)
+    .setTitle('Configure Item Columns');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Item Columns');
+}
+
+/**
+ * Loads column configuration data
+ * @return {Object} Object with attributes, groups, and current selection
+ */
+function loadColumnConfigData() {
+  var currentColumns = getItemColumns();
+  var selectedMap = {};
+
+  // Convert current columns to selection map
+  currentColumns.forEach(function(col) {
+    if (col.attributeGuid) {
+      selectedMap[col.attributeGuid] = {
+        guid: col.attributeGuid,
+        name: col.attributeName || '',
+        header: col.header || ''
+      };
+    }
+  });
+
+  return {
+    attributes: getArenaAttributes(),
+    groups: getAttributeGroups(),
+    currentSelection: selectedMap
+  };
+}
+
+/**
+ * Gets saved attribute groups
+ * @return {Array} Array of attribute groups
+ */
+function getAttributeGroups() {
+  var json = PropertiesService.getScriptProperties().getProperty('ATTRIBUTE_GROUPS');
+  if (!json) return [];
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return [];
+  }
+}
+
+/**
+ * Saves an attribute group
+ * @param {string} name - Group name
+ * @param {Array} attributes - Array of attribute configurations
+ * @return {Array} Updated list of groups
+ */
+function saveAttributeGroup(name, attributes) {
+  var groups = getAttributeGroups();
+
+  // Check if group exists
+  var existingIndex = -1;
+  for (var i = 0; i < groups.length; i++) {
+    if (groups[i].name === name) {
+      existingIndex = i;
+      break;
+    }
+  }
+
+  var newGroup = {
+    name: name,
+    attributes: attributes
+  };
+
+  if (existingIndex >= 0) {
+    groups[existingIndex] = newGroup;
+  } else {
+    groups.push(newGroup);
+  }
+
+  PropertiesService.getScriptProperties().setProperty('ATTRIBUTE_GROUPS', JSON.stringify(groups));
+  return groups;
+}
+
+/**
+ * Shows the configure BOM levels dialog
+ */
+function showConfigureBOMLevels() {
+  var html = HtmlService.createHtmlOutputFromFile('ConfigureBOMLevels')
+    .setWidth(650)
+    .setHeight(550)
+    .setTitle('Configure BOM Hierarchy');
+  SpreadsheetApp.getUi().showModalDialog(html, 'BOM Levels');
+}
+
+/**
+ * Loads BOM hierarchy configuration data
+ * @return {Object} Object with hierarchy and categories
+ */
+function loadBOMHierarchyData() {
+  return {
+    hierarchy: getBOMHierarchy(),
+    categories: getArenaCategories()
+  };
+}
+
+/**
+ * Shows the item picker sidebar
+ */
+function showItemPicker() {
+  var html = HtmlService.createHtmlOutputFromFile('ItemPicker')
+    .setTitle('Arena Item Picker');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Pulls BOM from Arena and populates sheets
+ */
+function pullBOMFromArena() {
+  var ui = SpreadsheetApp.getUi();
+
+  if (!isAuthorized()) {
+    ui.alert('Not Configured', 'Please configure your Arena API connection first.', ui.ButtonSet.OK);
+    showLoginWizard();
+    return;
+  }
+
+  // Prompt for parent item number
+  var response = ui.prompt(
+    'Pull BOM',
+    'Enter the Arena item number to pull BOM from:',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (response.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  var itemNumber = response.getResponseText().trim();
+  if (!itemNumber) {
+    ui.alert('Item number is required');
+    return;
+  }
+
+  try {
+    var result = pullBOM(itemNumber);
+    ui.alert('Success', result.message, ui.ButtonSet.OK);
+  } catch (error) {
+    ui.alert('Error', 'Failed to pull BOM: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Pushes BOM to Arena
+ */
+function pushBOMToArena() {
+  var ui = SpreadsheetApp.getUi();
+
+  if (!isAuthorized()) {
+    ui.alert('Not Configured', 'Please configure your Arena API connection first.', ui.ButtonSet.OK);
+    showLoginWizard();
+    return;
+  }
+
+  var response = ui.alert(
+    'Push BOM',
+    'This will push the current sheet layout to Arena as a BOM. Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  try {
+    var result = pushBOM();
+    ui.alert('Success', result.message, ui.ButtonSet.OK);
+  } catch (error) {
+    ui.alert('Error', 'Failed to push BOM: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Loads data for the item picker sidebar
+ * @return {Object} Object with items, categories, and colors
+ */
+function loadItemPickerData() {
+  var arenaClient = new ArenaAPIClient();
+
+  return {
+    items: arenaClient.getAllItems(200),
+    categories: getArenaCategories(),
+    colors: getCategoryColors()
+  };
+}
+
+/**
+ * Stores the selected item from the item picker
+ * @param {Object} item - Selected item data
+ */
+function setSelectedItem(item) {
+  PropertiesService.getUserProperties().setProperty('SELECTED_ITEM', JSON.stringify(item));
+}
+
+/**
+ * Gets the currently selected item
+ * @return {Object} Selected item or null
+ */
+function getSelectedItem() {
+  var json = PropertiesService.getUserProperties().getProperty('SELECTED_ITEM');
+  if (!json) return null;
+
+  try {
+    return JSON.parse(json);
+  } catch (e) {
+    return null;
+  }
+}
+
+/**
+ * Clears the selected item
+ */
+function clearSelectedItem() {
+  PropertiesService.getUserProperties().deleteProperty('SELECTED_ITEM');
+}
+
+/**
+ * Gets item quantities from the current sheet
+ * @return {Object} Map of item numbers to quantities
+ */
+function getItemQuantities() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var data = sheet.getDataRange().getValues();
+  var quantities = {};
+
+  // Skip header row
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+
+    // Look for item numbers in the row (typically in column B or C)
+    for (var j = 0; j < row.length; j++) {
+      var cellValue = row[j];
+
+      // Check if this looks like an Arena item number
+      if (cellValue && typeof cellValue === 'string' && cellValue.trim()) {
+        var itemNumber = cellValue.trim();
+
+        // Count this item
+        if (quantities[itemNumber]) {
+          quantities[itemNumber]++;
+        } else {
+          quantities[itemNumber] = 1;
+        }
+      }
+    }
+  }
+
+  return quantities;
+}
+
+/**
+ * Inserts a selected item into the active cell
+ * Called when user clicks a cell after selecting an item
+ */
+function insertSelectedItem() {
+  var selectedItem = getSelectedItem();
+  if (!selectedItem) {
+    SpreadsheetApp.getUi().alert('No Item Selected', 'Please select an item from the Item Picker first.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var cell = sheet.getActiveCell();
+
+  if (!cell) {
+    SpreadsheetApp.getUi().alert('No Cell Selected', 'Please select a cell to insert the item.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  // Insert item number into cell (replace mode)
+  cell.setValue(selectedItem.number);
+
+  // Apply category color
+  var categoryColor = getCategoryColor(selectedItem.categoryName);
+  if (categoryColor) {
+    cell.setBackground(categoryColor);
+  }
+
+  // Populate attributes in columns to the right
+  populateItemAttributes(cell.getRow(), selectedItem);
+
+  // Clear selection
+  clearSelectedItem();
+}
+
+/**
+ * Populates item attributes in columns to the right of the item number
+ * @param {number} row - Row number where item was inserted
+ * @param {Object} item - Item data with attributes
+ */
+function populateItemAttributes(row, item) {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var columns = getItemColumns();
+
+  if (!columns || columns.length === 0) {
+    return; // No columns configured
+  }
+
+  var startCol = sheet.getActiveCell().getColumn() + 1;
+
+  columns.forEach(function(col, index) {
+    var targetCol = startCol + index;
+    var cell = sheet.getRange(row, targetCol);
+
+    // Find the attribute value in the item
+    var value = getAttributeValue(item, col.attributeGuid);
+    if (value) {
+      cell.setValue(value);
+    }
+  });
 }

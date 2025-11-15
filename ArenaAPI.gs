@@ -1,6 +1,6 @@
 /**
  * Arena API Client
- * Handles communication with the Arena API using configured credentials including workspace ID
+ * Handles communication with the Arena API using session-based authentication
  */
 
 /**
@@ -13,9 +13,11 @@ var ArenaAPIClient = function() {
     throw new Error('Arena API credentials not configured. Please configure the connection first.');
   }
 
-  this.apiEndpoint = credentials.apiEndpoint;
-  this.apiKey = credentials.apiKey;
+  this.apiBase = credentials.apiBase;
   this.workspaceId = credentials.workspaceId;
+
+  // Get a valid session ID (will login if necessary)
+  this.sessionId = getValidSessionId();
 };
 
 /**
@@ -27,13 +29,12 @@ var ArenaAPIClient = function() {
 ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
   options = options || {};
 
-  var url = this.apiEndpoint + endpoint;
+  var url = this.apiBase + endpoint;
 
-  // Build headers with API key authentication
+  // Build headers with session-based authentication
   var headers = {
-    'Authorization': 'Bearer ' + this.apiKey,
-    'Content-Type': 'application/json',
-    'X-Arena-Workspace-Id': this.workspaceId  // Include workspace ID in headers
+    'arena_session_id': this.sessionId,
+    'Content-Type': 'application/json'
   };
 
   // Add any custom headers from options
@@ -62,6 +63,21 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
     var responseText = response.getContentText();
 
     Logger.log('Response code: ' + responseCode);
+
+    // Check if session expired (401 unauthorized)
+    if (responseCode === 401) {
+      Logger.log('Session expired, attempting to re-login...');
+      clearSession();
+      this.sessionId = getValidSessionId();
+
+      // Retry the request with new session
+      headers['arena_session_id'] = this.sessionId;
+      requestOptions.headers = headers;
+
+      response = UrlFetchApp.fetch(url, requestOptions);
+      responseCode = response.getResponseCode();
+      responseText = response.getContentText();
+    }
 
     if (responseCode >= 200 && responseCode < 300) {
       // Success - parse and return JSON
@@ -97,14 +113,14 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
  */
 ArenaAPIClient.prototype.testConnection = function() {
   try {
-    // Try to make a simple API call to verify connectivity
-    // This endpoint might need to be adjusted based on actual Arena API
-    var result = this.makeRequest('/api/health', { method: 'GET' });
+    // Test connection by fetching workspace info
+    var result = this.getWorkspaceInfo();
 
     return {
       success: true,
       message: 'Successfully connected to Arena API',
-      workspaceId: this.workspaceId
+      workspaceId: this.workspaceId,
+      workspaceName: result.name || 'Unknown'
     };
   } catch (error) {
     Logger.log('Connection test failed: ' + error.message);
@@ -123,11 +139,22 @@ ArenaAPIClient.prototype.testConnection = function() {
 ArenaAPIClient.prototype.getItems = function(options) {
   options = options || {};
 
-  var endpoint = '/api/workspaces/' + this.workspaceId + '/items';
+  var endpoint = '/items';
 
   // Add query parameters if provided
+  var queryParams = [];
   if (options.category) {
-    endpoint += '?category=' + encodeURIComponent(options.category);
+    queryParams.push('category=' + encodeURIComponent(options.category));
+  }
+  if (options.offset) {
+    queryParams.push('offset=' + options.offset);
+  }
+  if (options.limit) {
+    queryParams.push('limit=' + options.limit);
+  }
+
+  if (queryParams.length > 0) {
+    endpoint += '?' + queryParams.join('&');
   }
 
   return this.makeRequest(endpoint, { method: 'GET' });
@@ -139,7 +166,7 @@ ArenaAPIClient.prototype.getItems = function(options) {
  * @return {Object} Item data
  */
 ArenaAPIClient.prototype.getItem = function(itemId) {
-  var endpoint = '/api/workspaces/' + this.workspaceId + '/items/' + encodeURIComponent(itemId);
+  var endpoint = '/items/' + encodeURIComponent(itemId);
   return this.makeRequest(endpoint, { method: 'GET' });
 };
 
@@ -149,7 +176,7 @@ ArenaAPIClient.prototype.getItem = function(itemId) {
  * @return {Object} Created item data
  */
 ArenaAPIClient.prototype.createItem = function(itemData) {
-  var endpoint = '/api/workspaces/' + this.workspaceId + '/items';
+  var endpoint = '/items';
   return this.makeRequest(endpoint, {
     method: 'POST',
     payload: itemData
@@ -163,7 +190,7 @@ ArenaAPIClient.prototype.createItem = function(itemData) {
  * @return {Object} Updated item data
  */
 ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
-  var endpoint = '/api/workspaces/' + this.workspaceId + '/items/' + encodeURIComponent(itemId);
+  var endpoint = '/items/' + encodeURIComponent(itemId);
   return this.makeRequest(endpoint, {
     method: 'PUT',
     payload: itemData
@@ -175,8 +202,140 @@ ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
  * @return {Object} Workspace data
  */
 ArenaAPIClient.prototype.getWorkspaceInfo = function() {
-  var endpoint = '/api/workspaces/' + this.workspaceId;
+  var endpoint = '/settings/workspace';
   return this.makeRequest(endpoint, { method: 'GET' });
+};
+
+/**
+ * Gets items filtered by category
+ * @param {string} category - Category to filter by
+ * @return {Object} Filtered items data
+ */
+ArenaAPIClient.prototype.getItemsByCategory = function(category) {
+  return this.getItems({ category: category });
+};
+
+/**
+ * Searches for items matching a query
+ * @param {string} query - Search query string
+ * @param {Object} options - Additional search options
+ * @return {Object} Search results
+ */
+ArenaAPIClient.prototype.searchItems = function(query, options) {
+  options = options || {};
+
+  var endpoint = '/items/searches';
+
+  var queryParams = [];
+  queryParams.push('searchQuery=' + encodeURIComponent(query));
+
+  if (options.limit) {
+    queryParams.push('limit=' + options.limit);
+  }
+  if (options.offset) {
+    queryParams.push('offset=' + options.offset);
+  }
+
+  endpoint += '?' + queryParams.join('&');
+
+  return this.makeRequest(endpoint, { method: 'GET' });
+};
+
+/**
+ * Gets detailed attributes for a specific item
+ * @param {string} itemId - The item identifier
+ * @return {Object} Detailed item attributes
+ */
+ArenaAPIClient.prototype.getItemAttributes = function(itemId) {
+  var endpoint = '/items/' + encodeURIComponent(itemId) + '/attributes';
+  return this.makeRequest(endpoint, { method: 'GET' });
+};
+
+/**
+ * Gets multiple items by their IDs in bulk
+ * @param {Array<string>} itemIds - Array of item identifiers
+ * @return {Array<Object>} Array of item data
+ */
+ArenaAPIClient.prototype.getBulkItems = function(itemIds) {
+  if (!itemIds || itemIds.length === 0) {
+    return [];
+  }
+
+  // Arena API typically doesn't have a bulk endpoint, fetch individually
+  var results = [];
+
+  itemIds.forEach(function(itemId) {
+    try {
+      var item = this.getItem(itemId);
+      results.push(item);
+    } catch (itemError) {
+      Logger.log('Error fetching item ' + itemId + ': ' + itemError.message);
+    }
+  }.bind(this));
+
+  return results;
+};
+
+/**
+ * Gets all items with pagination support
+ * @param {number} batchSize - Number of items per request (default 100)
+ * @return {Array<Object>} All items from the workspace
+ */
+ArenaAPIClient.prototype.getAllItems = function(batchSize) {
+  batchSize = batchSize || 100;
+
+  var allItems = [];
+  var offset = 0;
+  var hasMore = true;
+
+  while (hasMore) {
+    try {
+      var response = this.getItems({ limit: batchSize, offset: offset });
+
+      // Handle different possible response structures
+      var items = response.results || response.items || response.data || [];
+
+      if (Array.isArray(response)) {
+        items = response;
+      }
+
+      if (items.length > 0) {
+        allItems = allItems.concat(items);
+        offset += items.length;
+
+        Logger.log('Fetched ' + items.length + ' items (total: ' + allItems.length + ')');
+
+        // Check if there are more items
+        if (items.length < batchSize) {
+          hasMore = false;
+        }
+      } else {
+        hasMore = false;
+      }
+
+      // Add a small delay to avoid rate limiting
+      Utilities.sleep(200);
+
+    } catch (error) {
+      Logger.log('Error fetching items at offset ' + offset + ': ' + error.message);
+      hasMore = false;
+    }
+  }
+
+  Logger.log('Fetched ' + allItems.length + ' total items from Arena');
+  return allItems;
+};
+
+/**
+ * Gets items filtered by multiple criteria
+ * @param {Object} filters - Filter criteria (category, status, etc.)
+ * @return {Array<Object>} Filtered items
+ */
+ArenaAPIClient.prototype.getFilteredItems = function(filters) {
+  var response = this.getItems(filters);
+
+  // Extract items from response
+  return response.results || response.items || response.data || response;
 };
 
 /**

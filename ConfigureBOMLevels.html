@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-top: 0;
+      font-size: 20px;
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 10px;
+    }
+
+    .description {
+      margin-bottom: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .hierarchy-list {
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      background: white;
+    }
+
+    .hierarchy-item {
+      display: flex;
+      align-items: center;
+      gap: 15px;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .level-number {
+      width: 40px;
+      font-size: 18px;
+      font-weight: bold;
+      color: #1a73e8;
+      text-align: center;
+    }
+
+    .category-select {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .move-buttons {
+      display: flex;
+      gap: 4px;
+    }
+
+    .move-btn {
+      padding: 4px 8px;
+      background: #f1f3f4;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .move-btn:hover {
+      background: #e8eaed;
+    }
+
+    .add-level-btn {
+      width: 100%;
+      padding: 10px;
+      margin-top: 10px;
+      background: #34a853;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .add-level-btn:hover {
+      background: #2d9248;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+    }
+
+    .btn-secondary {
+      background-color: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e8eaed;
+    }
+
+    .btn-reset {
+      background-color: #ea4335;
+      color: white;
+    }
+
+    .btn-reset:hover {
+      background-color: #d33b2c;
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      background-color: #e6f4ea;
+      color: #137333;
+      border: 1px solid #81c995;
+    }
+
+    .message.error {
+      background-color: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .info-box {
+      background: #e8f0fe;
+      border-left: 4px solid #1a73e8;
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Configure BOM Hierarchy</h2>
+
+    <div class="description">
+      Define the BOM hierarchy by assigning categories to levels. Level 0 is the top level (e.g., Hall),
+      and each subsequent level represents components within the parent level.
+    </div>
+
+    <div class="info-box">
+      <strong>Datacenter Example:</strong><br>
+      Level 0: Hall → Level 1: Pod → Level 2: Rack → Level 3: Server → Level 4: Component
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div class="hierarchy-list" id="hierarchyList"></div>
+
+    <button class="add-level-btn" onclick="addLevel()">+ Add Level</button>
+
+    <div class="button-group">
+      <button type="button" class="btn-reset" onclick="resetToDefaults()">Reset to Defaults</button>
+      <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveHierarchy()">Save Hierarchy</button>
+    </div>
+  </div>
+
+  <script>
+    var hierarchy = [];
+    var categories = [];
+
+    // Load data
+    google.script.run
+      .withSuccessHandler(function(data) {
+        hierarchy = data.hierarchy || [];
+        categories = data.categories || [];
+        renderHierarchy();
+      })
+      .withFailureHandler(function(error) {
+        showMessage('Error loading hierarchy: ' + error.message, 'error');
+      })
+      .loadBOMHierarchyData();
+
+    function renderHierarchy() {
+      var list = document.getElementById('hierarchyList');
+      list.innerHTML = '';
+
+      hierarchy.sort(function(a, b) { return a.level - b.level; });
+
+      hierarchy.forEach(function(item, index) {
+        var div = document.createElement('div');
+        div.className = 'hierarchy-item';
+
+        var levelSpan = document.createElement('div');
+        levelSpan.className = 'level-number';
+        levelSpan.textContent = item.level;
+
+        var select = document.createElement('select');
+        select.className = 'category-select';
+        select.innerHTML = '<option value="">-- Select Category --</option>';
+
+        categories.forEach(function(cat) {
+          var option = document.createElement('option');
+          option.value = cat.name;
+          option.textContent = cat.fullPath || cat.name;
+          if (item.category === cat.name) {
+            option.selected = true;
+          }
+          select.appendChild(option);
+        });
+
+        select.onchange = function() {
+          item.category = this.value;
+          item.name = this.value;
+        };
+
+        var moveButtons = document.createElement('div');
+        moveButtons.className = 'move-buttons';
+
+        var upBtn = document.createElement('button');
+        upBtn.className = 'move-btn';
+        upBtn.textContent = '↑';
+        upBtn.disabled = index === 0;
+        upBtn.onclick = function() {
+          moveLevel(index, -1);
+        };
+
+        var downBtn = document.createElement('button');
+        downBtn.className = 'move-btn';
+        downBtn.textContent = '↓';
+        downBtn.disabled = index === hierarchy.length - 1;
+        downBtn.onclick = function() {
+          moveLevel(index, 1);
+        };
+
+        var removeBtn = document.createElement('button');
+        removeBtn.className = 'move-btn';
+        removeBtn.textContent = '×';
+        removeBtn.onclick = function() {
+          removeLevel(index);
+        };
+
+        moveButtons.appendChild(upBtn);
+        moveButtons.appendChild(downBtn);
+        moveButtons.appendChild(removeBtn);
+
+        div.appendChild(levelSpan);
+        div.appendChild(select);
+        div.appendChild(moveButtons);
+
+        list.appendChild(div);
+      });
+    }
+
+    function addLevel() {
+      var newLevel = hierarchy.length;
+      hierarchy.push({
+        level: newLevel,
+        category: '',
+        name: ''
+      });
+      renderHierarchy();
+    }
+
+    function moveLevel(index, direction) {
+      if (index + direction < 0 || index + direction >= hierarchy.length) return;
+
+      var temp = hierarchy[index];
+      hierarchy[index] = hierarchy[index + direction];
+      hierarchy[index + direction] = temp;
+
+      // Reassign levels
+      hierarchy.forEach(function(item, i) {
+        item.level = i;
+      });
+
+      renderHierarchy();
+    }
+
+    function removeLevel(index) {
+      hierarchy.splice(index, 1);
+
+      // Reassign levels
+      hierarchy.forEach(function(item, i) {
+        item.level = i;
+      });
+
+      renderHierarchy();
+    }
+
+    function saveHierarchy() {
+      // Validate
+      var errors = [];
+      hierarchy.forEach(function(item) {
+        if (!item.category) {
+          errors.push('Level ' + item.level + ' has no category assigned');
+        }
+      });
+
+      if (errors.length > 0) {
+        showMessage('Please fix errors:\n' + errors.join('\n'), 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showMessage('BOM hierarchy saved successfully!', 'success');
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1500);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error saving hierarchy: ' + error.message, 'error');
+        })
+        .saveBOMHierarchy(hierarchy);
+    }
+
+    function resetToDefaults() {
+      if (!confirm('Reset BOM hierarchy to defaults?')) return;
+
+      google.script.run
+        .withSuccessHandler(function(defaultHierarchy) {
+          hierarchy = defaultHierarchy;
+          renderHierarchy();
+          showMessage('Reset to default hierarchy', 'success');
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error resetting: ' + error.message, 'error');
+        })
+        .getDefaultBOMHierarchy();
+    }
+
+    function showMessage(text, type) {
+      var messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.classList.remove('hidden');
+
+      setTimeout(function() {
+        messageDiv.classList.add('hidden');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .container {
+      max-width: 600px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-top: 0;
+      font-size: 20px;
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 10px;
+    }
+
+    .description {
+      margin-bottom: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .category-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+    }
+
+    .category-item {
+      display: flex;
+      align-items: center;
+      padding: 10px;
+      margin-bottom: 8px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .category-name {
+      flex: 1;
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .color-preview {
+      width: 60px;
+      height: 30px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    input[type="color"] {
+      width: 60px;
+      height: 30px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+    }
+
+    .btn-secondary {
+      background-color: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e8eaed;
+    }
+
+    .btn-reset {
+      background-color: #ea4335;
+      color: white;
+    }
+
+    .btn-reset:hover {
+      background-color: #d33b2c;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      background-color: #e6f4ea;
+      color: #137333;
+      border: 1px solid #81c995;
+    }
+
+    .message.error {
+      background-color: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
+
+    .hidden {
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Configure Category Colors</h2>
+
+    <div class="description">
+      Assign colors to categories. These colors will be used in the sheet cells and in the item picker panel.
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading categories from Arena...</p>
+    </div>
+
+    <div id="categoryList" class="category-list hidden"></div>
+
+    <div class="button-group">
+      <button type="button" class="btn-reset" onclick="resetToDefaults()">Reset to Defaults</button>
+      <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveColors()">Save Colors</button>
+    </div>
+  </div>
+
+  <script>
+    var categories = [];
+    var colors = {};
+
+    // Load categories and current colors on page load
+    google.script.run
+      .withSuccessHandler(function(data) {
+        categories = data.categories || [];
+        colors = data.colors || {};
+        renderCategories();
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('categoryList').classList.remove('hidden');
+      })
+      .withFailureHandler(function(error) {
+        showMessage('Error loading categories: ' + error.message, 'error');
+        document.getElementById('loading').classList.add('hidden');
+      })
+      .loadCategoryColorData();
+
+    function renderCategories() {
+      var list = document.getElementById('categoryList');
+      list.innerHTML = '';
+
+      if (!categories.length) {
+        list.innerHTML = '<p style="text-align:center;color:#999;">No categories found</p>';
+        return;
+      }
+
+      categories.forEach(function(cat) {
+        var item = document.createElement('div');
+        item.className = 'category-item';
+
+        var name = document.createElement('span');
+        name.className = 'category-name';
+        name.textContent = cat.fullPath || cat.name;
+
+        var colorInput = document.createElement('input');
+        colorInput.type = 'color';
+        colorInput.value = colors[cat.name] || colors.default || '#FFFFFF';
+        colorInput.setAttribute('data-category', cat.name);
+        colorInput.addEventListener('change', function() {
+          colors[cat.name] = this.value;
+        });
+
+        item.appendChild(name);
+        item.appendChild(colorInput);
+        list.appendChild(item);
+      });
+    }
+
+    function saveColors() {
+      google.script.run
+        .withSuccessHandler(function() {
+          showMessage('Category colors saved successfully!', 'success');
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1500);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error saving colors: ' + error.message, 'error');
+        })
+        .saveCategoryColors(colors);
+    }
+
+    function resetToDefaults() {
+      if (!confirm('Reset all category colors to defaults?')) {
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(defaultColors) {
+          colors = defaultColors;
+          renderCategories();
+          showMessage('Colors reset to defaults', 'success');
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error resetting colors: ' + error.message, 'error');
+        })
+        .getDefaultCategoryColors();
+    }
+
+    function showMessage(text, type) {
+      var messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.classList.remove('hidden');
+
+      setTimeout(function() {
+        messageDiv.classList.add('hidden');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

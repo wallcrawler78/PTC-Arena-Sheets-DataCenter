@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .container {
+      max-width: 700px;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-top: 0;
+      font-size: 20px;
+      border-bottom: 2px solid #1a73e8;
+      padding-bottom: 10px;
+    }
+
+    .description {
+      margin-bottom: 20px;
+      color: #666;
+      font-size: 14px;
+    }
+
+    .groups-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .groups-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 15px;
+    }
+
+    .group-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+
+    .group-btn {
+      padding: 6px 12px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+    }
+
+    .group-btn:hover {
+      background: #1557b0;
+    }
+
+    .save-group-section {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #ddd;
+    }
+
+    .save-group-input {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .save-group-input input {
+      flex: 1;
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .save-group-input button {
+      padding: 6px 16px;
+      background: #34a853;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .save-group-input button:hover {
+      background: #2d9248;
+    }
+
+    .search-box {
+      margin-bottom: 15px;
+    }
+
+    .search-box input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .attribute-list {
+      max-height: 350px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      background: white;
+    }
+
+    .attribute-item {
+      display: grid;
+      grid-template-columns: auto 1fr 200px;
+      gap: 10px;
+      align-items: center;
+      padding: 8px;
+      margin-bottom: 6px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .attribute-item:hover {
+      background: #f0f0f0;
+    }
+
+    .attribute-checkbox {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .attribute-checkbox input[type="checkbox"] {
+      width: 18px;
+      height: 18px;
+      cursor: pointer;
+    }
+
+    .attribute-name {
+      font-size: 13px;
+      color: #333;
+    }
+
+    .attribute-path {
+      font-size: 11px;
+      color: #666;
+      font-style: italic;
+    }
+
+    .header-input {
+      padding: 6px 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+      justify-content: flex-end;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+    }
+
+    .btn-secondary {
+      background-color: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e8eaed;
+    }
+
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      background-color: #e6f4ea;
+      color: #137333;
+      border: 1px solid #81c995;
+    }
+
+    .message.error {
+      background-color: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    .selected-count {
+      color: #1a73e8;
+      font-weight: bold;
+      margin-left: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Configure Item Columns</h2>
+
+    <div class="description">
+      Select which Arena item attributes should appear as columns when adding items to the sheet.
+      <span class="selected-count" id="selectedCount">0 selected</span>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading attributes from Arena...</p>
+    </div>
+
+    <div id="content" class="hidden">
+      <div class="groups-section">
+        <div class="groups-title">Attribute Groups</div>
+        <p style="font-size: 13px; color: #666; margin-bottom: 10px;">
+          Click a group to apply its attribute selection:
+        </p>
+        <div class="group-buttons" id="groupButtons"></div>
+
+        <div class="save-group-section">
+          <div class="save-group-input">
+            <input type="text" id="newGroupName" placeholder="Enter group name..." />
+            <button onclick="saveAsGroup()">Save Current Selection as Group</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search attributes..." />
+      </div>
+
+      <div class="attribute-list" id="attributeList"></div>
+
+      <div class="button-group">
+        <button type="button" class="btn-secondary" onclick="clearSelection()">Clear All</button>
+        <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+        <button type="button" class="btn-primary" onclick="saveColumns()">Save Configuration</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var attributes = [];
+    var groups = [];
+    var selectedAttributes = {};
+
+    // Load data on page load
+    google.script.run
+      .withSuccessHandler(function(data) {
+        attributes = data.attributes || [];
+        groups = data.groups || [];
+        selectedAttributes = data.currentSelection || {};
+
+        renderGroups();
+        renderAttributes();
+        updateSelectedCount();
+
+        document.getElementById('loading').classList.add('hidden');
+        document.getElementById('content').classList.remove('hidden');
+      })
+      .withFailureHandler(function(error) {
+        showMessage('Error loading attributes: ' + error.message, 'error');
+        document.getElementById('loading').classList.add('hidden');
+      })
+      .loadColumnConfigData();
+
+    // Search functionality
+    document.addEventListener('DOMContentLoaded', function() {
+      var searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.addEventListener('input', function() {
+          renderAttributes(this.value);
+        });
+      }
+    });
+
+    function renderGroups() {
+      var container = document.getElementById('groupButtons');
+      container.innerHTML = '';
+
+      if (!groups || groups.length === 0) {
+        container.innerHTML = '<p style="font-size: 13px; color: #999;">No saved groups yet</p>';
+        return;
+      }
+
+      groups.forEach(function(group) {
+        var btn = document.createElement('button');
+        btn.className = 'group-btn';
+        btn.textContent = group.name;
+        btn.onclick = function() {
+          applyGroup(group);
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    function renderAttributes(searchQuery) {
+      var list = document.getElementById('attributeList');
+      list.innerHTML = '';
+
+      var query = (searchQuery || '').toLowerCase();
+      var filtered = attributes.filter(function(attr) {
+        if (!query) return true;
+        var searchText = (attr.name + ' ' + attr.path).toLowerCase();
+        return searchText.indexOf(query) !== -1;
+      });
+
+      if (filtered.length === 0) {
+        list.innerHTML = '<p style="text-align:center;color:#999;">No attributes found</p>';
+        return;
+      }
+
+      filtered.forEach(function(attr) {
+        var item = document.createElement('div');
+        item.className = 'attribute-item';
+
+        // Checkbox and name
+        var checkboxDiv = document.createElement('div');
+        checkboxDiv.className = 'attribute-checkbox';
+
+        var checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.id = 'attr_' + attr.guid;
+        checkbox.checked = !!selectedAttributes[attr.guid];
+        checkbox.onchange = function() {
+          if (this.checked) {
+            selectedAttributes[attr.guid] = {
+              guid: attr.guid,
+              name: attr.name,
+              header: attr.name
+            };
+          } else {
+            delete selectedAttributes[attr.guid];
+          }
+          updateSelectedCount();
+        };
+
+        var labelDiv = document.createElement('div');
+        var nameSpan = document.createElement('div');
+        nameSpan.className = 'attribute-name';
+        nameSpan.textContent = attr.name;
+
+        var pathSpan = document.createElement('div');
+        pathSpan.className = 'attribute-path';
+        pathSpan.textContent = attr.path || '';
+
+        labelDiv.appendChild(nameSpan);
+        if (attr.path) {
+          labelDiv.appendChild(pathSpan);
+        }
+
+        checkboxDiv.appendChild(checkbox);
+        checkboxDiv.appendChild(labelDiv);
+
+        // Header input
+        var headerInput = document.createElement('input');
+        headerInput.type = 'text';
+        headerInput.className = 'header-input';
+        headerInput.placeholder = 'Column header';
+        headerInput.value = selectedAttributes[attr.guid] ? selectedAttributes[attr.guid].header : '';
+        headerInput.onchange = function() {
+          if (selectedAttributes[attr.guid]) {
+            selectedAttributes[attr.guid].header = this.value;
+          }
+        };
+
+        item.appendChild(checkboxDiv);
+        item.appendChild(document.createElement('div')); // spacer
+        item.appendChild(headerInput);
+
+        list.appendChild(item);
+      });
+    }
+
+    function applyGroup(group) {
+      if (!group || !group.attributes) return;
+
+      // Clear current selection
+      selectedAttributes = {};
+
+      // Apply group attributes
+      group.attributes.forEach(function(attr) {
+        selectedAttributes[attr.guid] = {
+          guid: attr.guid,
+          name: attr.name,
+          header: attr.header || attr.name
+        };
+      });
+
+      renderAttributes();
+      updateSelectedCount();
+      showMessage('Applied group: ' + group.name, 'success');
+    }
+
+    function saveAsGroup() {
+      var nameInput = document.getElementById('newGroupName');
+      var groupName = nameInput.value.trim();
+
+      if (!groupName) {
+        showMessage('Please enter a group name', 'error');
+        return;
+      }
+
+      var selectedArray = Object.keys(selectedAttributes).map(function(guid) {
+        return selectedAttributes[guid];
+      });
+
+      if (selectedArray.length === 0) {
+        showMessage('Please select at least one attribute', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(updatedGroups) {
+          groups = updatedGroups;
+          renderGroups();
+          nameInput.value = '';
+          showMessage('Group "' + groupName + '" saved successfully!', 'success');
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error saving group: ' + error.message, 'error');
+        })
+        .saveAttributeGroup(groupName, selectedArray);
+    }
+
+    function clearSelection() {
+      selectedAttributes = {};
+      renderAttributes();
+      updateSelectedCount();
+    }
+
+    function saveColumns() {
+      var columnsArray = Object.keys(selectedAttributes).map(function(guid) {
+        return selectedAttributes[guid];
+      });
+
+      google.script.run
+        .withSuccessHandler(function() {
+          showMessage('Column configuration saved successfully!', 'success');
+          setTimeout(function() {
+            google.script.host.close();
+          }, 1500);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error saving configuration: ' + error.message, 'error');
+        })
+        .saveItemColumns(columnsArray);
+    }
+
+    function updateSelectedCount() {
+      var count = Object.keys(selectedAttributes).length;
+      document.getElementById('selectedCount').textContent = count + ' selected';
+    }
+
+    function showMessage(text, type) {
+      var messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.classList.remove('hidden');
+
+      setTimeout(function() {
+        messageDiv.classList.add('hidden');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>
