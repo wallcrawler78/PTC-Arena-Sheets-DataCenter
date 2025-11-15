@@ -1487,9 +1487,12 @@ function createRowItems(rowData, rowLocationAttr, rowCategory) {
       Logger.log('Row category type: ' + typeof rowCategory);
       Logger.log('Row description: Row ' + row.rowNumber + ' with racks in positions: ' + positionNames);
 
+      // Arena API expects category as an object with guid, not a simple string
       var createItemPayload = {
         name: rowName,
-        category: rowCategory,
+        category: {
+          guid: rowCategory
+        },
         description: 'Row ' + row.rowNumber + ' with racks in positions: ' + positionNames
       };
 
@@ -1576,12 +1579,25 @@ function createPODItem(rowItems, podCategory) {
   }
 
   try {
-    // Create POD item in Arena
-    var podItem = client.createItem({
+    Logger.log('=== CREATING POD ITEM ===');
+    Logger.log('POD name: ' + podName);
+    Logger.log('POD category (should be GUID): ' + podCategory);
+    Logger.log('POD category type: ' + typeof podCategory);
+    Logger.log('POD description: Point of Delivery containing ' + rowItems.length + ' rows');
+
+    // Arena API expects category as an object with guid, not a simple string
+    var createPODPayload = {
       name: podName,
-      category: podCategory,
+      category: {
+        guid: podCategory
+      },
       description: 'Point of Delivery containing ' + rowItems.length + ' rows'
-    });
+    };
+
+    Logger.log('Full createItem payload for POD: ' + JSON.stringify(createPODPayload));
+
+    // Create POD item in Arena
+    var podItem = client.createItem(createPODPayload);
 
     var podItemGuid = podItem.guid || podItem.Guid;
     var podItemNumber = podItem.number || podItem.Number;
@@ -1762,12 +1778,13 @@ function pushPODStructureToArena() {
       return;
     }
 
-    var podCategory = podCategorySelection.name;
-    Logger.log('Selected POD category: ' + podCategory + ' (GUID: ' + podCategorySelection.guid + ')');
+    var podCategoryGuid = podCategorySelection.guid;
+    var podCategoryName = podCategorySelection.name;
+    Logger.log('Selected POD category: ' + podCategoryName + ' (GUID: ' + podCategoryGuid + ')');
 
     // Step 9: Create POD item
     ui.alert('Creating POD', 'Creating POD item in Arena...', ui.ButtonSet.OK);
-    var podItem = createPODItem(rowItems, podCategory);
+    var podItem = createPODItem(rowItems, podCategoryGuid);
 
     if (!podItem) {
       return; // Cancelled or error
