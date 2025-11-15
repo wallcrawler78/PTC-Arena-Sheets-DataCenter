@@ -1428,9 +1428,10 @@ function scanOverviewByRow(sheet) {
  * Creates Row items in Arena with Row Location attribute
  * @param {Array} rowData - Array of row objects from scanOverviewByRow
  * @param {Object} rowLocationAttr - Row Location attribute metadata
+ * @param {string} rowCategory - Category to use for Row items
  * @return {Array} Array of created row items with metadata
  */
-function createRowItems(rowData, rowLocationAttr) {
+function createRowItems(rowData, rowLocationAttr, rowCategory) {
   var ui = SpreadsheetApp.getUi();
   var client = new ArenaAPIClient();
   var rowItems = [];
@@ -1482,7 +1483,7 @@ function createRowItems(rowData, rowLocationAttr) {
     try {
       var rowItem = client.createItem({
         name: rowName,
-        category: 'Row', // Or prompt user for category
+        category: rowCategory,
         description: 'Row ' + row.rowNumber + ' with racks in positions: ' + positionNames
       });
 
@@ -1530,9 +1531,10 @@ function createRowItems(rowData, rowLocationAttr) {
 /**
  * Creates POD item in Arena with all rows as BOM
  * @param {Array} rowItems - Array of row item objects
+ * @param {string} podCategory - Category to use for POD item
  * @return {Object} Created POD item metadata
  */
-function createPODItem(rowItems) {
+function createPODItem(rowItems, podCategory) {
   var ui = SpreadsheetApp.getUi();
   var client = new ArenaAPIClient();
 
@@ -1567,7 +1569,7 @@ function createPODItem(rowItems) {
     // Create POD item in Arena
     var podItem = client.createItem({
       name: podName,
-      category: 'POD', // Or prompt user for category
+      category: podCategory,
       description: 'Point of Delivery containing ' + rowItems.length + ' rows'
     });
 
@@ -1712,22 +1714,90 @@ function pushPODStructureToArena() {
       return;
     }
 
-    // Step 6: Create Row items
-    var rowItems = createRowItems(overviewData, rowLocationAttr);
+    // Step 6: Prompt for Row item category
+    var categories = getArenaCategories();
+    var favoriteCategories = getFavoriteCategories();
+    var categoryList = favoriteCategories.length > 0 ? favoriteCategories : categories.slice(0, 10);
+
+    var rowCategoryPrompt = 'Select category for Row items:\n\n' +
+                            'Available categories:\n';
+    categoryList.forEach(function(cat, idx) {
+      rowCategoryPrompt += '  ' + (idx + 1) + '. ' + cat + '\n';
+    });
+    rowCategoryPrompt += '\n----------------------------------------\n';
+    rowCategoryPrompt += 'Enter category number or name for all Row items:';
+
+    var rowCategoryResponse = ui.prompt('Category for Row Items', rowCategoryPrompt, ui.ButtonSet.OK_CANCEL);
+
+    if (rowCategoryResponse.getSelectedButton() !== ui.Button.OK) {
+      ui.alert('Cancelled', 'POD creation cancelled.', ui.ButtonSet.OK);
+      return;
+    }
+
+    var rowCategoryInput = rowCategoryResponse.getResponseText().trim();
+    var rowCategory = '';
+
+    // Check if input is a number (index)
+    var rowCatIndex = parseInt(rowCategoryInput, 10);
+    if (!isNaN(rowCatIndex) && rowCatIndex > 0 && rowCatIndex <= categoryList.length) {
+      rowCategory = categoryList[rowCatIndex - 1];
+    } else {
+      rowCategory = rowCategoryInput;
+    }
+
+    if (!rowCategory) {
+      ui.alert('Error', 'Category is required for Row items.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Step 7: Create Row items
+    var rowItems = createRowItems(overviewData, rowLocationAttr, rowCategory);
 
     if (!rowItems) {
       return; // Cancelled or error
     }
 
-    // Step 7: Create POD item
+    // Step 8: Prompt for POD item category
+    var podCategoryPrompt = 'Select category for POD item:\n\n' +
+                            'Available categories:\n';
+    categoryList.forEach(function(cat, idx) {
+      podCategoryPrompt += '  ' + (idx + 1) + '. ' + cat + '\n';
+    });
+    podCategoryPrompt += '\n----------------------------------------\n';
+    podCategoryPrompt += 'Enter category number or name for POD item:';
+
+    var podCategoryResponse = ui.prompt('Category for POD Item', podCategoryPrompt, ui.ButtonSet.OK_CANCEL);
+
+    if (podCategoryResponse.getSelectedButton() !== ui.Button.OK) {
+      ui.alert('Cancelled', 'POD creation cancelled.', ui.ButtonSet.OK);
+      return;
+    }
+
+    var podCategoryInput = podCategoryResponse.getResponseText().trim();
+    var podCategory = '';
+
+    // Check if input is a number (index)
+    var podCatIndex = parseInt(podCategoryInput, 10);
+    if (!isNaN(podCatIndex) && podCatIndex > 0 && podCatIndex <= categoryList.length) {
+      podCategory = categoryList[podCatIndex - 1];
+    } else {
+      podCategory = podCategoryInput;
+    }
+
+    if (!podCategory) {
+      ui.alert('Error', 'Category is required for POD item.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Step 9: Create POD item
     ui.alert('Creating POD', 'Creating POD item in Arena...', ui.ButtonSet.OK);
-    var podItem = createPODItem(rowItems);
+    var podItem = createPODItem(rowItems, podCategory);
 
     if (!podItem) {
       return; // Cancelled or error
     }
 
-    // Step 8: Update overview sheet with POD/Row info
+    // Step 10: Update overview sheet with POD/Row info
     updateOverviewWithPODInfo(overviewSheet, podItem, rowItems);
 
     // Success message
