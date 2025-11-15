@@ -1725,11 +1725,12 @@ function pushPODStructureToArena() {
       return;
     }
 
-    var rowCategory = rowCategorySelection.name;
-    Logger.log('Selected Row category: ' + rowCategory + ' (GUID: ' + rowCategorySelection.guid + ')');
+    var rowCategoryGuid = rowCategorySelection.guid;
+    var rowCategoryName = rowCategorySelection.name;
+    Logger.log('Selected Row category: ' + rowCategoryName + ' (GUID: ' + rowCategoryGuid + ')');
 
     // Step 7: Create Row items
-    var rowItems = createRowItems(overviewData, rowLocationAttr, rowCategory);
+    var rowItems = createRowItems(overviewData, rowLocationAttr, rowCategoryGuid);
 
     if (!rowItems) {
       return; // Cancelled or error
