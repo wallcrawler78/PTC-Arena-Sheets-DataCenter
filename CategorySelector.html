@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+      background-color: #f5f5f5;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: 0 auto;
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    h2 {
+      margin: 0 0 10px 0;
+      color: #333;
+      font-size: 18px;
+    }
+
+    .subtitle {
+      color: #666;
+      font-size: 14px;
+      margin-bottom: 20px;
+    }
+
+    .category-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #fafafa;
+    }
+
+    .category-item {
+      padding: 12px 15px;
+      border-bottom: 1px solid #eee;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .category-item:last-child {
+      border-bottom: none;
+    }
+
+    .category-item:hover {
+      background-color: #e3f2fd;
+    }
+
+    .category-item.selected {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .category-name {
+      font-weight: 500;
+      font-size: 14px;
+    }
+
+    .category-path {
+      font-size: 12px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    .category-item.selected .category-path {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .favorite-section {
+      margin-bottom: 20px;
+    }
+
+    .section-title {
+      font-weight: bold;
+      color: #666;
+      font-size: 12px;
+      text-transform: uppercase;
+      margin-bottom: 8px;
+      padding: 0 5px;
+    }
+
+    .buttons {
+      margin-top: 20px;
+      text-align: right;
+    }
+
+    button {
+      padding: 8px 20px;
+      margin-left: 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-cancel {
+      background-color: #f0f0f0;
+      color: #333;
+    }
+
+    .btn-cancel:hover {
+      background-color: #e0e0e0;
+    }
+
+    .btn-ok {
+      background-color: #2196F3;
+      color: white;
+    }
+
+    .btn-ok:hover {
+      background-color: #1976D2;
+    }
+
+    .btn-ok:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .error {
+      color: #d32f2f;
+      font-size: 13px;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2 id="title">Select Category</h2>
+    <div class="subtitle" id="subtitle"></div>
+
+    <div id="favoriteSection" class="favorite-section" style="display: none;">
+      <div class="section-title">⭐ Favorite Categories</div>
+      <div class="category-list" id="favoriteList"></div>
+    </div>
+
+    <div>
+      <div class="section-title">All Categories</div>
+      <div class="category-list" id="categoryList"></div>
+    </div>
+
+    <div class="error" id="error" style="display: none;"></div>
+
+    <div class="buttons">
+      <button class="btn-cancel" onclick="cancel()">Cancel</button>
+      <button class="btn-ok" id="okButton" onclick="submit()" disabled>OK</button>
+    </div>
+  </div>
+
+  <script>
+    var selectedCategory = null;
+    var categories = [];
+    var favorites = [];
+
+    // Get data from server
+    google.script.run
+      .withSuccessHandler(function(data) {
+        categories = data.categories;
+        favorites = data.favorites;
+
+        document.getElementById('title').textContent = data.title;
+        document.getElementById('subtitle').textContent = data.subtitle;
+
+        renderCategories();
+      })
+      .withFailureHandler(function(error) {
+        document.getElementById('error').textContent = 'Error loading categories: ' + error;
+        document.getElementById('error').style.display = 'block';
+      })
+      .getCategorySelectorData();
+
+    function renderCategories() {
+      // Render favorites
+      if (favorites.length > 0) {
+        document.getElementById('favoriteSection').style.display = 'block';
+        var favoriteHtml = '';
+        favorites.forEach(function(cat) {
+          favoriteHtml += createCategoryHtml(cat, true);
+        });
+        document.getElementById('favoriteList').innerHTML = favoriteHtml;
+      }
+
+      // Render all categories
+      var allHtml = '';
+      categories.forEach(function(cat) {
+        allHtml += createCategoryHtml(cat, false);
+      });
+      document.getElementById('categoryList').innerHTML = allHtml;
+    }
+
+    function createCategoryHtml(cat, isFavorite) {
+      var prefix = isFavorite ? 'fav-' : 'cat-';
+      var pathHtml = cat.path ? '<div class="category-path">' + cat.path + '</div>' : '';
+
+      return '<div class="category-item" id="' + prefix + cat.guid + '" ' +
+             'onclick="selectCategory(\'' + cat.guid + '\', \'' + cat.name.replace(/'/g, "\\'") + '\', ' + isFavorite + ')">' +
+             '<div class="category-name">' + cat.name + '</div>' +
+             pathHtml +
+             '</div>';
+    }
+
+    function selectCategory(guid, name, isFavorite) {
+      // Deselect all
+      var items = document.querySelectorAll('.category-item');
+      items.forEach(function(item) {
+        item.classList.remove('selected');
+      });
+
+      // Select this one (both in favorites and all if it appears in both)
+      var elem1 = document.getElementById('fav-' + guid);
+      var elem2 = document.getElementById('cat-' + guid);
+      if (elem1) elem1.classList.add('selected');
+      if (elem2) elem2.classList.add('selected');
+
+      selectedCategory = {
+        guid: guid,
+        name: name
+      };
+
+      document.getElementById('okButton').disabled = false;
+    }
+
+    function submit() {
+      if (!selectedCategory) {
+        document.getElementById('error').textContent = 'Please select a category';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function() {
+          google.script.host.close();
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('error').textContent = 'Error: ' + error;
+          document.getElementById('error').style.display = 'block';
+        })
+        .setCategorySelection(selectedCategory);
+    }
+
+    function cancel() {
+      google.script.run.setCategorySelection(null);
+      google.script.host.close();
+    }
+  </script>
+</body>
+</html>

@@ -1715,40 +1715,18 @@ function pushPODStructureToArena() {
     }
 
     // Step 6: Prompt for Row item category
-    var categories = getArenaCategories();
-    var favoriteCategories = getFavoriteCategories();
-    var categoryList = favoriteCategories.length > 0 ? favoriteCategories : categories.slice(0, 10);
+    var rowCategorySelection = showCategorySelector(
+      'Category for Row Items',
+      'Select the Arena category to use for all Row items (' + overviewData.length + ' rows)'
+    );
 
-    var rowCategoryPrompt = 'Select category for Row items:\n\n' +
-                            'Available categories:\n';
-    categoryList.forEach(function(cat, idx) {
-      rowCategoryPrompt += '  ' + (idx + 1) + '. ' + cat + '\n';
-    });
-    rowCategoryPrompt += '\n----------------------------------------\n';
-    rowCategoryPrompt += 'Enter category number or name for all Row items:';
-
-    var rowCategoryResponse = ui.prompt('Category for Row Items', rowCategoryPrompt, ui.ButtonSet.OK_CANCEL);
-
-    if (rowCategoryResponse.getSelectedButton() !== ui.Button.OK) {
+    if (!rowCategorySelection) {
       ui.alert('Cancelled', 'POD creation cancelled.', ui.ButtonSet.OK);
       return;
     }
 
-    var rowCategoryInput = rowCategoryResponse.getResponseText().trim();
-    var rowCategory = '';
-
-    // Check if input is a number (index)
-    var rowCatIndex = parseInt(rowCategoryInput, 10);
-    if (!isNaN(rowCatIndex) && rowCatIndex > 0 && rowCatIndex <= categoryList.length) {
-      rowCategory = categoryList[rowCatIndex - 1];
-    } else {
-      rowCategory = rowCategoryInput;
-    }
-
-    if (!rowCategory) {
-      ui.alert('Error', 'Category is required for Row items.', ui.ButtonSet.OK);
-      return;
-    }
+    var rowCategory = rowCategorySelection.name;
+    Logger.log('Selected Row category: ' + rowCategory + ' (GUID: ' + rowCategorySelection.guid + ')');
 
     // Step 7: Create Row items
     var rowItems = createRowItems(overviewData, rowLocationAttr, rowCategory);
@@ -1758,36 +1736,18 @@ function pushPODStructureToArena() {
     }
 
     // Step 8: Prompt for POD item category
-    var podCategoryPrompt = 'Select category for POD item:\n\n' +
-                            'Available categories:\n';
-    categoryList.forEach(function(cat, idx) {
-      podCategoryPrompt += '  ' + (idx + 1) + '. ' + cat + '\n';
-    });
-    podCategoryPrompt += '\n----------------------------------------\n';
-    podCategoryPrompt += 'Enter category number or name for POD item:';
+    var podCategorySelection = showCategorySelector(
+      'Category for POD Item',
+      'Select the Arena category to use for the top-level POD assembly'
+    );
 
-    var podCategoryResponse = ui.prompt('Category for POD Item', podCategoryPrompt, ui.ButtonSet.OK_CANCEL);
-
-    if (podCategoryResponse.getSelectedButton() !== ui.Button.OK) {
+    if (!podCategorySelection) {
       ui.alert('Cancelled', 'POD creation cancelled.', ui.ButtonSet.OK);
       return;
     }
 
-    var podCategoryInput = podCategoryResponse.getResponseText().trim();
-    var podCategory = '';
-
-    // Check if input is a number (index)
-    var podCatIndex = parseInt(podCategoryInput, 10);
-    if (!isNaN(podCatIndex) && podCatIndex > 0 && podCatIndex <= categoryList.length) {
-      podCategory = categoryList[podCatIndex - 1];
-    } else {
-      podCategory = podCategoryInput;
-    }
-
-    if (!podCategory) {
-      ui.alert('Error', 'Category is required for POD item.', ui.ButtonSet.OK);
-      return;
-    }
+    var podCategory = podCategorySelection.name;
+    Logger.log('Selected POD category: ' + podCategory + ' (GUID: ' + podCategorySelection.guid + ')');
 
     // Step 9: Create POD item
     ui.alert('Creating POD', 'Creating POD item in Arena...', ui.ButtonSet.OK);

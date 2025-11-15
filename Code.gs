@@ -396,6 +396,70 @@ function showHelp() {
 }
 
 /**
+ * Shows category selector dialog
+ * @param {string} title - Dialog title
+ * @param {string} subtitle - Dialog subtitle
+ * @return {Object} Selected category {guid, name} or null if cancelled
+ */
+function showCategorySelector(title, subtitle) {
+  // Store dialog parameters
+  PropertiesService.getUserProperties().setProperty('category_selector_title', title);
+  PropertiesService.getUserProperties().setProperty('category_selector_subtitle', subtitle);
+  PropertiesService.getUserProperties().deleteProperty('category_selection');
+
+  var html = HtmlService.createHtmlOutputFromFile('CategorySelector')
+    .setWidth(550)
+    .setHeight(600);
+
+  SpreadsheetApp.getUi().showModalDialog(html, title);
+
+  // Wait for selection (will be set by setCategorySelection)
+  var selection = PropertiesService.getUserProperties().getProperty('category_selection');
+
+  if (selection) {
+    return JSON.parse(selection);
+  } else {
+    return null;
+  }
+}
+
+/**
+ * Gets data for category selector dialog
+ * @return {Object} Data object with categories, favorites, title, subtitle
+ */
+function getCategorySelectorData() {
+  var categories = getArenaCategories();
+  var favorites = getFavoriteCategories();
+
+  // Get favorite category objects
+  var favoriteCategoryObjects = [];
+  if (favorites && favorites.length > 0) {
+    favoriteCategoryObjects = categories.filter(function(cat) {
+      return favorites.indexOf(cat.name) !== -1;
+    });
+  }
+
+  return {
+    categories: categories,
+    favorites: favoriteCategoryObjects,
+    title: PropertiesService.getUserProperties().getProperty('category_selector_title') || 'Select Category',
+    subtitle: PropertiesService.getUserProperties().getProperty('category_selector_subtitle') || ''
+  };
+}
+
+/**
+ * Sets the category selection from dialog
+ * @param {Object} category - Selected category {guid, name} or null
+ */
+function setCategorySelection(category) {
+  if (category) {
+    PropertiesService.getUserProperties().setProperty('category_selection', JSON.stringify(category));
+  } else {
+    PropertiesService.getUserProperties().deleteProperty('category_selection');
+  }
+}
+
+/**
  * Pulls BOM from Arena and populates sheets
  */
 function pullBOMFromArena() {
