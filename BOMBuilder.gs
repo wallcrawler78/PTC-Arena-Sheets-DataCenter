@@ -1942,3 +1942,238 @@ function updateOverviewWithPODInfo(sheet, podItem, rowItems) {
 
   Logger.log('Updated overview sheet with POD and Row information');
 }
+
+/**
+ * Repairs existing POD/Row BOMs from overview sheet  
+ * For when items were already created but BOMs are empty due to previous bugs
+ */
+function repairPODAndRowBOMs() {
+  Logger.log('==========================================');
+  Logger.log('REPAIR POD AND ROW BOMs - START');
+  Logger.log('==========================================');
+
+  var ui = SpreadsheetApp.getUi();
+  var client = new ArenaAPIClient();
+
+  try {
+    // Find overview sheet
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheets = ss.getSheets();
+    var overviewSheet = null;
+
+    for (var i = 0; i < sheets.length; i++) {
+      if (sheets[i].getName().toLowerCase().indexOf('overview') !== -1) {
+        overviewSheet = sheets[i];
+        break;
+      }
+    }
+
+    if (!overviewSheet) {
+      ui.alert('Error', 'Overview sheet not found.', ui.ButtonSet.OK);
+      return;
+    }
+
+    Logger.log('Found overview sheet: ' + overviewSheet.getName());
+
+    // Step 1: Read POD and Row item numbers from sheet
+    var data = overviewSheet.getDataRange().getValues();
+
+    // Find POD item number (first row, should be hyperlink formula)
+    var podItemNumber = null;
+    var podRow = data[0][0];
+    if (podRow && typeof podRow === 'string') {
+      // Extract item number from format "POD: name (ITEM-NUMBER)"
+      var match = podRow.match(/\(([^)]+)\)/);
+      if (match) {
+        podItemNumber = match[1];
+      }
+    }
+
+    if (!podItemNumber) {
+      ui.alert('Error', 'Could not find POD item number in overview sheet.\n\nPlease ensure the POD was created and the overview sheet has the POD link.', ui.ButtonSet.OK);
+      return;
+    }
+
+    Logger.log('Found POD item number: ' + podItemNumber);
+
+    // Step 2: Find header row and Row Item column
+    var headerRow = -1;
+    var rowItemCol = -1;
+    for (var i = 0; i < data.length; i++) {
+      var row = data[i];
+      for (var j = 0; j < row.length; j++) {
+        if (row[j] && row[j].toString().toLowerCase().indexOf('pos') === 0) {
+          headerRow = i;
+          // Row Item column should be right before Pos columns
+          rowItemCol = j - 1;
+          break;
+        }
+      }
+      if (headerRow !== -1) break;
+    }
+
+    if (headerRow === -1 || rowItemCol === -1) {
+      ui.alert('Error', 'Could not find row layout in overview sheet.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Step 3: Extract Row item numbers and their rack placements
+    var rowData = [];
+    var headers = data[headerRow];
+    var firstPosCol = rowItemCol + 1;
+
+    for (var i = headerRow + 1; i < data.length; i++) {
+      var row = data[i];
+      var rowItemNumber = row[rowItemCol];
+
+      // Skip if no row item number
+      if (!rowItemNumber || typeof rowItemNumber !== 'string') continue;
+
+      // Extract item number from hyperlink if needed
+      if (rowItemNumber.indexOf('HYPERLINK') !== -1) {
+        var match = rowItemNumber.match(/"([^"]+)"/g);
+        if (match && match.length >= 2) {
+          rowItemNumber = match[1].replace(/"/g, '');
+        }
+      }
+
+      // Get rack placements for this row
+      var rackNumbers = [];
+      for (var j = firstPosCol; j < row.length; j++) {
+        var cellValue = row[j];
+        if (cellValue && typeof cellValue === 'string' && cellValue.trim() !== '') {
+          rackNumbers.push(cellValue.trim());
+        }
+      }
+
+      if (rackNumbers.length > 0) {
+        rowData.push({
+          rowItemNumber: rowItemNumber,
+          racks: rackNumbers
+        });
+      }
+    }
+
+    Logger.log('Found ' + rowData.length + ' row items with rack placements');
+
+    // Step 4: Show confirmation
+    var confirmMsg = '========================================\n' +
+                     'REPAIR BOM STRUCTURE\n' +
+                     '========================================\n\n' +
+                     'This will repair the following BOMs in Arena:\n\n' +
+                     'POD Item: ' + podItemNumber + '\n' +
+                     '  → Will add ' + rowData.length + ' Row items to POD BOM\n\n';
+
+    rowData.forEach(function(row) {
+      confirmMsg += 'Row Item: ' + row.rowItemNumber + '\n';
+      confirmMsg += '  → Will add ' + row.racks.length + ' Rack items to Row BOM\n';
+    });
+
+    confirmMsg += '\n----------------------------------------\n';
+    confirmMsg += 'This will DELETE any existing BOM lines and replace them.\n\n';
+    confirmMsg += 'Continue?';
+
+    var response = ui.alert('Confirm BOM Repair', confirmMsg, ui.ButtonSet.YES_NO);
+
+    if (response !== ui.Button.YES) {
+      ui.alert('Cancelled', 'BOM repair cancelled.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Step 5: Look up POD GUID
+    Logger.log('Looking up POD item: ' + podItemNumber);
+    var podItem = client.getItemByNumber(podItemNumber);
+    if (!podItem) {
+      throw new Error('POD item not found in Arena: ' + podItemNumber);
+    }
+    var podGuid = podItem.guid || podItem.Guid;
+    Logger.log('Found POD GUID: ' + podGuid);
+
+    // Step 6: Repair Row BOMs
+    var rowGuids = [];
+    for (var i = 0; i < rowData.length; i++) {
+      var row = rowData[i];
+
+      Logger.log('Looking up Row item: ' + row.rowItemNumber);
+      var rowItem = client.getItemByNumber(row.rowItemNumber);
+      if (!rowItem) {
+        Logger.log('WARNING: Row item not found: ' + row.rowItemNumber);
+        continue;
+      }
+      var rowGuid = rowItem.guid || rowItem.Guid;
+      Logger.log('Found Row GUID: ' + rowGuid);
+      rowGuids.push({ number: row.rowItemNumber, guid: rowGuid });
+
+      // Build BOM lines for this row (add racks)
+      var bomLines = [];
+      var rackCounts = {};
+
+      // Count rack occurrences
+      row.racks.forEach(function(rackNum) {
+        if (!rackCounts[rackNum]) {
+          rackCounts[rackNum] = 0;
+        }
+        rackCounts[rackNum]++;
+      });
+
+      // Look up GUIDs for each rack
+      for (var rackNumber in rackCounts) {
+        Logger.log('  Looking up Rack: ' + rackNumber);
+        var rackItem = client.getItemByNumber(rackNumber);
+        if (!rackItem) {
+          Logger.log('  WARNING: Rack not found: ' + rackNumber);
+          continue;
+        }
+        var rackGuid = rackItem.guid || rackItem.Guid;
+
+        bomLines.push({
+          itemNumber: rackNumber,
+          itemGuid: rackGuid,
+          quantity: rackCounts[rackNumber],
+          level: 0
+        });
+        Logger.log('  Found Rack GUID: ' + rackNumber + ' → ' + rackGuid);
+      }
+
+      // Sync BOM to Arena
+      Logger.log('Syncing BOM for Row: ' + row.rowItemNumber + ' (' + bomLines.length + ' racks)');
+      syncBOMToArena(client, rowGuid, bomLines);
+      Logger.log('✓ Repaired Row BOM: ' + row.rowItemNumber);
+    }
+
+    // Step 7: Repair POD BOM (add all rows)
+    Logger.log('Repairing POD BOM: ' + podItemNumber);
+    var podBomLines = rowGuids.map(function(row) {
+      return {
+        itemNumber: row.number,
+        itemGuid: row.guid,
+        quantity: 1,
+        level: 0
+      };
+    });
+
+    syncBOMToArena(client, podGuid, podBomLines);
+    Logger.log('✓ Repaired POD BOM: ' + podItemNumber);
+
+    // Success
+    var successMsg = 'BOM Repair Complete!\n\n' +
+                     'POD: ' + podItemNumber + '\n' +
+                     '  → Added ' + rowGuids.length + ' rows to BOM\n\n';
+
+    rowData.forEach(function(row) {
+      var rackCount = row.racks.length;
+      var uniqueRacks = {};
+      row.racks.forEach(function(r) { uniqueRacks[r] = true; });
+      successMsg += 'Row: ' + row.rowItemNumber + '\n';
+      successMsg += '  → Added ' + Object.keys(uniqueRacks).length + ' unique rack types (' + rackCount + ' total)\n';
+    });
+
+    successMsg += '\n✓ All BOMs have been repaired in Arena!';
+
+    ui.alert('Success', successMsg, ui.ButtonSet.OK);
+
+  } catch (error) {
+    Logger.log('Error repairing BOMs: ' + error.message + '\n' + error.stack);
+    ui.alert('Error', 'Failed to repair BOMs:\n\n' + error.message, ui.ButtonSet.OK);
+  }
+}
