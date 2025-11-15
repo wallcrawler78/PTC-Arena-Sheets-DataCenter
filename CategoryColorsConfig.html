@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    .description {
+      color: #5f6368;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .colors-list {
+      max-height: 350px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .color-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: #f8f9fa;
+      margin-bottom: 12px;
+      border-radius: 4px;
+      gap: 16px;
+    }
+
+    .category-name {
+      flex: 1;
+      font-size: 14px;
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .color-picker-wrapper {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    input[type="color"] {
+      width: 50px;
+      height: 35px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .color-value {
+      font-family: monospace;
+      font-size: 13px;
+      color: #5f6368;
+      min-width: 70px;
+    }
+
+    .add-category {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+    }
+
+    .add-category input {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .add-category button {
+      padding: 8px 16px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .add-category button:hover {
+      background: #1765cc;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1765cc;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+
+    .btn-secondary:hover {
+      background: #f8f9fa;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.success {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .message.error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Configure Category Colors</h2>
+    <p class="description">Set background colors for each item category. These colors will be used in both the sheet cells and the item browser.</p>
+
+    <div class="add-category">
+      <input type="text" id="newCategory" placeholder="New category name...">
+      <button onclick="addCategory()">Add</button>
+    </div>
+
+    <div class="colors-list" id="colorsList"></div>
+
+    <div class="button-group">
+      <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveColors()">Save Configuration</button>
+    </div>
+
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    let categoryColors = {};
+
+    // Load current configuration
+    google.script.run
+      .withSuccessHandler(function(colors) {
+        categoryColors = colors;
+        renderColors();
+      })
+      .getCategoryColors();
+
+    function renderColors() {
+      const container = document.getElementById('colorsList');
+      container.innerHTML = '';
+
+      Object.entries(categoryColors).forEach(([category, color]) => {
+        const item = document.createElement('div');
+        item.className = 'color-item';
+        item.innerHTML = `
+          <span class="category-name">${category}</span>
+          <div class="color-picker-wrapper">
+            <input type="color" value="${color}" onchange="updateColor('${category}', this.value)">
+            <span class="color-value">${color}</span>
+          </div>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function updateColor(category, color) {
+      categoryColors[category] = color;
+      renderColors();
+    }
+
+    function addCategory() {
+      const input = document.getElementById('newCategory');
+      const category = input.value.trim();
+
+      if (!category) {
+        showMessage('Please enter a category name', 'error');
+        return;
+      }
+
+      if (categoryColors[category]) {
+        showMessage('Category already exists', 'error');
+        return;
+      }
+
+      categoryColors[category] = '#FFFFFF';
+      input.value = '';
+      renderColors();
+    }
+
+    function saveColors() {
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showMessage('Colors saved successfully!', 'success');
+          setTimeout(() => google.script.host.close(), 1500);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .saveCategoryColors(categoryColors);
+    }
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

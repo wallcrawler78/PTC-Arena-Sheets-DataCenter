@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      padding: 20px;
+      background: #f5f5f5;
+    }
+
+    .container {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.12);
+    }
+
+    h2 {
+      color: #1a73e8;
+      margin-bottom: 12px;
+      font-size: 20px;
+    }
+
+    .description {
+      color: #5f6368;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    .hierarchy-list {
+      max-height: 250px;
+      overflow-y: auto;
+      margin-bottom: 16px;
+    }
+
+    .hierarchy-item {
+      display: flex;
+      align-items: center;
+      padding: 12px;
+      background: #f8f9fa;
+      margin-bottom: 8px;
+      border-radius: 4px;
+      gap: 12px;
+    }
+
+    .level-indicator {
+      font-weight: 600;
+      color: #1a73e8;
+      min-width: 60px;
+      font-size: 14px;
+    }
+
+    .category-select {
+      flex: 1;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      background: white;
+    }
+
+    .drag-handle {
+      cursor: grab;
+      color: #5f6368;
+      font-size: 18px;
+    }
+
+    .add-level {
+      padding: 10px;
+      background: #e8f0fe;
+      color: #1a73e8;
+      border: 1px dashed #1a73e8;
+      border-radius: 4px;
+      text-align: center;
+      cursor: pointer;
+      margin-bottom: 16px;
+      font-size: 14px;
+    }
+
+    .add-level:hover {
+      background: #d2e3fc;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 12px;
+      margin-top: 20px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px 24px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background: #1765cc;
+    }
+
+    .btn-secondary {
+      background: white;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+
+    .btn-secondary:hover {
+      background: #f8f9fa;
+    }
+
+    .message {
+      margin-top: 16px;
+      padding: 12px;
+      border-radius: 4px;
+      font-size: 14px;
+      display: none;
+    }
+
+    .message.success {
+      background: #e6f4ea;
+      color: #137333;
+    }
+
+    .message.error {
+      background: #fce8e6;
+      color: #c5221f;
+    }
+
+    .help-box {
+      background: #e8f0fe;
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #174ea6;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Configure BOM Hierarchy</h2>
+    <p class="description">Define the BOM hierarchy by mapping categories to levels. Level 0 is the top level.</p>
+
+    <div class="help-box">
+      <strong>Example:</strong> Level 0: Hall → Level 1: Pod → Level 2: Rack → Level 3: Server
+    </div>
+
+    <div class="hierarchy-list" id="hierarchyList"></div>
+
+    <div class="add-level" onclick="addLevel()">+ Add Level</div>
+
+    <div class="button-group">
+      <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+      <button type="button" class="btn-primary" onclick="saveHierarchy()">Save Configuration</button>
+    </div>
+
+    <div id="message" class="message"></div>
+  </div>
+
+  <script>
+    let hierarchy = [];
+    let categories = [];
+
+    // Load categories first
+    google.script.run
+      .withSuccessHandler(function(cats) {
+        categories = cats.map(c => c.name);
+        loadHierarchy();
+      })
+      .getCategories();
+
+    function loadHierarchy() {
+      google.script.run
+        .withSuccessHandler(function(h) {
+          hierarchy = h;
+          renderHierarchy();
+        })
+        .getBOMHierarchy();
+    }
+
+    function renderHierarchy() {
+      const container = document.getElementById('hierarchyList');
+      container.innerHTML = '';
+
+      hierarchy.sort((a, b) => a.level - b.level);
+
+      hierarchy.forEach((item, index) => {
+        const div = document.createElement('div');
+        div.className = 'hierarchy-item';
+
+        const select = document.createElement('select');
+        select.className = 'category-select';
+        select.innerHTML = categories.map(cat =>
+          `<option value="${cat}" ${cat === item.category ? 'selected' : ''}>${cat}</option>`
+        ).join('');
+        select.onchange = function() {
+          hierarchy[index].category = this.value;
+        };
+
+        div.innerHTML = `
+          <span class="drag-handle">☰</span>
+          <span class="level-indicator">Level ${item.level}</span>
+        `;
+        div.appendChild(select);
+
+        container.appendChild(div);
+      });
+    }
+
+    function addLevel() {
+      const newLevel = hierarchy.length;
+      hierarchy.push({
+        level: newLevel,
+        category: categories[0] || 'Component'
+      });
+      renderHierarchy();
+    }
+
+    function saveHierarchy() {
+      if (hierarchy.length === 0) {
+        showMessage('Please add at least one level', 'error');
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          showMessage('Hierarchy saved successfully!', 'success');
+          setTimeout(() => google.script.host.close(), 1500);
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error: ' + error.message, 'error');
+        })
+        .saveBOMHierarchy(hierarchy);
+    }
+
+    function showMessage(text, type) {
+      const messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.style.display = 'block';
+    }
+  </script>
+</body>
+</html>
