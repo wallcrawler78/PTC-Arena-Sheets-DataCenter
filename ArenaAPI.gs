@@ -94,10 +94,22 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
           errorMessage += ': ' + errorData.message;
         } else if (errorData.error) {
           errorMessage += ': ' + errorData.error;
+        } else if (errorData.errors) {
+          errorMessage += ': ' + JSON.stringify(errorData.errors);
+        } else {
+          errorMessage += ': ' + JSON.stringify(errorData);
         }
       } catch (e) {
-        errorMessage += ': ' + responseText;
+        if (responseText && responseText.length < 500) {
+          errorMessage += ': ' + responseText;
+        } else if (responseText) {
+          errorMessage += ': ' + responseText.substring(0, 500) + '...';
+        }
       }
+
+      Logger.log('API Error - URL: ' + url);
+      Logger.log('API Error - Code: ' + responseCode);
+      Logger.log('API Error - Response: ' + responseText);
 
       throw new Error(errorMessage);
     }
@@ -239,6 +251,71 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
   endpoint += '?' + queryParams.join('&');
 
   return this.makeRequest(endpoint, { method: 'GET' });
+};
+
+/**
+ * Gets a specific item by item number
+ * @param {string} itemNumber - The item number to search for
+ * @return {Object|null} Item data or null if not found
+ */
+ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
+  try {
+    Logger.log('Searching for item by number: ' + itemNumber);
+
+    // Try method 1: Direct item search
+    try {
+      var searchResults = this.searchItems(itemNumber);
+      Logger.log('Search results: ' + JSON.stringify(searchResults));
+
+      // Handle different response structures
+      var items = searchResults.results || searchResults.Results || [];
+
+      if (items.length === 0) {
+        Logger.log('No items found in search results');
+      } else {
+        // Find exact match by item number
+        for (var i = 0; i < items.length; i++) {
+          var item = items[i];
+          var number = item.number || item.Number || '';
+
+          if (number === itemNumber) {
+            Logger.log('Found exact match for item: ' + itemNumber);
+            return item;
+          }
+        }
+
+        // If no exact match, return first result
+        Logger.log('No exact match, returning first result');
+        return items[0];
+      }
+    } catch (searchError) {
+      Logger.log('Search method failed: ' + searchError.message);
+    }
+
+    // Method 2: Try fetching all items and filtering
+    Logger.log('Attempting to fetch all items...');
+    var allItemsResponse = this.getItems({ limit: 100 });
+    var allItems = allItemsResponse.results || allItemsResponse.Results || [];
+
+    Logger.log('Fetched ' + allItems.length + ' items, searching for: ' + itemNumber);
+
+    for (var i = 0; i < allItems.length; i++) {
+      var item = allItems[i];
+      var number = item.number || item.Number || '';
+
+      if (number === itemNumber) {
+        Logger.log('Found item via getItems: ' + itemNumber);
+        return item;
+      }
+    }
+
+    Logger.log('Item not found: ' + itemNumber);
+    return null;
+
+  } catch (error) {
+    Logger.log('Error getting item by number: ' + error.message);
+    throw error;
+  }
 };
 
 /**

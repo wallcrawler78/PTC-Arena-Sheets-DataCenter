@@ -23,19 +23,17 @@ function onOpen(e) {
       .addItem('Configure BOM Levels', 'showConfigureBOMLevels'))
     .addSeparator()
     .addItem('Show Item Picker', 'showItemPicker')
+    .addItem('Show Rack Picker', 'showRackPicker')
     .addSeparator()
     .addSubMenu(ui.createMenu('Create Layout')
-      .addItem('New Tower Layout', 'createNewTowerLayout')
+      .addItem('New Rack Configuration', 'createNewRackConfiguration')
       .addItem('New Overview Layout', 'createNewOverviewLayout')
-      .addItem('New Rack Configuration', 'createNewRackConfig')
       .addSeparator()
       .addItem('Auto-Link Racks to Overview', 'autoLinkRacksToOverviewAction'))
     .addSeparator()
     .addSubMenu(ui.createMenu('BOM Operations')
-      .addItem('Pull BOM from Arena', 'pullBOMFromArena')
-      .addItem('Push BOM to Arena', 'pushBOMToArena')
-      .addSeparator()
-      .addItem('Create Consolidated BOM', 'createConsolidatedBOMSheet'))
+      .addItem('Create Consolidated BOM', 'createConsolidatedBOMSheet')
+      .addItem('Push BOM to Arena', 'pushConsolidatedBOMToArena'))
     .addSeparator()
     .addItem('Test Connection', 'testArenaConnection')
     .addItem('Clear Credentials', 'clearCredentials')
@@ -365,6 +363,15 @@ function showItemPicker() {
 }
 
 /**
+ * Shows the rack picker sidebar
+ */
+function showRackPicker() {
+  var html = HtmlService.createHtmlOutputFromFile('RackPicker')
+    .setTitle('Rack Picker');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
  * Pulls BOM from Arena and populates sheets
  */
 function pullBOMFromArena() {
@@ -524,10 +531,45 @@ function clearSelectedItem() {
  * @return {Object} Map of item numbers to quantities
  */
 function getItemQuantities() {
+  return getItemQuantitiesWithScope('current').quantities;
+}
+
+/**
+ * Gets item quantities with scope filtering
+ * @param {string} scope - Scope: 'current', 'overview', 'racks', or 'all'
+ * @return {Object} Object with quantities map and metadata
+ */
+function getItemQuantitiesWithScope(scope) {
   try {
-    var sheet = SpreadsheetApp.getActiveSheet();
-    var data = sheet.getDataRange().getValues();
+    scope = scope || 'current';
+    Logger.log('Getting item quantities with scope: ' + scope);
+
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
     var quantities = {};
+    var sheetsToScan = [];
+
+    // Determine which sheets to scan based on scope
+    if (scope === 'current') {
+      sheetsToScan = [SpreadsheetApp.getActiveSheet()];
+    } else if (scope === 'overview') {
+      // Find overview sheets
+      var allSheets = spreadsheet.getSheets();
+      allSheets.forEach(function(sheet) {
+        if (sheet.getName().toLowerCase().indexOf('overview') !== -1) {
+          sheetsToScan.push(sheet);
+        }
+      });
+    } else if (scope === 'racks') {
+      // Find all rack config sheets
+      var rackConfigs = getAllRackConfigTabs();
+      rackConfigs.forEach(function(config) {
+        sheetsToScan.push(config.sheet);
+      });
+    } else if (scope === 'all') {
+      sheetsToScan = spreadsheet.getSheets();
+    }
+
+    Logger.log('Scanning ' + sheetsToScan.length + ' sheets');
 
     // Get all item numbers from Arena to use as a lookup
     var arenaClient = new ArenaAPIClient();
@@ -544,36 +586,146 @@ function getItemQuantities() {
 
     Logger.log('Tracking ' + Object.keys(validItemNumbers).length + ' valid item numbers');
 
-    // Skip header row (row 0)
-    for (var i = 1; i < data.length; i++) {
-      var row = data[i];
+    // Scan each sheet
+    sheetsToScan.forEach(function(sheet) {
+      var data = sheet.getDataRange().getValues();
 
-      // Look for item numbers in each cell
-      for (var j = 0; j < row.length; j++) {
-        var cellValue = row[j];
+      // Skip header rows (row 0-2)
+      for (var i = 2; i < data.length; i++) {
+        var row = data[i];
 
-        // Check if cell contains a valid Arena item number
-        if (cellValue && typeof cellValue === 'string') {
-          var trimmed = cellValue.trim();
+        // Look for item numbers in each cell
+        for (var j = 0; j < row.length; j++) {
+          var cellValue = row[j];
 
-          // Only count if this is a valid Arena item number
-          if (trimmed && validItemNumbers[trimmed]) {
-            if (quantities[trimmed]) {
-              quantities[trimmed]++;
-            } else {
-              quantities[trimmed] = 1;
+          // Check if cell contains a valid Arena item number
+          if (cellValue && typeof cellValue === 'string') {
+            var trimmed = cellValue.trim();
+
+            // Only count if this is a valid Arena item number
+            if (trimmed && validItemNumbers[trimmed]) {
+              if (quantities[trimmed]) {
+                quantities[trimmed]++;
+              } else {
+                quantities[trimmed] = 1;
+              }
             }
           }
         }
       }
-    }
+    });
 
-    Logger.log('Found ' + Object.keys(quantities).length + ' unique items in sheet');
-    return quantities;
+    Logger.log('Found ' + Object.keys(quantities).length + ' unique items');
+
+    return {
+      quantities: quantities,
+      sheetsScanned: sheetsToScan.length,
+      scope: scope
+    };
 
   } catch (error) {
     Logger.log('Error getting item quantities: ' + error.message);
-    return {};
+    return {
+      quantities: {},
+      sheetsScanned: 0,
+      scope: scope,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Gets rack quantities with scope filtering
+ * Counts how many times each rack configuration appears in sheets
+ * @param {string} scope - Scope: 'current', 'overview', 'racks', or 'all'
+ * @return {Object} Object with quantities map and metadata
+ */
+function getRackQuantitiesWithScope(scope) {
+  try {
+    scope = scope || 'current';
+    Logger.log('Getting rack quantities with scope: ' + scope);
+
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var quantities = {};
+    var sheetsToScan = [];
+
+    // Determine which sheets to scan based on scope
+    if (scope === 'current') {
+      sheetsToScan = [SpreadsheetApp.getActiveSheet()];
+    } else if (scope === 'overview') {
+      // Find overview sheets
+      var allSheets = spreadsheet.getSheets();
+      allSheets.forEach(function(sheet) {
+        if (sheet.getName().toLowerCase().indexOf('overview') !== -1) {
+          sheetsToScan.push(sheet);
+        }
+      });
+    } else if (scope === 'racks') {
+      // Find all rack config sheets
+      var rackConfigs = getAllRackConfigTabs();
+      rackConfigs.forEach(function(config) {
+        sheetsToScan.push(config.sheet);
+      });
+    } else if (scope === 'all') {
+      sheetsToScan = spreadsheet.getSheets();
+    }
+
+    Logger.log('Scanning ' + sheetsToScan.length + ' sheets for racks');
+
+    // Get all valid rack item numbers from rack config tabs
+    var validRackNumbers = {};
+    var allRackConfigs = getAllRackConfigTabs();
+    allRackConfigs.forEach(function(config) {
+      validRackNumbers[config.itemNumber] = true;
+    });
+
+    Logger.log('Tracking ' + Object.keys(validRackNumbers).length + ' valid rack numbers');
+
+    // Scan each sheet
+    sheetsToScan.forEach(function(sheet) {
+      var data = sheet.getDataRange().getValues();
+
+      // Skip header rows (row 0-2)
+      for (var i = 2; i < data.length; i++) {
+        var row = data[i];
+
+        // Look for rack numbers in each cell
+        for (var j = 0; j < row.length; j++) {
+          var cellValue = row[j];
+
+          // Check if cell contains a valid rack configuration number
+          if (cellValue && typeof cellValue === 'string') {
+            var trimmed = cellValue.trim();
+
+            // Only count if this is a valid rack configuration number
+            if (trimmed && validRackNumbers[trimmed]) {
+              if (quantities[trimmed]) {
+                quantities[trimmed]++;
+              } else {
+                quantities[trimmed] = 1;
+              }
+            }
+          }
+        }
+      }
+    });
+
+    Logger.log('Found ' + Object.keys(quantities).length + ' unique racks');
+
+    return {
+      quantities: quantities,
+      sheetsScanned: sheetsToScan.length,
+      scope: scope
+    };
+
+  } catch (error) {
+    Logger.log('Error getting rack quantities: ' + error.message);
+    return {
+      quantities: {},
+      sheetsScanned: 0,
+      scope: scope,
+      error: error.message
+    };
   }
 }
 
@@ -596,20 +748,76 @@ function insertSelectedItem() {
     return;
   }
 
-  // Insert item number into cell (replace mode)
-  cell.setValue(selectedItem.number);
+  // Check if this is a rack config sheet
+  var isRackConfig = isRackConfigSheet(sheet);
 
-  // Apply category color
-  var categoryColor = getCategoryColor(selectedItem.categoryName);
-  if (categoryColor) {
-    cell.setBackground(categoryColor);
+  if (isRackConfig) {
+    // Insert into rack config sheet (full row with attributes + qty)
+    insertItemIntoRackConfig(sheet, cell.getRow(), selectedItem);
+  } else {
+    // Insert into regular sheet (item number only, with potential hyperlink)
+    cell.setValue(selectedItem.number);
+
+    // Apply category color
+    var categoryColor = getCategoryColor(selectedItem.categoryName);
+    if (categoryColor) {
+      cell.setBackground(categoryColor);
+    }
+
+    // Try to create hyperlink to rack config if this is a rack item
+    var rackConfigSheet = findRackConfigTab(selectedItem.number);
+    if (rackConfigSheet) {
+      var sheetId = rackConfigSheet.getSheetId();
+      var formula = '=HYPERLINK("#gid=' + sheetId + '", "' + selectedItem.number + '")';
+      cell.setFormula(formula);
+    }
   }
-
-  // Populate attributes in columns to the right
-  populateItemAttributes(cell.getRow(), selectedItem);
 
   // Clear selection
   clearSelectedItem();
+}
+
+/**
+ * Inserts an item into a rack configuration sheet with full details
+ * @param {Sheet} sheet - Rack config sheet
+ * @param {number} row - Row to insert into
+ * @param {Object} item - Item data
+ */
+function insertItemIntoRackConfig(sheet, row, item) {
+  // Column structure: Item Number | Name | Description | Category | Qty | ...attributes
+  var col = 1;
+
+  // Item Number
+  sheet.getRange(row, col++).setValue(item.number);
+
+  // Name
+  sheet.getRange(row, col++).setValue(item.name || '');
+
+  // Description
+  sheet.getRange(row, col++).setValue(item.description || '');
+
+  // Category
+  sheet.getRange(row, col++).setValue(item.categoryName || '');
+
+  // Qty (default to 1)
+  sheet.getRange(row, col++).setValue(1);
+
+  // Populate configured attributes
+  var columns = getItemColumns();
+  columns.forEach(function(column) {
+    var value = getAttributeValue(item, column.attributeGuid);
+    if (value) {
+      sheet.getRange(row, col).setValue(value);
+    }
+    col++;
+  });
+
+  // Apply category color to entire row
+  var categoryColor = getCategoryColor(item.categoryName);
+  if (categoryColor) {
+    var lastCol = sheet.getLastColumn();
+    sheet.getRange(row, 1, 1, lastCol).setBackground(categoryColor);
+  }
 }
 
 /**
@@ -637,4 +845,240 @@ function populateItemAttributes(row, item) {
       cell.setValue(value);
     }
   });
+}
+
+/**
+ * Gets all rack configurations for the Rack Picker
+ * @return {Array<Object>} Array of rack configuration metadata
+ */
+function getAllRackConfigurationsForPicker() {
+  try {
+    var rackConfigs = getAllRackConfigTabs();
+    Logger.log('Found ' + rackConfigs.length + ' rack configurations');
+    return rackConfigs;
+  } catch (error) {
+    Logger.log('Error loading rack configurations: ' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Inserts a selected rack into the active cell(s)
+ * If rack config doesn't exist, creates it and pulls BOM from Arena
+ * Supports multi-cell selection for bulk placement
+ * @param {Object} rack - Rack metadata object (can be existing rack config or Arena item)
+ */
+function insertSelectedRack(rack) {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  var range = sheet.getActiveRange();
+
+  if (!range) {
+    throw new Error('No cell(s) selected. Please select cell(s) in the overview grid.');
+  }
+
+  var itemNumber = rack.itemNumber || rack.number;
+
+  if (!itemNumber) {
+    throw new Error('Invalid rack object: missing item number');
+  }
+
+  // Check if rack config tab exists (create once, use for all cells)
+  var rackConfigSheet = findRackConfigTab(itemNumber);
+
+  // If rack config doesn't exist, create it and pull BOM from Arena
+  if (!rackConfigSheet) {
+    Logger.log('Rack config not found for ' + itemNumber + ', creating from Arena item...');
+
+    try {
+      // Create rack config from Arena item
+      rackConfigSheet = createRackConfigFromArenaItem(rack);
+      Logger.log('Created rack config sheet: ' + rackConfigSheet.getName());
+
+    } catch (error) {
+      Logger.log('Error creating rack config: ' + error.message);
+      throw new Error('Failed to create rack configuration: ' + error.message);
+    }
+  }
+
+  // Get all cells in the range
+  var numRows = range.getNumRows();
+  var numCols = range.getNumColumns();
+  var totalCells = numRows * numCols;
+
+  Logger.log('Placing rack ' + itemNumber + ' in ' + totalCells + ' cell(s)');
+
+  // Prepare formula or value
+  var formula = null;
+  if (rackConfigSheet) {
+    var sheetId = rackConfigSheet.getSheetId();
+    formula = '=HYPERLINK("#gid=' + sheetId + '", "' + itemNumber + '")';
+  }
+
+  // Insert into each cell in the range
+  for (var row = 1; row <= numRows; row++) {
+    for (var col = 1; col <= numCols; col++) {
+      var cell = range.getCell(row, col);
+
+      if (formula) {
+        cell.setFormula(formula);
+        cell.setFontColor('#1a73e8');
+      } else {
+        cell.setValue(itemNumber);
+      }
+
+      // Center align and make bold
+      cell.setHorizontalAlignment('center');
+      cell.setVerticalAlignment('middle');
+      cell.setFontWeight('bold');
+    }
+  }
+
+  Logger.log('Inserted rack: ' + itemNumber + ' in ' + totalCells + ' cells at ' + range.getA1Notation());
+}
+
+/**
+ * Creates a rack configuration tab from an Arena item and pulls its BOM
+ * @param {Object} arenaItem - Arena item object (rack)
+ * @return {Sheet} Created rack config sheet
+ */
+function createRackConfigFromArenaItem(arenaItem) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+  // Extract item details (handle both formats - existing rack config or Arena item)
+  var itemNumber = arenaItem.itemNumber || arenaItem.number || arenaItem.Number;
+  var itemName = arenaItem.itemName || arenaItem.name || arenaItem.Name || itemNumber;
+  var description = arenaItem.description || arenaItem.Description || '';
+
+  Logger.log('Creating rack config for: ' + itemNumber);
+
+  // Create the new sheet
+  var sheetName = 'Rack - ' + itemNumber + ' (' + itemName + ')';
+  var newSheet = ss.insertSheet(sheetName);
+
+  // Set up metadata row (Row 1)
+  newSheet.getRange(1, 1).setValue('PARENT_ITEM');  // METADATA_ROW, META_LABEL_COL
+  newSheet.getRange(1, 2).setValue(itemNumber);      // META_ITEM_NUM_COL
+  newSheet.getRange(1, 3).setValue(itemName);        // META_ITEM_NAME_COL
+  newSheet.getRange(1, 4).setValue(description);     // META_ITEM_DESC_COL
+
+  // Format metadata row
+  var metaRange = newSheet.getRange(1, 1, 1, 4);
+  metaRange.setBackground('#e8f0fe');
+  metaRange.setFontWeight('bold');
+  metaRange.setFontColor('#1967d2');
+
+  // Set up header row (Row 2)
+  var itemColumns = getItemColumns();
+  var headers = ['Item Number', 'Name', 'Description', 'Category', 'Qty'];
+
+  // Add configured attribute columns
+  itemColumns.forEach(function(col) {
+    headers.push(col.header || col.attributeName);
+  });
+
+  var headerRange = newSheet.getRange(2, 1, 1, headers.length);
+  headerRange.setValues([headers]);
+  headerRange.setBackground('#1a73e8');
+  headerRange.setFontColor('white');
+  headerRange.setFontWeight('bold');
+  headerRange.setHorizontalAlignment('center');
+
+  // Freeze header rows
+  newSheet.setFrozenRows(2);
+
+  // Set column widths
+  newSheet.setColumnWidth(1, 120);  // Item Number
+  newSheet.setColumnWidth(2, 200);  // Name
+  newSheet.setColumnWidth(3, 300);  // Description
+  newSheet.setColumnWidth(4, 150);  // Category
+  newSheet.setColumnWidth(5, 60);   // Qty
+
+  // Try to pull BOM from Arena and populate the sheet
+  try {
+    Logger.log('Pulling BOM for rack: ' + itemNumber);
+    pullBOMForRack(newSheet, itemNumber);
+    Logger.log('BOM pull completed for: ' + itemNumber);
+  } catch (bomError) {
+    Logger.log('Could not pull BOM from Arena: ' + bomError.message);
+    // Add instruction row if BOM pull failed
+    newSheet.getRange(3, 1).setValue('Use Item Picker to add components →');
+    newSheet.getRange(3, 1, 1, headers.length).setFontStyle('italic').setFontColor('#666666');
+  }
+
+  Logger.log('Rack config sheet created: ' + sheetName);
+  return newSheet;
+}
+
+/**
+ * Pulls BOM from Arena for a rack and populates the rack config sheet
+ * @param {Sheet} sheet - Rack config sheet to populate
+ * @param {string} itemNumber - Arena item number to pull BOM from
+ */
+function pullBOMForRack(sheet, itemNumber) {
+  var arenaClient = new ArenaAPIClient();
+
+  // Get the item from Arena
+  var item = arenaClient.getItemByNumber(itemNumber);
+
+  if (!item) {
+    throw new Error('Item not found in Arena: ' + itemNumber);
+  }
+
+  var itemGuid = item.guid || item.Guid;
+
+  Logger.log('Fetching BOM for item: ' + itemNumber + ' (GUID: ' + itemGuid + ')');
+
+  // Get BOM from Arena
+  var bomData = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
+  var bomLines = bomData.results || bomData.Results || [];
+
+  Logger.log('Retrieved ' + bomLines.length + ' BOM lines from Arena');
+
+  if (bomLines.length === 0) {
+    Logger.log('No BOM lines found for item: ' + itemNumber);
+    return;
+  }
+
+  // Populate sheet with BOM data
+  var rowData = [];
+  var categoryColors = getCategoryColors();
+
+  bomLines.forEach(function(line) {
+    var bomItem = line.item || line.Item || {};
+    var quantity = line.quantity || line.Quantity || 1;
+
+    var bomItemNumber = bomItem.number || bomItem.Number || '';
+    var bomItemName = bomItem.name || bomItem.Name || '';
+    var bomItemDesc = bomItem.description || bomItem.Description || '';
+
+    var categoryObj = bomItem.category || bomItem.Category || {};
+    var categoryName = categoryObj.name || categoryObj.Name || '';
+
+    rowData.push([
+      bomItemNumber,
+      bomItemName,
+      bomItemDesc,
+      categoryName,
+      quantity
+    ]);
+  });
+
+  // Write BOM data to sheet (starting at row 3)
+  if (rowData.length > 0) {
+    sheet.getRange(3, 1, rowData.length, 5).setValues(rowData);
+
+    // Apply category colors to each row
+    for (var i = 0; i < rowData.length; i++) {
+      var category = rowData[i][3];  // Category is column 4 (index 3)
+      var color = getCategoryColor(category);
+
+      if (color) {
+        var rowNum = i + 3;  // Data starts at row 3
+        var lastCol = sheet.getLastColumn();
+        sheet.getRange(rowNum, 1, 1, lastCol).setBackground(color);
+      }
+    }
+
+    Logger.log('Populated ' + rowData.length + ' BOM lines into rack config');
+  }
 }

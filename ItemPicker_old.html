@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      background: white;
+      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+      color: white;
+      padding: 12px 15px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .header-content {
+      flex: 1;
+    }
+
+    .header h2 {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 2px;
+    }
+
+    .header p {
+      font-size: 11px;
+      opacity: 0.9;
+    }
+
+    .help-icon {
+      width: 24px;
+      height: 24px;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: help;
+      font-size: 14px;
+      font-weight: bold;
+      transition: background 0.2s;
+      position: relative;
+    }
+
+    .help-icon:hover {
+      background: rgba(255, 255, 255, 0.3);
+    }
+
+    .help-tooltip {
+      display: none;
+      position: absolute;
+      top: 32px;
+      right: 0;
+      background: white;
+      color: #333;
+      padding: 12px;
+      border-radius: 4px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+      width: 220px;
+      font-size: 12px;
+      line-height: 1.5;
+      z-index: 1000;
+      border: 1px solid #e0e0e0;
+    }
+
+    .help-icon:hover .help-tooltip {
+      display: block;
+    }
+
+    .help-tooltip strong {
+      display: block;
+      margin-bottom: 6px;
+      color: #1a73e8;
+    }
+
+    .filters {
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .filter-section-header {
+      padding: 8px 15px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #e0e0e0;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      user-select: none;
+      transition: background 0.2s;
+    }
+
+    .filter-section-header:hover {
+      background: #f1f3f4;
+    }
+
+    .filter-section-title {
+      font-size: 12px;
+      font-weight: bold;
+      color: #333;
+    }
+
+    .collapse-icon {
+      font-size: 10px;
+      color: #666;
+      transition: transform 0.2s;
+    }
+
+    .collapse-icon.collapsed {
+      transform: rotate(-90deg);
+    }
+
+    .filter-section-content {
+      padding: 10px 15px;
+      max-height: 1000px;
+      overflow: hidden;
+      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    }
+
+    .filter-section-content.collapsed {
+      max-height: 0;
+      padding-top: 0;
+      padding-bottom: 0;
+    }
+
+    .filter-group {
+      margin-bottom: 10px;
+    }
+
+    .filter-group:last-child {
+      margin-bottom: 0;
+    }
+
+    .filter-label {
+      display: block;
+      font-size: 11px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 4px;
+    }
+
+    select, input[type="text"] {
+      width: 100%;
+      padding: 6px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 12px;
+      font-family: Arial, sans-serif;
+    }
+
+    select:focus, input[type="text"]:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    .search-box {
+      position: relative;
+    }
+
+    .search-box input {
+      padding-left: 28px;
+    }
+
+    .search-icon {
+      position: absolute;
+      left: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #666;
+      font-size: 12px;
+    }
+
+    .item-count {
+      padding: 6px 15px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #e0e0e0;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .item-count strong {
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    .item-list {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .item-card {
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      padding: 12px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+    }
+
+    .item-card:hover {
+      border-color: #1a73e8;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
+      transform: translateX(-2px);
+    }
+
+    .item-card.selected {
+      border-color: #1a73e8;
+      background: #e8f0fe;
+      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
+    }
+
+    .item-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 6px;
+    }
+
+    .lifecycle-badge {
+      padding: 2px 8px;
+      border-radius: 12px;
+      font-size: 10px;
+      font-weight: bold;
+      text-transform: uppercase;
+      white-space: nowrap;
+    }
+
+    .lifecycle-production {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #81c995;
+    }
+
+    .lifecycle-prototype {
+      background: #fef7e0;
+      color: #b06000;
+      border: 1px solid #f9c74f;
+    }
+
+    .lifecycle-development {
+      background: #e8f0fe;
+      color: #1967d2;
+      border: 1px solid #8ab4f8;
+    }
+
+    .lifecycle-obsolete {
+      background: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
+
+    .item-number {
+      font-size: 14px;
+      font-weight: bold;
+      color: #1a73e8;
+      flex: 1;
+    }
+
+    .item-revision {
+      font-size: 11px;
+      color: #666;
+      background: #f1f3f4;
+      padding: 2px 6px;
+      border-radius: 3px;
+    }
+
+    .item-description {
+      font-size: 12px;
+      color: #333;
+      margin-bottom: 4px;
+      line-height: 1.4;
+    }
+
+    .item-meta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .category-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      font-weight: 500;
+    }
+
+    .quantity-badge {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: #ea4335;
+      color: white;
+      border-radius: 12px;
+      padding: 2px 8px;
+      font-size: 11px;
+      font-weight: bold;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 40px 20px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 15px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 40px 20px;
+      color: #999;
+    }
+
+    .empty-state-icon {
+      font-size: 48px;
+      margin-bottom: 10px;
+      opacity: 0.3;
+    }
+
+    .error-message {
+      background: #fce8e6;
+      color: #c5221f;
+      padding: 8px 15px;
+      margin: 8px 15px;
+      border-radius: 4px;
+      font-size: 11px;
+      border: 1px solid #f28b82;
+    }
+
+    .hidden {
+      display: none !important;
+    }
+
+    /* Scrollbar styling */
+    .item-list::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    .item-list::-webkit-scrollbar-track {
+      background: #f1f1f1;
+    }
+
+    .item-list::-webkit-scrollbar-thumb {
+      background: #c1c1c1;
+      border-radius: 4px;
+    }
+
+    .item-list::-webkit-scrollbar-thumb:hover {
+      background: #a8a8a8;
+    }
+
+    .quantity-tracker {
+      padding: 10px 15px;
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+    }
+
+    .quantity-tracker-title {
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+
+    .quantity-list {
+      max-height: 120px;
+      overflow-y: auto;
+    }
+
+    .quantity-item {
+      display: flex;
+      justify-content: space-between;
+      padding: 4px 0;
+      font-size: 11px;
+      color: #666;
+    }
+
+    .quantity-number {
+      color: #1a73e8;
+      font-weight: 500;
+    }
+
+    .quantity-count {
+      background: #ea4335;
+      color: white;
+      padding: 1px 6px;
+      border-radius: 10px;
+      font-weight: bold;
+    }
+
+    .favorites-section {
+      padding: 8px 15px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .favorites-title {
+      font-size: 10px;
+      font-weight: bold;
+      color: #666;
+      margin-bottom: 4px;
+      text-transform: uppercase;
+    }
+
+    .favorite-buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .favorite-btn {
+      padding: 4px 10px;
+      border: 1px solid #1a73e8;
+      background: white;
+      color: #1a73e8;
+      border-radius: 12px;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .favorite-btn:hover {
+      background: #e8f0fe;
+    }
+
+    .favorite-btn.active {
+      background: #1a73e8;
+      color: white;
+    }
+
+    .favorite-btn .star {
+      margin-right: 2px;
+    }
+
+    .no-favorites {
+      color: #999;
+      font-size: 11px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <div class="header">
+      <div class="header-content">
+        <h2>Arena Item Picker</h2>
+        <p>Select items from your Arena workspace</p>
+      </div>
+      <div class="help-icon">
+        ?
+        <div class="help-tooltip">
+          <strong>How to use:</strong>
+          1. Filter by category/lifecycle<br>
+          2. Click an item to select it<br>
+          3. Click a sheet cell to insert
+        </div>
+      </div>
+    </div>
+
+    <div class="favorites-section" id="favoritesSection">
+      <div class="favorites-title">Favorite Categories</div>
+      <div class="favorite-buttons" id="favoriteButtons">
+        <span class="no-favorites">No favorites yet. Star categories in the configuration.</span>
+      </div>
+    </div>
+
+    <div class="filters">
+      <div class="filter-section-header" onclick="toggleFilterSection()">
+        <span class="filter-section-title">All Filters</span>
+        <span class="collapse-icon" id="collapseIcon">▼</span>
+      </div>
+      <div class="filter-section-content" id="filterContent">
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="categorySearch" placeholder="Search categories...">
+          </div>
+          <select id="categoryFilter" size="5" style="margin-top: 4px;">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Lifecycle Phase</label>
+          <select id="lifecycleFilter">
+            <option value="" selected>All Phases</option>
+            <option value="Production">Production</option>
+            <option value="Prototype">Prototype</option>
+            <option value="In Development">In Development</option>
+            <option value="Obsolete">Obsolete</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Search Items</label>
+          <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="searchInput" placeholder="Search item number or description...">
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="item-count" id="itemCount">
+      <strong>0</strong> items found
+    </div>
+
+    <div id="loading" class="loading hidden">
+      <div class="spinner"></div>
+      <p>Loading items from Arena...</p>
+    </div>
+
+    <div id="errorMessage" class="error-message hidden"></div>
+
+    <div class="item-list" id="itemList"></div>
+
+    <div class="quantity-tracker" id="quantityTracker">
+      <div class="quantity-tracker-title">Quantity Tracker</div>
+      <div class="quantity-list" id="quantityList">
+        <p style="color: #999; font-size: 11px;">No items in sheet yet</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var allItems = [];
+    var categories = [];
+    var categoryColors = {};
+    var filteredItems = [];
+    var selectedItem = null;
+    var quantities = {};
+
+    // Load initial data
+    loadData();
+
+    function loadData() {
+      showLoading(true);
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          console.log('Received data from server:', data);
+          categories = data.categories || [];
+          allCategories = categories; // Store for category search
+          categoryColors = data.colors || {};
+          allItems = data.items || [];
+
+          console.log('Total items loaded:', allItems.length);
+          console.log('Total categories:', categories.length);
+
+          if (allItems.length > 0) {
+            console.log('Sample item:', allItems[0]);
+          }
+
+          populateFavoriteButtons();
+          populateCategoryFilter();
+          applyFilters();
+          loadQuantityTracker();
+          showLoading(false);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading items:', error);
+          showError('Failed to load items: ' + error.message);
+          showLoading(false);
+        })
+        .loadItemPickerData();
+    }
+
+    function populateFavoriteButtons() {
+      var container = document.getElementById('favoriteButtons');
+      container.innerHTML = '';
+
+      var favorites = categories.filter(function(cat) {
+        return cat.isFavorite;
+      });
+
+      if (favorites.length === 0) {
+        container.innerHTML = '<span class="no-favorites">No favorites yet. Configure favorites in Category Colors.</span>';
+        return;
+      }
+
+      favorites.forEach(function(cat) {
+        var btn = document.createElement('button');
+        btn.className = 'favorite-btn';
+        btn.innerHTML = '<span class="star">⭐</span>' + (cat.name || '');
+        btn.onclick = function() {
+          // Toggle active state
+          var buttons = container.querySelectorAll('.favorite-btn');
+          buttons.forEach(function(b) { b.classList.remove('active'); });
+          btn.classList.add('active');
+
+          // Filter to this category
+          var select = document.getElementById('categoryFilter');
+          select.value = cat.guid;
+          applyFilters();
+        };
+        container.appendChild(btn);
+      });
+    }
+
+    var allCategories = []; // Store all categories for filtering
+
+    function populateCategoryFilter(searchQuery) {
+      var select = document.getElementById('categoryFilter');
+      select.innerHTML = '<option value="">All Categories</option>';
+
+      var query = (searchQuery || '').toLowerCase();
+
+      var filteredCategories = query ?
+        allCategories.filter(function(cat) {
+          var fullPath = cat.fullPath || cat.name || '';
+          return fullPath.toLowerCase().indexOf(query) !== -1;
+        }) :
+        allCategories;
+
+      filteredCategories.forEach(function(cat) {
+        var option = document.createElement('option');
+        option.value = cat.guid;
+        option.textContent = cat.fullPath || cat.name;
+        select.appendChild(option);
+      });
+
+      // Show count of filtered categories
+      if (query && filteredCategories.length < allCategories.length) {
+        var countOption = document.createElement('option');
+        countOption.disabled = true;
+        countOption.textContent = '--- ' + filteredCategories.length + ' of ' + allCategories.length + ' categories ---';
+        select.insertBefore(countOption, select.firstChild.nextSibling);
+      }
+    }
+
+    // Event listeners
+    document.getElementById('categoryFilter').addEventListener('change', applyFilters);
+    document.getElementById('categorySearch').addEventListener('input', function(e) {
+      populateCategoryFilter(e.target.value);
+    });
+    document.getElementById('lifecycleFilter').addEventListener('change', applyFilters);
+    document.getElementById('searchInput').addEventListener('input', applyFilters);
+
+    function applyFilters() {
+      var categoryGuid = document.getElementById('categoryFilter').value;
+      var lifecycle = document.getElementById('lifecycleFilter').value;
+      var searchQuery = document.getElementById('searchInput').value.toLowerCase();
+
+      console.log('Applying filters:', {
+        categoryGuid: categoryGuid,
+        lifecycle: lifecycle,
+        searchQuery: searchQuery,
+        totalItems: allItems.length
+      });
+
+      filteredItems = allItems.filter(function(item) {
+        // Category filter
+        if (categoryGuid && item.categoryGuid !== categoryGuid) {
+          return false;
+        }
+
+        // Lifecycle filter
+        if (lifecycle && item.lifecyclePhase !== lifecycle) {
+          return false;
+        }
+
+        // Search filter
+        if (searchQuery) {
+          var searchText = (
+            (item.number || '') + ' ' +
+            (item.name || '') + ' ' +
+            (item.description || '')
+          ).toLowerCase();
+
+          if (searchText.indexOf(searchQuery) === -1) {
+            return false;
+          }
+        }
+
+        return true;
+      });
+
+      console.log('Filtered to ' + filteredItems.length + ' items');
+
+      renderItems();
+      updateItemCount();
+    }
+
+    function renderItems() {
+      var list = document.getElementById('itemList');
+      list.innerHTML = '';
+
+      if (filteredItems.length === 0) {
+        list.innerHTML =
+          '<div class="empty-state">' +
+          '<div class="empty-state-icon">📦</div>' +
+          '<p>No items found</p>' +
+          '<p style="font-size: 11px; margin-top: 8px;">Try adjusting your filters</p>' +
+          '</div>';
+        return;
+      }
+
+      filteredItems.forEach(function(item) {
+        var card = createItemCard(item);
+        list.appendChild(card);
+      });
+    }
+
+    function createItemCard(item) {
+      var card = document.createElement('div');
+      card.className = 'item-card';
+      card.onclick = function() {
+        selectItem(item);
+      };
+
+      // Header with lifecycle badge, number, and revision
+      var header = document.createElement('div');
+      header.className = 'item-header';
+
+      var badge = document.createElement('span');
+      badge.className = 'lifecycle-badge lifecycle-' + getLifecycleClass(item.lifecyclePhase);
+      badge.textContent = item.lifecyclePhase || 'Unknown';
+
+      var number = document.createElement('span');
+      number.className = 'item-number';
+      number.textContent = item.number || 'No Number';
+
+      var revision = document.createElement('span');
+      revision.className = 'item-revision';
+      revision.textContent = 'Rev ' + (item.revisionNumber || '-');
+
+      header.appendChild(badge);
+      header.appendChild(number);
+      header.appendChild(revision);
+
+      // Description
+      var description = document.createElement('div');
+      description.className = 'item-description';
+      description.textContent = item.name || item.description || 'No description';
+
+      // Meta info with category
+      var meta = document.createElement('div');
+      meta.className = 'item-meta';
+
+      var categoryTag = document.createElement('span');
+      categoryTag.className = 'category-tag';
+      categoryTag.textContent = item.categoryName || 'Uncategorized';
+
+      // Apply category color
+      var categoryColor = getCategoryColor(item.categoryName);
+      if (categoryColor) {
+        categoryTag.style.backgroundColor = categoryColor;
+        categoryTag.style.color = getContrastColor(categoryColor);
+      }
+
+      meta.appendChild(categoryTag);
+
+      // Quantity badge if item is in sheet
+      var qty = quantities[item.number];
+      if (qty && qty > 0) {
+        var qtyBadge = document.createElement('span');
+        qtyBadge.className = 'quantity-badge';
+        qtyBadge.textContent = qty + 'x';
+        card.appendChild(qtyBadge);
+      }
+
+      card.appendChild(header);
+      card.appendChild(description);
+      card.appendChild(meta);
+
+      return card;
+    }
+
+    function selectItem(item) {
+      selectedItem = item;
+
+      // Update UI to show selection
+      var cards = document.querySelectorAll('.item-card');
+      cards.forEach(function(card) {
+        card.classList.remove('selected');
+      });
+      event.currentTarget.classList.add('selected');
+
+      // Wait for user to click a cell in the sheet
+      // The sheet will call insertItemToCell via Apps Script
+      prepareForInsertion(item);
+    }
+
+    function prepareForInsertion(item) {
+      // Store selected item globally so it can be retrieved by Code.gs
+      google.script.run
+        .withSuccessHandler(function() {
+          // Item is ready to be inserted
+          // User should now click a cell in the sheet
+        })
+        .withFailureHandler(function(error) {
+          showError('Failed to prepare item: ' + error.message);
+        })
+        .setSelectedItem(item);
+    }
+
+    function getLifecycleClass(lifecycle) {
+      if (!lifecycle) return 'development';
+      var lower = lifecycle.toLowerCase();
+      if (lower === 'production') return 'production';
+      if (lower === 'prototype') return 'prototype';
+      if (lower.indexOf('development') !== -1) return 'development';
+      if (lower === 'obsolete') return 'obsolete';
+      return 'development';
+    }
+
+    function getCategoryColor(categoryName) {
+      return categoryColors[categoryName] || null;
+    }
+
+    function getContrastColor(hexColor) {
+      if (!hexColor) return '#000000';
+
+      // Remove # if present
+      var hex = hexColor.replace('#', '');
+
+      // Convert to RGB
+      var r = parseInt(hex.substr(0, 2), 16);
+      var g = parseInt(hex.substr(2, 2), 16);
+      var b = parseInt(hex.substr(4, 2), 16);
+
+      // Calculate luminance
+      var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+      return luminance > 0.5 ? '#000000' : '#ffffff';
+    }
+
+    function updateItemCount() {
+      var countDiv = document.getElementById('itemCount');
+      var count = filteredItems.length;
+      countDiv.innerHTML = '<strong>' + count + '</strong> item' + (count !== 1 ? 's' : '') + ' found';
+    }
+
+    function loadQuantityTracker() {
+      google.script.run
+        .withSuccessHandler(function(qtys) {
+          quantities = qtys || {};
+          renderQuantityTracker();
+          renderItems(); // Re-render to show badges
+        })
+        .withFailureHandler(function(error) {
+          console.log('Failed to load quantities:', error);
+        })
+        .getItemQuantities();
+    }
+
+    function renderQuantityTracker() {
+      var list = document.getElementById('quantityList');
+      list.innerHTML = '';
+
+      var itemNumbers = Object.keys(quantities);
+      if (itemNumbers.length === 0) {
+        list.innerHTML = '<p style="color: #999; font-size: 11px;">No items in sheet yet</p>';
+        return;
+      }
+
+      itemNumbers.forEach(function(number) {
+        var qty = quantities[number];
+        if (qty > 0) {
+          var item = document.createElement('div');
+          item.className = 'quantity-item';
+
+          var numberSpan = document.createElement('span');
+          numberSpan.className = 'quantity-number';
+          numberSpan.textContent = number;
+
+          var countSpan = document.createElement('span');
+          countSpan.className = 'quantity-count';
+          countSpan.textContent = qty;
+
+          item.appendChild(numberSpan);
+          item.appendChild(countSpan);
+          list.appendChild(item);
+        }
+      });
+    }
+
+    function showLoading(show) {
+      var loading = document.getElementById('loading');
+      var itemList = document.getElementById('itemList');
+
+      if (show) {
+        loading.classList.remove('hidden');
+        itemList.innerHTML = '';
+      } else {
+        loading.classList.add('hidden');
+      }
+    }
+
+    function showError(message) {
+      var errorDiv = document.getElementById('errorMessage');
+      errorDiv.textContent = message;
+      errorDiv.classList.remove('hidden');
+
+      setTimeout(function() {
+        errorDiv.classList.add('hidden');
+      }, 5000);
+    }
+
+    // Refresh quantities periodically
+    setInterval(loadQuantityTracker, 5000);
+
+    // Toggle filter section
+    function toggleFilterSection() {
+      var content = document.getElementById('filterContent');
+      var icon = document.getElementById('collapseIcon');
+
+      if (content.classList.contains('collapsed')) {
+        content.classList.remove('collapsed');
+        icon.classList.remove('collapsed');
+      } else {
+        content.classList.add('collapsed');
+        icon.classList.add('collapsed');
+      }
+    }
+  </script>
+</body>
+</html>

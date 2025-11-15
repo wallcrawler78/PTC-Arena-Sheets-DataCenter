@@ -32,6 +32,38 @@
       font-size: 14px;
     }
 
+    .filters {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 15px;
+      padding: 12px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .filter-btn {
+      padding: 6px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover {
+      border-color: #1a73e8;
+      background: #f8f9fa;
+    }
+
+    .filter-btn.active {
+      border-color: #1a73e8;
+      background: #e8f0fe;
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
     .category-list {
       max-height: 400px;
       overflow-y: auto;
@@ -194,6 +226,13 @@
       <p>Loading categories from Arena...</p>
     </div>
 
+    <div id="filtersSection" class="filters hidden">
+      <button class="filter-btn active" onclick="applyFilter('all')">All</button>
+      <button class="filter-btn" onclick="applyFilter('favorites')">⭐ Favorites</button>
+      <button class="filter-btn" onclick="applyFilter('hasColor')">🎨 Has Color</button>
+      <button class="filter-btn" onclick="applyFilter('noColor')">⚪ No Color</button>
+    </div>
+
     <div id="categoryList" class="category-list hidden"></div>
 
     <div class="button-group">
@@ -207,6 +246,7 @@
     var categories = [];
     var colors = {};
     var favorites = []; // Track favorite category GUIDs
+    var currentFilter = 'all';
 
     // Load categories and current colors on page load
     google.script.run
@@ -222,12 +262,26 @@
         renderCategories();
         document.getElementById('loading').classList.add('hidden');
         document.getElementById('categoryList').classList.remove('hidden');
+        document.getElementById('filtersSection').classList.remove('hidden');
       })
       .withFailureHandler(function(error) {
         showMessage('Error loading categories: ' + error.message, 'error');
         document.getElementById('loading').classList.add('hidden');
       })
       .loadCategoryColorData();
+
+    function applyFilter(filter) {
+      currentFilter = filter;
+
+      // Update button states
+      var buttons = document.querySelectorAll('.filter-btn');
+      buttons.forEach(function(btn) {
+        btn.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+
+      renderCategories();
+    }
 
     function renderCategories() {
       var list = document.getElementById('categoryList');
@@ -238,7 +292,30 @@
         return;
       }
 
-      categories.forEach(function(cat) {
+      // Filter categories based on current filter
+      var filteredCategories = categories.filter(function(cat) {
+        if (currentFilter === 'all') {
+          return true;
+        } else if (currentFilter === 'favorites') {
+          return favorites.indexOf(cat.guid) !== -1;
+        } else if (currentFilter === 'hasColor') {
+          var catColor = colors[cat.name];
+          var defaultColor = colors.default || '#FFFFFF';
+          return catColor && catColor !== defaultColor && catColor !== '#FFFFFF';
+        } else if (currentFilter === 'noColor') {
+          var catColor = colors[cat.name];
+          var defaultColor = colors.default || '#FFFFFF';
+          return !catColor || catColor === defaultColor || catColor === '#FFFFFF';
+        }
+        return true;
+      });
+
+      if (!filteredCategories.length) {
+        list.innerHTML = '<p style="text-align:center;color:#999;">No categories match this filter</p>';
+        return;
+      }
+
+      filteredCategories.forEach(function(cat) {
         var item = document.createElement('div');
         item.className = 'category-item';
 

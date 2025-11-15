@@ -21,7 +21,6 @@
       flex-direction: column;
       height: 100vh;
       background: white;
-      box-shadow: -2px 0 8px rgba(0,0,0,0.1);
     }
 
     .header {
@@ -29,13 +28,6 @@
       color: white;
       padding: 12px 15px;
       border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-
-    .header-content {
-      flex: 1;
     }
 
     .header h2 {
@@ -49,108 +41,56 @@
       opacity: 0.9;
     }
 
-    .help-icon {
-      width: 24px;
-      height: 24px;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50%;
+    /* Tab Navigation */
+    .tab-nav {
       display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: help;
-      font-size: 14px;
-      font-weight: bold;
-      transition: background 0.2s;
-      position: relative;
+      background: #f9f9f9;
+      border-bottom: 2px solid #e0e0e0;
     }
 
-    .help-icon:hover {
-      background: rgba(255, 255, 255, 0.3);
+    .tab-button {
+      flex: 1;
+      padding: 12px 16px;
+      border: none;
+      background: none;
+      font-size: 13px;
+      font-weight: 500;
+      color: #666;
+      cursor: pointer;
+      transition: all 0.2s;
+      border-bottom: 3px solid transparent;
     }
 
-    .help-tooltip {
-      display: none;
-      position: absolute;
-      top: 32px;
-      right: 0;
-      background: white;
+    .tab-button:hover {
+      background: #f1f3f4;
       color: #333;
-      padding: 12px;
-      border-radius: 4px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-      width: 220px;
-      font-size: 12px;
-      line-height: 1.5;
-      z-index: 1000;
-      border: 1px solid #e0e0e0;
     }
 
-    .help-icon:hover .help-tooltip {
-      display: block;
-    }
-
-    .help-tooltip strong {
-      display: block;
-      margin-bottom: 6px;
+    .tab-button.active {
       color: #1a73e8;
+      background: white;
+      border-bottom-color: #1a73e8;
     }
 
+    .tab-content {
+      display: none;
+      flex: 1;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .tab-content.active {
+      display: flex;
+    }
+
+    /* Items Tab Styles */
     .filters {
       background: white;
       border-bottom: 1px solid #e0e0e0;
     }
 
-    .filter-section-header {
-      padding: 8px 15px;
-      background: #f9f9f9;
-      border-bottom: 1px solid #e0e0e0;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      user-select: none;
-      transition: background 0.2s;
-    }
-
-    .filter-section-header:hover {
-      background: #f1f3f4;
-    }
-
-    .filter-section-title {
-      font-size: 12px;
-      font-weight: bold;
-      color: #333;
-    }
-
-    .collapse-icon {
-      font-size: 10px;
-      color: #666;
-      transition: transform 0.2s;
-    }
-
-    .collapse-icon.collapsed {
-      transform: rotate(-90deg);
-    }
-
-    .filter-section-content {
-      padding: 10px 15px;
-      max-height: 1000px;
-      overflow: hidden;
-      transition: max-height 0.3s ease-out, padding 0.3s ease-out;
-    }
-
-    .filter-section-content.collapsed {
-      max-height: 0;
-      padding-top: 0;
-      padding-bottom: 0;
-    }
-
     .filter-group {
-      margin-bottom: 10px;
-    }
-
-    .filter-group:last-child {
-      margin-bottom: 0;
+      padding: 8px 15px;
     }
 
     .filter-label {
@@ -167,13 +107,6 @@
       border: 1px solid #ddd;
       border-radius: 4px;
       font-size: 12px;
-      font-family: Arial, sans-serif;
-    }
-
-    select:focus, input[type="text"]:focus {
-      outline: none;
-      border-color: #1a73e8;
-      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
     }
 
     .search-box {
@@ -203,7 +136,6 @@
 
     .item-count strong {
       color: #1a73e8;
-      font-weight: bold;
     }
 
     .item-list {
@@ -219,60 +151,25 @@
       padding: 12px;
       margin-bottom: 8px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.2s;
       position: relative;
     }
 
     .item-card:hover {
       border-color: #1a73e8;
       box-shadow: 0 2px 8px rgba(26, 115, 232, 0.15);
-      transform: translateX(-2px);
     }
 
     .item-card.selected {
       border-color: #1a73e8;
       background: #e8f0fe;
-      box-shadow: 0 2px 8px rgba(26, 115, 232, 0.2);
     }
 
     .item-header {
       display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 6px;
-    }
-
-    .lifecycle-badge {
-      padding: 2px 8px;
-      border-radius: 12px;
-      font-size: 10px;
-      font-weight: bold;
-      text-transform: uppercase;
-      white-space: nowrap;
-    }
-
-    .lifecycle-production {
-      background: #e6f4ea;
-      color: #137333;
-      border: 1px solid #81c995;
-    }
-
-    .lifecycle-prototype {
-      background: #fef7e0;
-      color: #b06000;
-      border: 1px solid #f9c74f;
-    }
-
-    .lifecycle-development {
-      background: #e8f0fe;
-      color: #1967d2;
-      border: 1px solid #8ab4f8;
-    }
-
-    .lifecycle-obsolete {
-      background: #fce8e6;
-      color: #c5221f;
-      border: 1px solid #f28b82;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 4px;
     }
 
     .item-number {
@@ -282,27 +179,35 @@
       flex: 1;
     }
 
-    .item-revision {
-      font-size: 11px;
-      color: #666;
-      background: #f1f3f4;
+    .favorite-toggle {
+      font-size: 18px;
+      cursor: pointer;
       padding: 2px 6px;
-      border-radius: 3px;
+      user-select: none;
+      opacity: 0.3;
+      transition: opacity 0.2s;
+      line-height: 1;
+    }
+
+    .favorite-toggle:hover {
+      opacity: 0.7;
+    }
+
+    .favorite-toggle.active {
+      opacity: 1;
     }
 
     .item-description {
       font-size: 12px;
       color: #333;
       margin-bottom: 4px;
-      line-height: 1.4;
     }
 
     .item-meta {
       display: flex;
+      gap: 8px;
       align-items: center;
-      gap: 12px;
-      font-size: 11px;
-      color: #666;
+      flex-wrap: wrap;
     }
 
     .category-tag {
@@ -310,26 +215,128 @@
       padding: 2px 8px;
       border-radius: 3px;
       font-size: 11px;
+    }
+
+    .revision-tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 3px;
+      font-size: 11px;
+      background: #e8f0fe;
+      color: #174ea6;
       font-weight: 500;
     }
 
-    .quantity-badge {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: #ea4335;
-      color: white;
-      border-radius: 12px;
-      padding: 2px 8px;
+    /* Quantities Tab Styles */
+    .quantity-controls {
+      padding: 12px 15px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .quantity-scope {
+      margin-bottom: 12px;
+    }
+
+    .quantity-scope-label {
       font-size: 11px;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 6px;
+      display: block;
+    }
+
+    .scope-buttons {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .scope-btn {
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .scope-btn:hover {
+      border-color: #1a73e8;
+      background: #f8f9fa;
+    }
+
+    .scope-btn.active {
+      border-color: #1a73e8;
+      background: #e8f0fe;
+      color: #1a73e8;
       font-weight: bold;
     }
 
-    .loading {
+    .quantity-summary {
+      padding: 12px 15px;
+      background: white;
+      border-bottom: 1px solid #e0e0e0;
+    }
+
+    .summary-stat {
       display: flex;
-      flex-direction: column;
+      justify-content: space-between;
+      padding: 6px 0;
+      font-size: 12px;
+    }
+
+    .stat-label {
+      color: #666;
+    }
+
+    .stat-value {
+      font-weight: bold;
+      color: #1a73e8;
+    }
+
+    .quantity-list-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px 15px;
+    }
+
+    .quantity-item {
+      display: flex;
+      justify-content: space-between;
       align-items: center;
-      justify-content: center;
+      padding: 10px 12px;
+      background: white;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      margin-bottom: 6px;
+    }
+
+    .qty-item-number {
+      font-size: 13px;
+      font-weight: 500;
+      color: #1a73e8;
+    }
+
+    .qty-item-name {
+      font-size: 11px;
+      color: #666;
+      margin-top: 2px;
+    }
+
+    .qty-badge {
+      background: #ea4335;
+      color: white;
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 12px;
+      font-weight: bold;
+    }
+
+    .loading, .empty-state {
+      text-align: center;
       padding: 40px 20px;
       color: #666;
     }
@@ -341,7 +348,7 @@
       width: 40px;
       height: 40px;
       animation: spin 1s linear infinite;
-      margin-bottom: 15px;
+      margin: 0 auto 15px;
     }
 
     @keyframes spin {
@@ -349,193 +356,27 @@
       100% { transform: rotate(360deg); }
     }
 
-    .empty-state {
-      text-align: center;
-      padding: 40px 20px;
-      color: #999;
-    }
-
-    .empty-state-icon {
-      font-size: 48px;
-      margin-bottom: 10px;
-      opacity: 0.3;
-    }
-
-    .error-message {
-      background: #fce8e6;
-      color: #c5221f;
-      padding: 8px 15px;
-      margin: 8px 15px;
-      border-radius: 4px;
-      font-size: 11px;
-      border: 1px solid #f28b82;
-    }
-
     .hidden {
       display: none !important;
-    }
-
-    /* Scrollbar styling */
-    .item-list::-webkit-scrollbar {
-      width: 8px;
-    }
-
-    .item-list::-webkit-scrollbar-track {
-      background: #f1f1f1;
-    }
-
-    .item-list::-webkit-scrollbar-thumb {
-      background: #c1c1c1;
-      border-radius: 4px;
-    }
-
-    .item-list::-webkit-scrollbar-thumb:hover {
-      background: #a8a8a8;
-    }
-
-    .quantity-tracker {
-      padding: 10px 15px;
-      background: #fff;
-      border-top: 1px solid #e0e0e0;
-      font-size: 12px;
-    }
-
-    .quantity-tracker-title {
-      font-weight: bold;
-      color: #333;
-      margin-bottom: 8px;
-    }
-
-    .quantity-list {
-      max-height: 120px;
-      overflow-y: auto;
-    }
-
-    .quantity-item {
-      display: flex;
-      justify-content: space-between;
-      padding: 4px 0;
-      font-size: 11px;
-      color: #666;
-    }
-
-    .quantity-number {
-      color: #1a73e8;
-      font-weight: 500;
-    }
-
-    .quantity-count {
-      background: #ea4335;
-      color: white;
-      padding: 1px 6px;
-      border-radius: 10px;
-      font-weight: bold;
-    }
-
-    .favorites-section {
-      padding: 8px 15px;
-      background: #f9f9f9;
-      border-bottom: 1px solid #e0e0e0;
-    }
-
-    .favorites-title {
-      font-size: 10px;
-      font-weight: bold;
-      color: #666;
-      margin-bottom: 4px;
-      text-transform: uppercase;
-    }
-
-    .favorite-buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 4px;
-    }
-
-    .favorite-btn {
-      padding: 4px 10px;
-      border: 1px solid #1a73e8;
-      background: white;
-      color: #1a73e8;
-      border-radius: 12px;
-      font-size: 11px;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .favorite-btn:hover {
-      background: #e8f0fe;
-    }
-
-    .favorite-btn.active {
-      background: #1a73e8;
-      color: white;
-    }
-
-    .favorite-btn .star {
-      margin-right: 2px;
-    }
-
-    .no-favorites {
-      color: #999;
-      font-size: 11px;
-      font-style: italic;
     }
   </style>
 </head>
 <body>
   <div class="sidebar">
     <div class="header">
-      <div class="header-content">
-        <h2>Arena Item Picker</h2>
-        <p>Select items from your Arena workspace</p>
-      </div>
-      <div class="help-icon">
-        ?
-        <div class="help-tooltip">
-          <strong>How to use:</strong>
-          1. Filter by category/lifecycle<br>
-          2. Click an item to select it<br>
-          3. Click a sheet cell to insert
-        </div>
-      </div>
+      <h2>Arena Item Picker</h2>
+      <p>Select items from your Arena workspace</p>
     </div>
 
-    <div class="favorites-section" id="favoritesSection">
-      <div class="favorites-title">Favorite Categories</div>
-      <div class="favorite-buttons" id="favoriteButtons">
-        <span class="no-favorites">No favorites yet. Star categories in the configuration.</span>
-      </div>
+    <div class="tab-nav">
+      <button class="tab-button active" onclick="switchTab('items')">📦 Items</button>
+      <button class="tab-button" onclick="switchTab('filters')">🔍 Filters</button>
+      <button class="tab-button" onclick="switchTab('quantities')">📊 Quantities</button>
     </div>
 
-    <div class="filters">
-      <div class="filter-section-header" onclick="toggleFilterSection()">
-        <span class="filter-section-title">All Filters</span>
-        <span class="collapse-icon" id="collapseIcon">▼</span>
-      </div>
-      <div class="filter-section-content" id="filterContent">
-        <div class="filter-group">
-          <label class="filter-label">Category</label>
-          <div class="search-box">
-            <span class="search-icon">🔍</span>
-            <input type="text" id="categorySearch" placeholder="Search categories...">
-          </div>
-          <select id="categoryFilter" size="5" style="margin-top: 4px;">
-            <option value="">All Categories</option>
-          </select>
-        </div>
-
-        <div class="filter-group">
-          <label class="filter-label">Lifecycle Phase</label>
-          <select id="lifecycleFilter">
-            <option value="" selected>All Phases</option>
-            <option value="Production">Production</option>
-            <option value="Prototype">Prototype</option>
-            <option value="In Development">In Development</option>
-            <option value="Obsolete">Obsolete</option>
-          </select>
-        </div>
-
+    <!-- Items Tab -->
+    <div class="tab-content active" id="itemsTab">
+      <div class="filters">
         <div class="filter-group">
           <label class="filter-label">Search Items</label>
           <div class="search-box">
@@ -544,25 +385,103 @@
           </div>
         </div>
       </div>
+
+      <div class="item-count" id="itemCount">
+        <strong>0</strong> items found
+      </div>
+
+      <div id="itemsLoading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Loading items...</p>
+      </div>
+
+      <div class="item-list" id="itemList"></div>
     </div>
 
-    <div class="item-count" id="itemCount">
-      <strong>0</strong> items found
+    <!-- Filters Tab -->
+    <div class="tab-content" id="filtersTab">
+      <div class="filters">
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select id="categoryFilter">
+            <option value="">All Categories</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Lifecycle Phase</label>
+          <select id="lifecycleFilter">
+            <option value="">All Lifecycle Phases</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Show Favorites Only</label>
+          <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
+            <input type="checkbox" id="favoritesFilter" style="width: auto;">
+            <label for="favoritesFilter" style="margin: 0; cursor: pointer; font-size: 12px;">⭐ Favorite Categories Only</label>
+          </div>
+        </div>
+
+        <div class="filter-group">
+          <button id="resetFilters" style="width: 100%; padding: 8px; background: #f1f3f4; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; font-size: 12px;">
+            Reset All Filters
+          </button>
+        </div>
+      </div>
+
+      <div class="item-count" style="padding: 12px 15px; background: #e8f0fe; border-left: 3px solid #1a73e8; margin: 12px 15px; border-radius: 4px; font-size: 12px;">
+        <div style="margin-bottom: 6px;"><strong>Active Filters:</strong></div>
+        <div id="activeFilters" style="font-size: 11px; color: #174ea6;"></div>
+      </div>
     </div>
 
-    <div id="loading" class="loading hidden">
-      <div class="spinner"></div>
-      <p>Loading items from Arena...</p>
-    </div>
+    <!-- Quantities Tab -->
+    <div class="tab-content" id="quantitiesTab">
+      <div class="quantity-controls">
+        <div class="quantity-scope">
+          <span class="quantity-scope-label">Count Items From:</span>
+          <div class="scope-buttons">
+            <button class="scope-btn active" data-scope="current" onclick="changeScope('current')">
+              Current Sheet
+            </button>
+            <button class="scope-btn" data-scope="overview" onclick="changeScope('overview')">
+              Overview Only
+            </button>
+            <button class="scope-btn" data-scope="racks" onclick="changeScope('racks')">
+              All Racks
+            </button>
+            <button class="scope-btn" data-scope="all" onclick="changeScope('all')">
+              All Sheets
+            </button>
+          </div>
+        </div>
+      </div>
 
-    <div id="errorMessage" class="error-message hidden"></div>
+      <div class="quantity-summary">
+        <div class="summary-stat">
+          <span class="stat-label">Unique Items:</span>
+          <span class="stat-value" id="uniqueCount">0</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-label">Total Quantity:</span>
+          <span class="stat-value" id="totalQuantity">0</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-label">Scope:</span>
+          <span class="stat-value" id="scopeName">Current Sheet</span>
+        </div>
+      </div>
 
-    <div class="item-list" id="itemList"></div>
+      <div id="quantitiesLoading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Calculating quantities...</p>
+      </div>
 
-    <div class="quantity-tracker" id="quantityTracker">
-      <div class="quantity-tracker-title">Quantity Tracker</div>
-      <div class="quantity-list" id="quantityList">
-        <p style="color: #999; font-size: 11px;">No items in sheet yet</p>
+      <div class="quantity-list-container" id="quantityListContainer">
+        <div class="empty-state">
+          <p>No items found</p>
+        </div>
       </div>
     </div>
   </div>
@@ -574,134 +493,116 @@
     var filteredItems = [];
     var selectedItem = null;
     var quantities = {};
+    var currentScope = 'current';
+    var lifecyclePhases = [];
 
     // Load initial data
-    loadData();
+    loadItemsData();
 
-    function loadData() {
-      showLoading(true);
+    function switchTab(tabName) {
+      // Update tab buttons
+      var buttons = document.querySelectorAll('.tab-button');
+      buttons.forEach(function(btn) {
+        btn.classList.remove('active');
+      });
+      event.currentTarget.classList.add('active');
+
+      // Update tab content
+      var tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(function(tab) {
+        tab.classList.remove('active');
+      });
+
+      if (tabName === 'items') {
+        document.getElementById('itemsTab').classList.add('active');
+      } else if (tabName === 'filters') {
+        document.getElementById('filtersTab').classList.add('active');
+        updateActiveFiltersDisplay();
+      } else if (tabName === 'quantities') {
+        document.getElementById('quantitiesTab').classList.add('active');
+        loadQuantities(); // Load quantities when tab is opened
+      }
+    }
+
+    function loadItemsData() {
+      document.getElementById('itemsLoading').classList.remove('hidden');
 
       google.script.run
         .withSuccessHandler(function(data) {
-          console.log('Received data from server:', data);
           categories = data.categories || [];
-          allCategories = categories; // Store for category search
           categoryColors = data.colors || {};
           allItems = data.items || [];
 
-          console.log('Total items loaded:', allItems.length);
-          console.log('Total categories:', categories.length);
+          // Extract unique lifecycle phases
+          var lifecycleSet = {};
+          allItems.forEach(function(item) {
+            if (item.lifecyclePhase) {
+              lifecycleSet[item.lifecyclePhase] = true;
+            }
+          });
+          lifecyclePhases = Object.keys(lifecycleSet).sort();
 
-          if (allItems.length > 0) {
-            console.log('Sample item:', allItems[0]);
-          }
-
-          populateFavoriteButtons();
           populateCategoryFilter();
+          populateLifecycleFilter();
           applyFilters();
-          loadQuantityTracker();
-          showLoading(false);
+          document.getElementById('itemsLoading').classList.add('hidden');
         })
         .withFailureHandler(function(error) {
           console.error('Error loading items:', error);
-          showError('Failed to load items: ' + error.message);
-          showLoading(false);
+          document.getElementById('itemsLoading').classList.add('hidden');
         })
         .loadItemPickerData();
     }
 
-    function populateFavoriteButtons() {
-      var container = document.getElementById('favoriteButtons');
-      container.innerHTML = '';
-
-      var favorites = categories.filter(function(cat) {
-        return cat.isFavorite;
-      });
-
-      if (favorites.length === 0) {
-        container.innerHTML = '<span class="no-favorites">No favorites yet. Configure favorites in Category Colors.</span>';
-        return;
-      }
-
-      favorites.forEach(function(cat) {
-        var btn = document.createElement('button');
-        btn.className = 'favorite-btn';
-        btn.innerHTML = '<span class="star">⭐</span>' + (cat.name || '');
-        btn.onclick = function() {
-          // Toggle active state
-          var buttons = container.querySelectorAll('.favorite-btn');
-          buttons.forEach(function(b) { b.classList.remove('active'); });
-          btn.classList.add('active');
-
-          // Filter to this category
-          var select = document.getElementById('categoryFilter');
-          select.value = cat.guid;
-          applyFilters();
-        };
-        container.appendChild(btn);
-      });
-    }
-
-    var allCategories = []; // Store all categories for filtering
-
-    function populateCategoryFilter(searchQuery) {
+    function populateCategoryFilter() {
       var select = document.getElementById('categoryFilter');
       select.innerHTML = '<option value="">All Categories</option>';
 
-      var query = (searchQuery || '').toLowerCase();
-
-      var filteredCategories = query ?
-        allCategories.filter(function(cat) {
-          var fullPath = cat.fullPath || cat.name || '';
-          return fullPath.toLowerCase().indexOf(query) !== -1;
-        }) :
-        allCategories;
-
-      filteredCategories.forEach(function(cat) {
+      categories.forEach(function(cat) {
         var option = document.createElement('option');
         option.value = cat.guid;
         option.textContent = cat.fullPath || cat.name;
         select.appendChild(option);
       });
-
-      // Show count of filtered categories
-      if (query && filteredCategories.length < allCategories.length) {
-        var countOption = document.createElement('option');
-        countOption.disabled = true;
-        countOption.textContent = '--- ' + filteredCategories.length + ' of ' + allCategories.length + ' categories ---';
-        select.insertBefore(countOption, select.firstChild.nextSibling);
-      }
     }
 
-    // Event listeners
+    function populateLifecycleFilter() {
+      var select = document.getElementById('lifecycleFilter');
+      select.innerHTML = '<option value="">All Lifecycle Phases</option>';
+
+      lifecyclePhases.forEach(function(phase) {
+        var option = document.createElement('option');
+        option.value = phase;
+        option.textContent = phase;
+        select.appendChild(option);
+      });
+    }
+
     document.getElementById('categoryFilter').addEventListener('change', applyFilters);
-    document.getElementById('categorySearch').addEventListener('input', function(e) {
-      populateCategoryFilter(e.target.value);
-    });
     document.getElementById('lifecycleFilter').addEventListener('change', applyFilters);
+    document.getElementById('favoritesFilter').addEventListener('change', applyFilters);
     document.getElementById('searchInput').addEventListener('input', applyFilters);
+    document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
     function applyFilters() {
       var categoryGuid = document.getElementById('categoryFilter').value;
-      var lifecycle = document.getElementById('lifecycleFilter').value;
+      var lifecyclePhase = document.getElementById('lifecycleFilter').value;
+      var favoritesOnly = document.getElementById('favoritesFilter').checked;
       var searchQuery = document.getElementById('searchInput').value.toLowerCase();
-
-      console.log('Applying filters:', {
-        categoryGuid: categoryGuid,
-        lifecycle: lifecycle,
-        searchQuery: searchQuery,
-        totalItems: allItems.length
-      });
 
       filteredItems = allItems.filter(function(item) {
         // Category filter
-        if (categoryGuid && item.categoryGuid !== categoryGuid) {
-          return false;
-        }
+        if (categoryGuid && item.categoryGuid !== categoryGuid) return false;
 
         // Lifecycle filter
-        if (lifecycle && item.lifecyclePhase !== lifecycle) {
-          return false;
+        if (lifecyclePhase && item.lifecyclePhase !== lifecyclePhase) return false;
+
+        // Favorites filter
+        if (favoritesOnly) {
+          var isFavorite = categories.some(function(cat) {
+            return cat.guid === item.categoryGuid && cat.isFavorite;
+          });
+          if (!isFavorite) return false;
         }
 
         // Search filter
@@ -712,18 +613,54 @@
             (item.description || '')
           ).toLowerCase();
 
-          if (searchText.indexOf(searchQuery) === -1) {
-            return false;
-          }
+          if (searchText.indexOf(searchQuery) === -1) return false;
         }
 
         return true;
       });
 
-      console.log('Filtered to ' + filteredItems.length + ' items');
-
       renderItems();
       updateItemCount();
+      updateActiveFiltersDisplay();
+    }
+
+    function resetFilters() {
+      document.getElementById('categoryFilter').value = '';
+      document.getElementById('lifecycleFilter').value = '';
+      document.getElementById('favoritesFilter').checked = false;
+      document.getElementById('searchInput').value = '';
+      applyFilters();
+    }
+
+    function updateActiveFiltersDisplay() {
+      var filters = [];
+
+      var categoryGuid = document.getElementById('categoryFilter').value;
+      if (categoryGuid) {
+        var cat = categories.find(function(c) { return c.guid === categoryGuid; });
+        filters.push('Category: ' + (cat ? (cat.fullPath || cat.name) : 'Unknown'));
+      }
+
+      var lifecycle = document.getElementById('lifecycleFilter').value;
+      if (lifecycle) {
+        filters.push('Lifecycle: ' + lifecycle);
+      }
+
+      if (document.getElementById('favoritesFilter').checked) {
+        filters.push('Favorites Only: Yes');
+      }
+
+      var search = document.getElementById('searchInput').value;
+      if (search) {
+        filters.push('Search: "' + search + '"');
+      }
+
+      var display = document.getElementById('activeFilters');
+      if (filters.length === 0) {
+        display.innerHTML = '<em>No filters active</em>';
+      } else {
+        display.innerHTML = filters.join('<br>');
+      }
     }
 
     function renderItems() {
@@ -731,143 +668,128 @@
       list.innerHTML = '';
 
       if (filteredItems.length === 0) {
-        list.innerHTML =
-          '<div class="empty-state">' +
-          '<div class="empty-state-icon">📦</div>' +
-          '<p>No items found</p>' +
-          '<p style="font-size: 11px; margin-top: 8px;">Try adjusting your filters</p>' +
-          '</div>';
+        list.innerHTML = '<div class="empty-state"><p>No items found</p></div>';
         return;
       }
 
       filteredItems.forEach(function(item) {
-        var card = createItemCard(item);
+        var card = document.createElement('div');
+        card.className = 'item-card';
+        card.onclick = function(e) {
+          // Don't select if clicking on favorite star
+          if (!e.target.classList.contains('favorite-toggle')) {
+            selectItem(item);
+          }
+        };
+
+        // Header with item number and favorite toggle
+        var header = document.createElement('div');
+        header.className = 'item-header';
+
+        var number = document.createElement('div');
+        number.className = 'item-number';
+        number.textContent = item.number || 'No Number';
+
+        var favoriteToggle = document.createElement('span');
+        favoriteToggle.className = 'favorite-toggle';
+        favoriteToggle.textContent = '⭐';
+        favoriteToggle.title = 'Toggle category as favorite';
+
+        // Check if this item's category is a favorite
+        var category = categories.find(function(cat) { return cat.guid === item.categoryGuid; });
+        if (category && category.isFavorite) {
+          favoriteToggle.classList.add('active');
+        }
+
+        favoriteToggle.onclick = function(e) {
+          e.stopPropagation();
+          toggleCategoryFavorite(item.categoryGuid, favoriteToggle);
+        };
+
+        header.appendChild(number);
+        header.appendChild(favoriteToggle);
+
+        var description = document.createElement('div');
+        description.className = 'item-description';
+        description.textContent = item.name || item.description || 'No description';
+
+        // Meta section with category and revision
+        var meta = document.createElement('div');
+        meta.className = 'item-meta';
+
+        var categoryTag = document.createElement('span');
+        categoryTag.className = 'category-tag';
+        categoryTag.textContent = item.categoryName || 'Uncategorized';
+
+        var categoryColor = categoryColors[item.categoryName];
+        if (categoryColor) {
+          categoryTag.style.backgroundColor = categoryColor;
+        }
+
+        meta.appendChild(categoryTag);
+
+        // Add revision if available
+        if (item.revisionNumber) {
+          var revisionTag = document.createElement('span');
+          revisionTag.className = 'revision-tag';
+          revisionTag.textContent = 'Rev ' + item.revisionNumber;
+          meta.appendChild(revisionTag);
+        }
+
+        card.appendChild(header);
+        card.appendChild(description);
+        card.appendChild(meta);
         list.appendChild(card);
       });
     }
 
-    function createItemCard(item) {
-      var card = document.createElement('div');
-      card.className = 'item-card';
-      card.onclick = function() {
-        selectItem(item);
-      };
+    function toggleCategoryFavorite(categoryGuid, starElement) {
+      // Find the category
+      var category = categories.find(function(cat) { return cat.guid === categoryGuid; });
+      if (!category) return;
 
-      // Header with lifecycle badge, number, and revision
-      var header = document.createElement('div');
-      header.className = 'item-header';
+      // Toggle favorite status locally
+      category.isFavorite = !category.isFavorite;
 
-      var badge = document.createElement('span');
-      badge.className = 'lifecycle-badge lifecycle-' + getLifecycleClass(item.lifecyclePhase);
-      badge.textContent = item.lifecyclePhase || 'Unknown';
-
-      var number = document.createElement('span');
-      number.className = 'item-number';
-      number.textContent = item.number || 'No Number';
-
-      var revision = document.createElement('span');
-      revision.className = 'item-revision';
-      revision.textContent = 'Rev ' + (item.revisionNumber || '-');
-
-      header.appendChild(badge);
-      header.appendChild(number);
-      header.appendChild(revision);
-
-      // Description
-      var description = document.createElement('div');
-      description.className = 'item-description';
-      description.textContent = item.name || item.description || 'No description';
-
-      // Meta info with category
-      var meta = document.createElement('div');
-      meta.className = 'item-meta';
-
-      var categoryTag = document.createElement('span');
-      categoryTag.className = 'category-tag';
-      categoryTag.textContent = item.categoryName || 'Uncategorized';
-
-      // Apply category color
-      var categoryColor = getCategoryColor(item.categoryName);
-      if (categoryColor) {
-        categoryTag.style.backgroundColor = categoryColor;
-        categoryTag.style.color = getContrastColor(categoryColor);
+      // Update UI
+      if (category.isFavorite) {
+        starElement.classList.add('active');
+      } else {
+        starElement.classList.remove('active');
       }
 
-      meta.appendChild(categoryTag);
+      // Save to server
+      var favoriteGuids = categories
+        .filter(function(cat) { return cat.isFavorite; })
+        .map(function(cat) { return cat.guid; });
 
-      // Quantity badge if item is in sheet
-      var qty = quantities[item.number];
-      if (qty && qty > 0) {
-        var qtyBadge = document.createElement('span');
-        qtyBadge.className = 'quantity-badge';
-        qtyBadge.textContent = qty + 'x';
-        card.appendChild(qtyBadge);
-      }
-
-      card.appendChild(header);
-      card.appendChild(description);
-      card.appendChild(meta);
-
-      return card;
+      google.script.run
+        .withSuccessHandler(function() {
+          console.log('Favorite status saved');
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error saving favorite:', error);
+          // Revert on error
+          category.isFavorite = !category.isFavorite;
+          if (category.isFavorite) {
+            starElement.classList.add('active');
+          } else {
+            starElement.classList.remove('active');
+          }
+        })
+        .saveFavoriteCategories(favoriteGuids);
     }
 
     function selectItem(item) {
       selectedItem = item;
 
-      // Update UI to show selection
       var cards = document.querySelectorAll('.item-card');
       cards.forEach(function(card) {
         card.classList.remove('selected');
       });
       event.currentTarget.classList.add('selected');
 
-      // Wait for user to click a cell in the sheet
-      // The sheet will call insertItemToCell via Apps Script
-      prepareForInsertion(item);
-    }
-
-    function prepareForInsertion(item) {
-      // Store selected item globally so it can be retrieved by Code.gs
-      google.script.run
-        .withSuccessHandler(function() {
-          // Item is ready to be inserted
-          // User should now click a cell in the sheet
-        })
-        .withFailureHandler(function(error) {
-          showError('Failed to prepare item: ' + error.message);
-        })
-        .setSelectedItem(item);
-    }
-
-    function getLifecycleClass(lifecycle) {
-      if (!lifecycle) return 'development';
-      var lower = lifecycle.toLowerCase();
-      if (lower === 'production') return 'production';
-      if (lower === 'prototype') return 'prototype';
-      if (lower.indexOf('development') !== -1) return 'development';
-      if (lower === 'obsolete') return 'obsolete';
-      return 'development';
-    }
-
-    function getCategoryColor(categoryName) {
-      return categoryColors[categoryName] || null;
-    }
-
-    function getContrastColor(hexColor) {
-      if (!hexColor) return '#000000';
-
-      // Remove # if present
-      var hex = hexColor.replace('#', '');
-
-      // Convert to RGB
-      var r = parseInt(hex.substr(0, 2), 16);
-      var g = parseInt(hex.substr(2, 2), 16);
-      var b = parseInt(hex.substr(4, 2), 16);
-
-      // Calculate luminance
-      var luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-
-      return luminance > 0.5 ? '#000000' : '#ffffff';
+      google.script.run.setSelectedItem(item);
     }
 
     function updateItemCount() {
@@ -876,87 +798,106 @@
       countDiv.innerHTML = '<strong>' + count + '</strong> item' + (count !== 1 ? 's' : '') + ' found';
     }
 
-    function loadQuantityTracker() {
-      google.script.run
-        .withSuccessHandler(function(qtys) {
-          quantities = qtys || {};
-          renderQuantityTracker();
-          renderItems(); // Re-render to show badges
-        })
-        .withFailureHandler(function(error) {
-          console.log('Failed to load quantities:', error);
-        })
-        .getItemQuantities();
+    // Quantities Tab Functions
+    function changeScope(scope) {
+      currentScope = scope;
+
+      // Update button states
+      var buttons = document.querySelectorAll('.scope-btn');
+      buttons.forEach(function(btn) {
+        btn.classList.remove('active');
+        if (btn.dataset.scope === scope) {
+          btn.classList.add('active');
+        }
+      });
+
+      // Update scope name
+      var scopeNames = {
+        'current': 'Current Sheet',
+        'overview': 'Overview Only',
+        'racks': 'All Rack Configurations',
+        'all': 'All Sheets'
+      };
+      document.getElementById('scopeName').textContent = scopeNames[scope];
+
+      // Reload quantities
+      loadQuantities();
     }
 
-    function renderQuantityTracker() {
-      var list = document.getElementById('quantityList');
-      list.innerHTML = '';
+    function loadQuantities() {
+      document.getElementById('quantitiesLoading').classList.remove('hidden');
+      document.getElementById('quantityListContainer').innerHTML = '';
+
+      google.script.run
+        .withSuccessHandler(function(data) {
+          quantities = data.quantities || {};
+          renderQuantities();
+          document.getElementById('quantitiesLoading').classList.add('hidden');
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading quantities:', error);
+          document.getElementById('quantitiesLoading').classList.add('hidden');
+          document.getElementById('quantityListContainer').innerHTML =
+            '<div class="empty-state"><p>Error loading quantities</p></div>';
+        })
+        .getItemQuantitiesWithScope(currentScope);
+    }
+
+    function renderQuantities() {
+      var container = document.getElementById('quantityListContainer');
+      container.innerHTML = '';
 
       var itemNumbers = Object.keys(quantities);
+
       if (itemNumbers.length === 0) {
-        list.innerHTML = '<p style="color: #999; font-size: 11px;">No items in sheet yet</p>';
+        container.innerHTML = '<div class="empty-state"><p>No items found in selected scope</p></div>';
+        document.getElementById('uniqueCount').textContent = '0';
+        document.getElementById('totalQuantity').textContent = '0';
         return;
       }
 
+      var totalQty = 0;
+
+      // Sort by quantity (descending)
+      itemNumbers.sort(function(a, b) {
+        return quantities[b] - quantities[a];
+      });
+
       itemNumbers.forEach(function(number) {
         var qty = quantities[number];
-        if (qty > 0) {
-          var item = document.createElement('div');
-          item.className = 'quantity-item';
+        totalQty += qty;
 
-          var numberSpan = document.createElement('span');
-          numberSpan.className = 'quantity-number';
-          numberSpan.textContent = number;
+        var item = document.createElement('div');
+        item.className = 'quantity-item';
 
-          var countSpan = document.createElement('span');
-          countSpan.className = 'quantity-count';
-          countSpan.textContent = qty;
+        var info = document.createElement('div');
+        var numberSpan = document.createElement('div');
+        numberSpan.className = 'qty-item-number';
+        numberSpan.textContent = number;
 
-          item.appendChild(numberSpan);
-          item.appendChild(countSpan);
-          list.appendChild(item);
+        // Try to find item name
+        var matchingItem = allItems.find(function(i) { return i.number === number; });
+        if (matchingItem && matchingItem.name) {
+          var nameSpan = document.createElement('div');
+          nameSpan.className = 'qty-item-name';
+          nameSpan.textContent = matchingItem.name;
+          info.appendChild(numberSpan);
+          info.appendChild(nameSpan);
+        } else {
+          info.appendChild(numberSpan);
         }
+
+        var badge = document.createElement('span');
+        badge.className = 'qty-badge';
+        badge.textContent = qty;
+
+        item.appendChild(info);
+        item.appendChild(badge);
+        container.appendChild(item);
       });
-    }
 
-    function showLoading(show) {
-      var loading = document.getElementById('loading');
-      var itemList = document.getElementById('itemList');
-
-      if (show) {
-        loading.classList.remove('hidden');
-        itemList.innerHTML = '';
-      } else {
-        loading.classList.add('hidden');
-      }
-    }
-
-    function showError(message) {
-      var errorDiv = document.getElementById('errorMessage');
-      errorDiv.textContent = message;
-      errorDiv.classList.remove('hidden');
-
-      setTimeout(function() {
-        errorDiv.classList.add('hidden');
-      }, 5000);
-    }
-
-    // Refresh quantities periodically
-    setInterval(loadQuantityTracker, 5000);
-
-    // Toggle filter section
-    function toggleFilterSection() {
-      var content = document.getElementById('filterContent');
-      var icon = document.getElementById('collapseIcon');
-
-      if (content.classList.contains('collapsed')) {
-        content.classList.remove('collapsed');
-        icon.classList.remove('collapsed');
-      } else {
-        content.classList.add('collapsed');
-        icon.classList.add('collapsed');
-      }
+      document.getElementById('uniqueCount').textContent = itemNumbers.length;
+      document.getElementById('totalQuantity').textContent = totalQty;
     }
   </script>
 </body>

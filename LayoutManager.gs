@@ -126,10 +126,10 @@ function createOverviewLayout(sheetName, rows, cols) {
   // Create grid
   var startRow = 3;
 
-  // Add column headers (A, B, C, etc.)
+  // Add column headers (Pos 1, Pos 2, Pos 3, etc.)
   var colHeaders = [];
   for (var c = 0; c < cols; c++) {
-    colHeaders.push(String.fromCharCode(65 + c)); // A, B, C...
+    colHeaders.push('Pos ' + (c + 1));
   }
   sheet.getRange(startRow, 2, 1, cols).setValues([colHeaders]);
   sheet.getRange(startRow, 2, 1, cols)
@@ -186,9 +186,8 @@ function createOverviewLayout(sheetName, rows, cols) {
     });
   }
 
-  // Freeze headers
+  // Freeze headers (only freeze rows, not columns due to merged title)
   sheet.setFrozenRows(startRow);
-  sheet.setFrozenColumns(1);
 
   return sheet;
 }
@@ -373,29 +372,53 @@ function createNewOverviewLayout() {
       return;
     }
 
-    // Prompt for grid size
-    var sizeResponse = ui.prompt(
-      'Grid Size',
-      'Enter grid size (e.g., "10" for 10x10):',
+    // Prompt for number of rows
+    var rowsResponse = ui.prompt(
+      'Number of Rows',
+      'Enter number of rows in the datacenter (e.g., "10"):',
       ui.ButtonSet.OK_CANCEL
     );
 
-    if (sizeResponse.getSelectedButton() === ui.Button.OK) {
-      var size = parseInt(sizeResponse.getResponseText().trim(), 10);
-      if (isNaN(size) || size < 1 || size > 20) {
-        ui.alert('Error', 'Grid size must be between 1 and 20', ui.ButtonSet.OK);
-        return;
-      }
+    if (rowsResponse.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
 
-      try {
-        var sheet = createOverviewLayout(name, size, size);
-        if (sheet) {
-          ui.alert('Success', 'Overview layout "' + name + '" created!', ui.ButtonSet.OK);
-          SpreadsheetApp.setActiveSheet(sheet);
-        }
-      } catch (error) {
-        ui.alert('Error', 'Failed to create overview layout: ' + error.message, ui.ButtonSet.OK);
+    var rows = parseInt(rowsResponse.getResponseText().trim(), 10);
+    if (isNaN(rows) || rows < 1 || rows > 50) {
+      ui.alert('Error', 'Number of rows must be between 1 and 50', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Prompt for number of rack positions per row
+    var positionsResponse = ui.prompt(
+      'Rack Positions per Row',
+      'Enter number of rack positions per row (e.g., "12"):',
+      ui.ButtonSet.OK_CANCEL
+    );
+
+    if (positionsResponse.getSelectedButton() !== ui.Button.OK) {
+      return;
+    }
+
+    var positions = parseInt(positionsResponse.getResponseText().trim(), 10);
+    if (isNaN(positions) || positions < 1 || positions > 50) {
+      ui.alert('Error', 'Number of positions must be between 1 and 50', ui.ButtonSet.OK);
+      return;
+    }
+
+    try {
+      var sheet = createOverviewLayout(name, rows, positions);
+      if (sheet) {
+        ui.alert('Success',
+          'Overview layout "' + name + '" created!\n\n' +
+          'Rows: ' + rows + '\n' +
+          'Positions per row: ' + positions + '\n\n' +
+          'Use "Show Rack Picker" to place racks in the grid.',
+          ui.ButtonSet.OK);
+        SpreadsheetApp.setActiveSheet(sheet);
       }
+    } catch (error) {
+      ui.alert('Error', 'Failed to create overview layout: ' + error.message, ui.ButtonSet.OK);
     }
   }
 }
