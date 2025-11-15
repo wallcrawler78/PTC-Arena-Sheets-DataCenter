@@ -1,18 +1,24 @@
 /**
  * Arena API Authorization Management
- * Handles storing and retrieving Arena API credentials including workspace ID
+ * Handles session-based authentication with Arena API
  */
 
 // Property keys for credential storage
 var PROPERTY_KEYS = {
-  API_ENDPOINT: 'ARENA_API_ENDPOINT',
-  API_KEY: 'ARENA_API_KEY',
+  API_BASE: 'ARENA_API_BASE',
+  EMAIL: 'ARENA_EMAIL',
+  PASSWORD: 'ARENA_PASSWORD',
+  SESSION_ID: 'ARENA_SESSION_ID',
+  SESSION_TS: 'ARENA_SESSION_TS',
   WORKSPACE_ID: 'ARENA_WORKSPACE_ID'
 };
 
+// Arena API base URL
+var ARENA_API_BASE = 'https://api.arenasolutions.com/v1';
+
 /**
  * Saves Arena API credentials to user properties
- * @param {Object} credentials - Object containing apiEndpoint, apiKey, and workspaceId
+ * @param {Object} credentials - Object containing email, password, and workspaceId
  * @return {Object} Result object with success status
  */
 function saveArenaCredentials(credentials) {
@@ -20,23 +26,25 @@ function saveArenaCredentials(credentials) {
     var userProperties = PropertiesService.getUserProperties();
 
     // Validate required fields
-    if (!credentials.apiEndpoint || credentials.apiEndpoint.trim() === '') {
-      throw new Error('API Endpoint is required');
+    if (!credentials.email || credentials.email.trim() === '') {
+      throw new Error('Email is required');
     }
-    if (!credentials.apiKey || credentials.apiKey.trim() === '') {
-      throw new Error('API Key is required');
+    if (!credentials.password || credentials.password.trim() === '') {
+      throw new Error('Password is required');
     }
     if (!credentials.workspaceId || credentials.workspaceId.trim() === '') {
       throw new Error('Workspace ID is required');
     }
 
-    // Clean up the API endpoint (remove trailing slash)
-    var cleanEndpoint = credentials.apiEndpoint.trim().replace(/\/$/, '');
-
     // Save credentials
-    userProperties.setProperty(PROPERTY_KEYS.API_ENDPOINT, cleanEndpoint);
-    userProperties.setProperty(PROPERTY_KEYS.API_KEY, credentials.apiKey.trim());
+    userProperties.setProperty(PROPERTY_KEYS.API_BASE, ARENA_API_BASE);
+    userProperties.setProperty(PROPERTY_KEYS.EMAIL, credentials.email.trim());
+    userProperties.setProperty(PROPERTY_KEYS.PASSWORD, credentials.password.trim());
     userProperties.setProperty(PROPERTY_KEYS.WORKSPACE_ID, credentials.workspaceId.trim());
+
+    // Clear any existing session (will need to login again)
+    userProperties.deleteProperty(PROPERTY_KEYS.SESSION_ID);
+    userProperties.deleteProperty(PROPERTY_KEYS.SESSION_TS);
 
     Logger.log('Arena API credentials saved successfully');
     return { success: true, message: 'Credentials saved successfully' };
@@ -48,19 +56,44 @@ function saveArenaCredentials(credentials) {
 }
 
 /**
- * Retrieves the Arena API endpoint
- * @return {string|null} The API endpoint or null if not set
+ * Retrieves the Arena API base URL
+ * @return {string} The API base URL
  */
-function getApiEndpoint() {
-  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.API_ENDPOINT);
+function getApiBase() {
+  var base = PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.API_BASE);
+  return base || ARENA_API_BASE;
 }
 
 /**
- * Retrieves the Arena API key
- * @return {string|null} The API key or null if not set
+ * Retrieves the Arena email
+ * @return {string|null} The email or null if not set
  */
-function getApiKey() {
-  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.API_KEY);
+function getEmail() {
+  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.EMAIL);
+}
+
+/**
+ * Retrieves the Arena password
+ * @return {string|null} The password or null if not set
+ */
+function getPassword() {
+  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.PASSWORD);
+}
+
+/**
+ * Retrieves the Arena session ID
+ * @return {string|null} The session ID or null if not set
+ */
+function getSessionId() {
+  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.SESSION_ID);
+}
+
+/**
+ * Retrieves the Arena session timestamp
+ * @return {string|null} The session timestamp or null if not set
+ */
+function getSessionTimestamp() {
+  return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.SESSION_TS);
 }
 
 /**
@@ -72,22 +105,73 @@ function getWorkspaceId() {
 }
 
 /**
+ * Saves the session ID and timestamp after successful login
+ * @param {string} sessionId - The arena_session_id from login response
+ * @param {number} timestamp - The timestamp when session was created
+ */
+function saveSession(sessionId, timestamp) {
+  var userProperties = PropertiesService.getUserProperties();
+  userProperties.setProperty(PROPERTY_KEYS.SESSION_ID, sessionId);
+  userProperties.setProperty(PROPERTY_KEYS.SESSION_TS, timestamp.toString());
+  Logger.log('Arena session saved');
+}
+
+/**
+ * Clears the current session (forces re-login)
+ */
+function clearSession() {
+  var userProperties = PropertiesService.getUserProperties();
+  userProperties.deleteProperty(PROPERTY_KEYS.SESSION_ID);
+  userProperties.deleteProperty(PROPERTY_KEYS.SESSION_TS);
+  Logger.log('Arena session cleared');
+}
+
+/**
+ * Checks if the current session is still valid
+ * Arena sessions expire after 90 minutes of inactivity
+ * @return {boolean} True if session is valid
+ */
+function isSessionValid() {
+  var sessionId = getSessionId();
+  var sessionTs = getSessionTimestamp();
+
+  if (!sessionId || !sessionTs) {
+    return false;
+  }
+
+  // Check if session is older than 80 minutes (safe margin before 90 min timeout)
+  var now = new Date().getTime();
+  var sessionTime = parseInt(sessionTs, 10);
+  var ageInMinutes = (now - sessionTime) / (1000 * 60);
+
+  if (ageInMinutes > 80) {
+    Logger.log('Session expired (age: ' + ageInMinutes + ' minutes)');
+    return false;
+  }
+
+  return true;
+}
+
+/**
  * Retrieves all Arena API credentials
  * @return {Object|null} Object containing all credentials or null if not configured
  */
 function getArenaCredentials() {
-  var apiEndpoint = getApiEndpoint();
-  var apiKey = getApiKey();
+  var email = getEmail();
+  var password = getPassword();
   var workspaceId = getWorkspaceId();
 
-  if (!apiEndpoint || !apiKey || !workspaceId) {
+  if (!email || !password || !workspaceId) {
     return null;
   }
 
   return {
-    apiEndpoint: apiEndpoint,
-    apiKey: apiKey,
-    workspaceId: workspaceId
+    apiBase: getApiBase(),
+    email: email,
+    password: password,
+    workspaceId: workspaceId,
+    sessionId: getSessionId(),
+    sessionTs: getSessionTimestamp()
   };
 }
 
@@ -101,14 +185,17 @@ function isAuthorized() {
 }
 
 /**
- * Clears all stored Arena API credentials
+ * Clears all stored Arena API credentials and session
  */
 function clearArenaCredentials() {
   var userProperties = PropertiesService.getUserProperties();
-  userProperties.deleteProperty(PROPERTY_KEYS.API_ENDPOINT);
-  userProperties.deleteProperty(PROPERTY_KEYS.API_KEY);
+  userProperties.deleteProperty(PROPERTY_KEYS.API_BASE);
+  userProperties.deleteProperty(PROPERTY_KEYS.EMAIL);
+  userProperties.deleteProperty(PROPERTY_KEYS.PASSWORD);
+  userProperties.deleteProperty(PROPERTY_KEYS.SESSION_ID);
+  userProperties.deleteProperty(PROPERTY_KEYS.SESSION_TS);
   userProperties.deleteProperty(PROPERTY_KEYS.WORKSPACE_ID);
-  Logger.log('Arena API credentials cleared');
+  Logger.log('Arena API credentials and session cleared');
 }
 
 /**
@@ -127,9 +214,103 @@ function getAuthorizationStatus() {
 
   return {
     isConfigured: true,
-    apiEndpoint: credentials.apiEndpoint,
+    email: credentials.email,
     workspaceId: credentials.workspaceId,
-    // Don't return the actual API key for security
-    hasApiKey: true
+    hasPassword: true,
+    hasSession: isSessionValid()
   };
+}
+
+/**
+ * Performs login to Arena API and saves session
+ * @return {Object} Login result with session info
+ */
+function loginToArena() {
+  var credentials = getArenaCredentials();
+
+  if (!credentials) {
+    throw new Error('Credentials not configured');
+  }
+
+  var url = credentials.apiBase + '/login';
+
+  var payload = {
+    email: credentials.email,
+    password: credentials.password,
+    workspaceId: credentials.workspaceId
+  };
+
+  var options = {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  };
+
+  try {
+    Logger.log('Attempting login to Arena API...');
+    var response = UrlFetchApp.fetch(url, options);
+    var responseCode = response.getResponseCode();
+    var responseText = response.getContentText();
+
+    if (responseCode === 200) {
+      var data = JSON.parse(responseText);
+
+      // Save session ID and current timestamp
+      // Arena returns 'arenaSessionId' (camelCase)
+      var sessionId = data.arenaSessionId || data.arena_session_id;
+      if (sessionId) {
+        saveSession(sessionId, new Date().getTime());
+
+        Logger.log('Login successful - session created');
+        return {
+          success: true,
+          sessionId: sessionId,
+          workspaceId: data.workspaceId,
+          workspaceName: data.workspaceName,
+          requestLimit: data.workspaceRequestLimit
+        };
+      } else {
+        throw new Error('No session ID in response');
+      }
+
+    } else {
+      var errorMessage = 'Login failed (HTTP ' + responseCode + ')';
+      try {
+        var errorData = JSON.parse(responseText);
+        if (errorData.message || errorData.error) {
+          errorMessage += ': ' + (errorData.message || errorData.error);
+        }
+      } catch (e) {
+        errorMessage += ': ' + responseText;
+      }
+
+      throw new Error(errorMessage);
+    }
+
+  } catch (error) {
+    Logger.log('Login error: ' + error.message);
+    throw error;
+  }
+}
+
+/**
+ * Gets a valid session ID, logging in if necessary
+ * @return {string} Valid session ID
+ */
+function getValidSessionId() {
+  // Check if we have a valid session
+  if (isSessionValid()) {
+    return getSessionId();
+  }
+
+  // Session expired or doesn't exist, need to login
+  Logger.log('No valid session, logging in...');
+  var loginResult = loginToArena();
+
+  if (loginResult.success) {
+    return loginResult.sessionId;
+  }
+
+  throw new Error('Failed to obtain valid session');
 }
