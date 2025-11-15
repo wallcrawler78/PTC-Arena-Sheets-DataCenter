@@ -1481,16 +1481,26 @@ function createRowItems(rowData, rowLocationAttr, rowCategory) {
 
     // Create row item in Arena
     try {
-      var rowItem = client.createItem({
+      Logger.log('=== CREATING ROW ITEM ' + (i + 1) + ' ===');
+      Logger.log('Row name: ' + rowName);
+      Logger.log('Row category (should be GUID): ' + rowCategory);
+      Logger.log('Row category type: ' + typeof rowCategory);
+      Logger.log('Row description: Row ' + row.rowNumber + ' with racks in positions: ' + positionNames);
+
+      var createItemPayload = {
         name: rowName,
         category: rowCategory,
         description: 'Row ' + row.rowNumber + ' with racks in positions: ' + positionNames
-      });
+      };
+
+      Logger.log('Full createItem payload: ' + JSON.stringify(createItemPayload));
+
+      var rowItem = client.createItem(createItemPayload);
 
       var rowItemGuid = rowItem.guid || rowItem.Guid;
       var rowItemNumber = rowItem.number || rowItem.Number;
 
-      Logger.log('Created row item: ' + rowItemNumber + ' (GUID: ' + rowItemGuid + ')');
+      Logger.log('✓ Created row item: ' + rowItemNumber + ' (GUID: ' + rowItemGuid + ')');
 
       // Set Row Location attribute
       client.setItemAttribute(rowItemGuid, rowLocationAttr.guid, positionNames);

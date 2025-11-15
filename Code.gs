@@ -402,6 +402,10 @@ function showHelp() {
  * @return {Object} Selected category {guid, name} or null if cancelled
  */
 function showCategorySelector(title, subtitle) {
+  Logger.log('=== CATEGORY SELECTOR START ===');
+  Logger.log('Title: ' + title);
+  Logger.log('Subtitle: ' + subtitle);
+
   // Store dialog parameters
   PropertiesService.getUserProperties().setProperty('category_selector_title', title);
   PropertiesService.getUserProperties().setProperty('category_selector_subtitle', subtitle);
@@ -412,6 +416,7 @@ function showCategorySelector(title, subtitle) {
     .setHeight(600);
 
   SpreadsheetApp.getUi().showModalDialog(html, title);
+  Logger.log('Category selector dialog displayed, waiting for user selection...');
 
   // Poll for selection with timeout
   // NOTE: This is a workaround for Apps Script's lack of true blocking dialogs
@@ -426,7 +431,13 @@ function showCategorySelector(title, subtitle) {
 
     if (selection) {
       Logger.log('Category selected after ' + attempts + ' seconds');
-      return JSON.parse(selection);
+      Logger.log('Raw selection JSON: ' + selection);
+      var parsedSelection = JSON.parse(selection);
+      Logger.log('Parsed selection object: ' + JSON.stringify(parsedSelection));
+      Logger.log('Selected category GUID: ' + parsedSelection.guid);
+      Logger.log('Selected category name: ' + parsedSelection.name);
+      Logger.log('=== CATEGORY SELECTOR END (SUCCESS) ===');
+      return parsedSelection;
     }
 
     attempts++;
@@ -434,6 +445,7 @@ function showCategorySelector(title, subtitle) {
 
   // Timeout - user didn't make a selection
   Logger.log('Category selection timed out after ' + maxAttempts + ' seconds');
+  Logger.log('=== CATEGORY SELECTOR END (TIMEOUT) ===');
   return null;
 }
 
