@@ -1920,13 +1920,13 @@ function updateOverviewWithPODInfo(sheet, podItem, rowItems) {
   sheet.getRange(headerRow, 2).setValue('Row Item');
   sheet.getRange(headerRow, 2).setFontWeight('bold').setBackground('#f0f0f0');
 
-  // Get Arena base URL for links
-  var credentials = getArenaCredentials();
-  var arenaBaseUrl = credentials.apiBase.replace('/api/v1', '');
+  // Fetch full item data from Arena for building URLs
+  var client = new ArenaAPIClient();
 
   // Add row item links
   rowItems.forEach(function(rowItem) {
-    var arenaUrl = arenaBaseUrl + '/items/' + rowItem.guid;
+    var rowArenaItem = client.getItemByNumber(rowItem.itemNumber);
+    var arenaUrl = buildArenaItemURLFromItem(rowArenaItem, rowItem.itemNumber);
     var formula = '=HYPERLINK("' + arenaUrl + '", "' + rowItem.itemNumber + '")';
     sheet.getRange(rowItem.sheetRow, 2).setFormula(formula);
     sheet.getRange(rowItem.sheetRow, 2).setFontColor('#0000FF');
@@ -1935,7 +1935,8 @@ function updateOverviewWithPODInfo(sheet, podItem, rowItems) {
   // Add POD info at top (in a merged cell above the grid)
   sheet.insertRowBefore(1);
   sheet.getRange(1, 1, 1, 10).merge();
-  var podUrl = arenaBaseUrl + '/items/' + podItem.guid;
+  var podArenaItem = client.getItemByNumber(podItem.itemNumber);
+  var podUrl = buildArenaItemURLFromItem(podArenaItem, podItem.itemNumber);
   var podFormula = '=HYPERLINK("' + podUrl + '", "POD: ' + podItem.name + ' (' + podItem.itemNumber + ')")';
   sheet.getRange(1, 1).setFormula(podFormula);
   sheet.getRange(1, 1).setFontWeight('bold').setFontSize(12).setFontColor('#0000FF');
@@ -2175,5 +2176,46 @@ function repairPODAndRowBOMs() {
   } catch (error) {
     Logger.log('Error repairing BOMs: ' + error.message + '\n' + error.stack);
     ui.alert('Error', 'Failed to repair BOMs:\n\n' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+/**
+ * Builds a proper Arena web UI URL for an item
+ * @param {Object} item - Arena item object (from API)
+ * @param {string} itemNumber - Arena item number (fallback)
+ * @return {string} Arena web UI URL
+ */
+function buildArenaItemURLFromItem(item, itemNumber) {
+  try {
+    if (!item) {
+      Logger.log('WARNING: No item object provided for ' + itemNumber + ', using search URL');
+      return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
+    }
+
+    // Extract item_id and version_id from Arena item
+    // Arena API may return these with different casing
+    var itemId = item.itemId || item.ItemId || item.id || item.Id;
+    var versionId = item.versionId || item.VersionId;
+
+    // Log the full item structure to understand what Arena returns
+    Logger.log('Item object keys for ' + itemNumber + ': ' + Object.keys(item).join(', '));
+
+    // If we don't have the specific IDs, use search URL as fallback
+    if (!itemId || !versionId) {
+      Logger.log('WARNING: Missing itemId or versionId for ' + itemNumber);
+      Logger.log('Available properties: ' + JSON.stringify(Object.keys(item)));
+      return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
+    }
+
+    // Build the proper Arena web UI URL
+    var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + itemId + '&version_id=' + versionId;
+
+    Logger.log('Built Arena URL for ' + itemNumber + ': ' + arenaUrl);
+    return arenaUrl;
+
+  } catch (error) {
+    Logger.log('ERROR building Arena URL for ' + itemNumber + ': ' + error.message);
+    // Fallback to search URL on error
+    return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
   }
 }
