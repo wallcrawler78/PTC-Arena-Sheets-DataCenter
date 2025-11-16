@@ -716,6 +716,118 @@ function clearSelectedItem() {
 }
 
 /**
+ * Checks if the active sheet is a rack configuration sheet
+ * @return {boolean} True if active sheet is a rack config
+ */
+function isActiveSheetRackConfig() {
+  var sheet = SpreadsheetApp.getActiveSheet();
+  return isRackConfigSheet(sheet);
+}
+
+/**
+ * Refreshes the BOM for the currently active rack sheet
+ * Compares with Arena data and highlights changes
+ * @return {Object} Result with success status and message
+ */
+function refreshCurrentRackBOM() {
+  var ui = SpreadsheetApp.getUi();
+  var sheet = SpreadsheetApp.getActiveSheet();
+
+  Logger.log('=== REFRESH RACK BOM ===');
+
+  // Verify this is a rack config sheet
+  if (!isRackConfigSheet(sheet)) {
+    return {
+      success: false,
+      message: 'Active sheet is not a rack configuration. Please open a rack sheet first.'
+    };
+  }
+
+  // Get rack metadata
+  var metadata = getRackConfigMetadata(sheet);
+  Logger.log('Refreshing BOM for rack: ' + metadata.itemNumber);
+
+  try {
+    // Fetch current BOM from Arena
+    var arenaClient = new ArenaAPIClient();
+    var arenaBOM = arenaClient.getBOM(metadata.itemNumber);
+
+    if (!arenaBOM || !arenaBOM.length) {
+      return {
+        success: false,
+        message: 'No BOM found in Arena for item: ' + metadata.itemNumber
+      };
+    }
+
+    Logger.log('Fetched ' + arenaBOM.length + ' BOM lines from Arena');
+
+    // Get current sheet data
+    var currentData = getCurrentRackBOMData(sheet);
+    Logger.log('Current sheet has ' + currentData.length + ' rows');
+
+    // Compare and detect changes
+    var changes = compareBO​Ms(currentData, arenaBOM);
+
+    Logger.log('Changes detected:');
+    Logger.log('- Modified: ' + changes.modified.length);
+    Logger.log('- Added: ' + changes.added.length);
+    Logger.log('- Removed: ' + changes.removed.length);
+
+    // If no changes, return success
+    if (changes.modified.length === 0 && changes.added.length === 0 && changes.removed.length === 0) {
+      // Update last refreshed timestamp
+      updateLastRefreshedTimestamp(sheet);
+
+      return {
+        success: true,
+        message: 'BOM is up to date! No changes detected.\n\nLast refreshed: ' + new Date().toLocaleString()
+      };
+    }
+
+    // Show change summary and ask for confirmation
+    var changeMessage = buildChangeSummary(changes);
+    var response = ui.alert(
+      'BOM Changes Detected',
+      changeMessage + '\n\nApply these changes?',
+      ui.ButtonSet.YES_NO
+    );
+
+    if (response !== ui.Button.YES) {
+      return {
+        success: false,
+        message: 'Refresh cancelled by user. No changes were applied.'
+      };
+    }
+
+    // Apply changes
+    applyBOMChanges(sheet, changes, metadata.itemNumber);
+
+    // Update last refreshed timestamp
+    updateLastRefreshedTimestamp(sheet);
+
+    // Return success message
+    var summary = (changes.modified.length + changes.added.length + changes.removed.length) + ' changes applied';
+    if (changes.modified.length > 0) summary += '\n• ' + changes.modified.length + ' items updated (red text)';
+    if (changes.added.length > 0) summary += '\n• ' + changes.added.length + ' items added';
+    if (changes.removed.length > 0) summary += '\n• ' + changes.removed.length + ' items removed';
+    summary += '\n\nCheck "BOM History" tab for details.';
+
+    return {
+      success: true,
+      message: summary
+    };
+
+  } catch (error) {
+    Logger.log('ERROR in refreshCurrentRackBOM: ' + error.message);
+    Logger.log(error.stack);
+    return {
+      success: false,
+      message: 'Error refreshing BOM: ' + error.message
+    };
+  }
+}
+
+/**
  * Gets item quantities from the current sheet
  * Counts how many times each Arena item number appears in the sheet
  * @return {Object} Map of item numbers to quantities

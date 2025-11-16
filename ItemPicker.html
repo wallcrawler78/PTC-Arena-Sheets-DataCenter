@@ -616,8 +616,44 @@
     }
 
     function refreshData() {
-      console.log('🔄 Refreshing data from Arena...');
-      loadItemsData(true);
+      console.log('🔄 Refresh button clicked');
+
+      // Check if we're on a rack config sheet - if so, refresh the BOM
+      google.script.run
+        .withSuccessHandler(function(isRackSheet) {
+          if (isRackSheet) {
+            console.log('On rack sheet - refreshing BOM');
+            refreshRackBOM();
+          } else {
+            console.log('Not on rack sheet - refreshing item picker data');
+            loadItemsData(true);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error checking sheet type:', error);
+          // Fallback to refreshing item picker data
+          loadItemsData(true);
+        })
+        .isActiveSheetRackConfig();
+    }
+
+    function refreshRackBOM() {
+      console.log('🔄 Refreshing Rack BOM from Arena...');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert('✅ BOM Refresh Complete\n\n' + result.message);
+            google.script.host.close();
+          } else {
+            alert('⚠️ BOM Refresh Issue\n\n' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error refreshing BOM:', error);
+          alert('❌ Error refreshing BOM:\n\n' + error.message);
+        })
+        .refreshCurrentRackBOM();
     }
 
     function populateCategoryFilter() {
