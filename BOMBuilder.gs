@@ -1850,6 +1850,296 @@ function createPODItem(rowItems, podCategory) {
 }
 
 /**
+ * Attempts to rollback (delete) created items in case of failure
+ * Deletes in reverse order: POD → Rows → Racks
+ * @param {Object} context - Creation context with createdItems tracking
+ * @param {ArenaAPIClient} client - Arena API client
+ * @return {Object} {success: boolean, deletedCount: number, errors: Array}
+ */
+function attemptRollback(context, client) {
+  Logger.log('========================================');
+  Logger.log('ROLLBACK - ATTEMPTING CLEANUP');
+  Logger.log('========================================');
+
+  if (!context || !context.createdItems) {
+    Logger.log('No context or createdItems to rollback');
+    return { success: true, deletedCount: 0, errors: [] };
+  }
+
+  var deletedCount = 0;
+  var errors = [];
+  var createdItems = context.createdItems;
+
+  // Delete in reverse order: POD → Rows → Racks
+  var deleteOrder = ['POD', 'Row', 'Rack'];
+
+  for (var typeIdx = 0; typeIdx < deleteOrder.length; typeIdx++) {
+    var itemType = deleteOrder[typeIdx];
+    var itemsOfType = [];
+
+    // Collect all items of this type
+    for (var i = 0; i < createdItems.length; i++) {
+      if (createdItems[i].type === itemType) {
+        itemsOfType.push(createdItems[i]);
+      }
+    }
+
+    if (itemsOfType.length === 0) {
+      Logger.log('No ' + itemType + ' items to delete');
+      continue;
+    }
+
+    Logger.log('Deleting ' + itemsOfType.length + ' ' + itemType + ' item(s)...');
+
+    for (var j = 0; j < itemsOfType.length; j++) {
+      var item = itemsOfType[j];
+      try {
+        Logger.log('  Deleting ' + itemType + ': ' + item.itemNumber + ' (GUID: ' + item.guid + ')');
+
+        // Arena API: DELETE /items/{guid}
+        client.makeRequest('/items/' + item.guid, { method: 'DELETE' });
+
+        deletedCount++;
+        Logger.log('  ✓ Deleted: ' + item.itemNumber);
+
+        // Small delay to avoid rate limiting
+        Utilities.sleep(200);
+      } catch (deleteError) {
+        var errMsg = 'Failed to delete ' + itemType + ' ' + item.itemNumber + ': ' + deleteError.message;
+        Logger.log('  ❌ ' + errMsg);
+        errors.push(errMsg);
+        // Continue trying to delete other items
+      }
+    }
+  }
+
+  Logger.log('========================================');
+  Logger.log('ROLLBACK - COMPLETE');
+  Logger.log('Deleted: ' + deletedCount + ' items');
+  Logger.log('Errors: ' + errors.length);
+  Logger.log('========================================');
+
+  return {
+    success: errors.length === 0,
+    deletedCount: deletedCount,
+    errors: errors
+  };
+}
+
+/**
+ * Validates all preconditions before starting POD push
+ * Checks Arena connection, sheet structure, components exist, attributes configured
+ * @param {Sheet} overviewSheet - Overview sheet to validate
+ * @param {Array} customRacks - Array of custom rack objects to validate
+ * @return {Object} {success: boolean, errors: Array, warnings: Array}
+ */
+function validatePreconditions(overviewSheet, customRacks) {
+  Logger.log('========================================');
+  Logger.log('PRE-FLIGHT VALIDATION - START');
+  Logger.log('========================================');
+
+  var errors = [];
+  var warnings = [];
+  var client;
+
+  // 1. Validate Arena connection
+  Logger.log('1. Validating Arena connection...');
+  try {
+    client = new ArenaAPIClient();
+    var testEndpoint = client.makeRequest('/settings/workspace', { method: 'GET' });
+    if (!testEndpoint) {
+      errors.push('Arena connection test failed - no response from API');
+    } else {
+      Logger.log('✓ Arena connection successful');
+    }
+  } catch (connError) {
+    errors.push('Arena connection failed: ' + connError.message);
+    // Can't continue without connection
+    return {
+      success: false,
+      errors: errors,
+      warnings: warnings
+    };
+  }
+
+  // 2. Validate overview sheet structure
+  Logger.log('2. Validating overview sheet structure...');
+  try {
+    if (!overviewSheet) {
+      errors.push('Overview sheet is null or undefined');
+    } else {
+      var data = overviewSheet.getDataRange().getValues();
+      if (data.length === 0) {
+        errors.push('Overview sheet is empty');
+      } else {
+        // Check for position headers
+        var hasPositionHeaders = false;
+        for (var i = 0; i < data.length && i < 10; i++) {
+          for (var j = 0; j < data[i].length; j++) {
+            var cell = data[i][j];
+            if (cell && cell.toString().toLowerCase().indexOf('pos') === 0) {
+              hasPositionHeaders = true;
+              break;
+            }
+          }
+          if (hasPositionHeaders) break;
+        }
+
+        if (!hasPositionHeaders) {
+          errors.push('Overview sheet missing position headers (e.g., "Pos 1", "Pos 2", ...)');
+        } else {
+          Logger.log('✓ Overview sheet structure valid');
+        }
+      }
+    }
+  } catch (sheetError) {
+    errors.push('Error validating overview sheet: ' + sheetError.message);
+  }
+
+  // 3. Validate Row Location attribute exists
+  Logger.log('3. Validating Row Location attribute...');
+  try {
+    var rowLocValidation = validateRowLocationAttribute();
+    if (!rowLocValidation.success) {
+      errors.push('Row Location attribute validation failed: ' + rowLocValidation.message);
+    } else {
+      Logger.log('✓ Row Location attribute found: ' + rowLocValidation.attribute.guid);
+    }
+  } catch (attrError) {
+    errors.push('Error validating Row Location attribute: ' + attrError.message);
+  }
+
+  // 4. Validate BOM position attribute (if configured)
+  Logger.log('4. Validating BOM Position attribute (optional)...');
+  try {
+    var positionConfig = getBOMPositionAttributeConfig();
+    if (positionConfig) {
+      Logger.log('BOM Position attribute configured: ' + positionConfig.name);
+
+      // Try to fetch the attribute to ensure it exists in Arena
+      try {
+        var bomAttrs = getBOMAttributes();
+        var attrFound = false;
+        for (var i = 0; i < bomAttrs.length; i++) {
+          if (bomAttrs[i].guid === positionConfig.guid) {
+            attrFound = true;
+            break;
+          }
+        }
+
+        if (!attrFound) {
+          warnings.push('BOM Position attribute configured but not found in Arena: ' + positionConfig.name);
+        } else {
+          Logger.log('✓ BOM Position attribute exists in Arena');
+        }
+      } catch (bomAttrError) {
+        warnings.push('Could not verify BOM Position attribute: ' + bomAttrError.message);
+      }
+    } else {
+      Logger.log('✓ BOM Position attribute not configured (optional feature)');
+    }
+  } catch (bomConfigError) {
+    warnings.push('Error checking BOM Position config: ' + bomConfigError.message);
+  }
+
+  // 5. Validate all child components for custom racks exist in Arena
+  Logger.log('5. Validating child components for custom racks...');
+  if (customRacks && customRacks.length > 0) {
+    var allChildNumbers = [];
+    var childLookupMap = {}; // Track which racks need which children
+
+    for (var r = 0; r < customRacks.length; r++) {
+      var rack = customRacks[r];
+      try {
+        var children = getRackConfigChildren(rack.sheet);
+
+        if (!children || children.length === 0) {
+          warnings.push('Rack "' + rack.itemNumber + '" has no child components (empty BOM)');
+        } else {
+          for (var c = 0; c < children.length; c++) {
+            var childNumber = children[c].itemNumber;
+            if (allChildNumbers.indexOf(childNumber) === -1) {
+              allChildNumbers.push(childNumber);
+            }
+
+            // Track which rack needs this child
+            if (!childLookupMap[childNumber]) {
+              childLookupMap[childNumber] = [];
+            }
+            if (childLookupMap[childNumber].indexOf(rack.itemNumber) === -1) {
+              childLookupMap[childNumber].push(rack.itemNumber);
+            }
+          }
+        }
+      } catch (childError) {
+        errors.push('Error reading children for rack "' + rack.itemNumber + '": ' + childError.message);
+      }
+    }
+
+    // Now validate each child component exists in Arena
+    Logger.log('Checking ' + allChildNumbers.length + ' unique child components in Arena...');
+    var missingComponents = [];
+
+    for (var i = 0; i < allChildNumbers.length; i++) {
+      var childNum = allChildNumbers[i];
+      try {
+        Logger.log('  Checking component: ' + childNum);
+        var childItem = client.getItemByNumber(childNum);
+
+        if (!childItem) {
+          var racksNeedingThis = childLookupMap[childNum].join(', ');
+          missingComponents.push(childNum + ' (needed by: ' + racksNeedingThis + ')');
+        } else {
+          Logger.log('  ✓ Found: ' + childNum);
+        }
+
+        // Small delay to avoid rate limiting
+        Utilities.sleep(50);
+      } catch (lookupError) {
+        var racksNeedingThis = childLookupMap[childNum].join(', ');
+        missingComponents.push(childNum + ' (needed by: ' + racksNeedingThis + ') - Error: ' + lookupError.message);
+      }
+    }
+
+    if (missingComponents.length > 0) {
+      errors.push('Missing child components in Arena (' + missingComponents.length + ' total):\n  • ' +
+                  missingComponents.join('\n  • '));
+    } else {
+      Logger.log('✓ All ' + allChildNumbers.length + ' child components found in Arena');
+    }
+  } else {
+    Logger.log('✓ No custom racks to validate');
+  }
+
+  // 6. Summary
+  Logger.log('========================================');
+  Logger.log('PRE-FLIGHT VALIDATION - COMPLETE');
+  Logger.log('========================================');
+  Logger.log('Errors: ' + errors.length);
+  Logger.log('Warnings: ' + warnings.length);
+
+  if (errors.length > 0) {
+    Logger.log('ERRORS:');
+    errors.forEach(function(err) {
+      Logger.log('  ❌ ' + err);
+    });
+  }
+
+  if (warnings.length > 0) {
+    Logger.log('WARNINGS:');
+    warnings.forEach(function(warn) {
+      Logger.log('  ⚠ ' + warn);
+    });
+  }
+
+  return {
+    success: errors.length === 0,
+    errors: errors,
+    warnings: warnings
+  };
+}
+
+/**
  * Main function to push POD structure to Arena
  * Creates POD -> Rows -> Racks hierarchy in Arena
  */
@@ -1859,8 +2149,16 @@ function pushPODStructureToArena() {
   Logger.log('==========================================');
 
   var ui = SpreadsheetApp.getUi();
+  var client = null;
+
+  // Context object to track created items for potential rollback
+  var context = {
+    createdItems: []  // Array of {type: 'Rack'|'Row'|'POD', itemNumber: string, guid: string}
+  };
 
   try {
+    // Initialize Arena client for rollback if needed
+    client = new ArenaAPIClient();
     Logger.log('Step 0: Finding overview sheet...');
     // Find overview sheet
     var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1915,6 +2213,44 @@ function pushPODStructureToArena() {
     ui.alert('Checking Racks', 'Checking which racks need to be created in Arena...', ui.ButtonSet.OK);
     var customRacks = identifyCustomRacks(allRackNumbers);
 
+    // Step 3.5: PRE-FLIGHT VALIDATION - Check everything before creating items
+    Logger.log('Step 3.5: Running pre-flight validation...');
+    ui.alert('Validation', 'Running comprehensive pre-flight validation...\n\nThis will check:\n• Arena connection\n• Overview sheet structure\n• Required attributes\n• All child components exist', ui.ButtonSet.OK);
+
+    var validation = validatePreconditions(overviewSheet, customRacks);
+
+    // Show warnings if any (non-blocking)
+    if (validation.warnings.length > 0) {
+      var warningMsg = 'Pre-flight validation found ' + validation.warnings.length + ' warning(s):\n\n';
+      validation.warnings.forEach(function(warn, idx) {
+        warningMsg += (idx + 1) + '. ' + warn + '\n';
+      });
+      warningMsg += '\nThese are warnings only. Continue anyway?';
+
+      var warnResponse = ui.alert('Validation Warnings', warningMsg, ui.ButtonSet.YES_NO);
+      if (warnResponse !== ui.Button.YES) {
+        ui.alert('Cancelled', 'POD creation cancelled due to validation warnings.', ui.ButtonSet.OK);
+        return;
+      }
+    }
+
+    // Show errors and stop if any (blocking)
+    if (!validation.success) {
+      var errorMsg = 'Pre-flight validation FAILED with ' + validation.errors.length + ' error(s):\n\n';
+      validation.errors.forEach(function(err, idx) {
+        errorMsg += (idx + 1) + '. ' + err + '\n\n';
+      });
+      errorMsg += 'Please fix these issues and try again.\n\n';
+      errorMsg += 'Check View → Executions for detailed logs.';
+
+      ui.alert('Validation Failed', errorMsg, ui.ButtonSet.OK);
+      Logger.log('Pre-flight validation failed. Aborting POD push.');
+      return;
+    }
+
+    Logger.log('✓ Pre-flight validation passed!');
+    ui.alert('Validation Passed', 'All pre-flight checks passed!\n\nReady to create POD structure.', ui.ButtonSet.OK);
+
     // Step 4: Create custom rack items (if any)
     if (customRacks.length > 0) {
       var msg = 'Found ' + customRacks.length + ' custom rack(s) that need Arena items:\n\n';
@@ -1935,6 +2271,18 @@ function pushPODStructureToArena() {
       if (!rackResult.success) {
         ui.alert('Error', 'Failed to create custom racks: ' + rackResult.message, ui.ButtonSet.OK);
         return;
+      }
+
+      // Track created racks for rollback support
+      if (rackResult.createdItems) {
+        for (var ri = 0; ri < rackResult.createdItems.length; ri++) {
+          context.createdItems.push({
+            type: 'Rack',
+            itemNumber: rackResult.createdItems[ri].itemNumber,
+            guid: rackResult.createdItems[ri].guid
+          });
+        }
+        Logger.log('Tracked ' + rackResult.createdItems.length + ' rack(s) in context for rollback');
       }
 
       ui.alert('Success', 'Created ' + rackResult.createdItems.length + ' rack item(s) in Arena.', ui.ButtonSet.OK);
@@ -1987,6 +2335,16 @@ function pushPODStructureToArena() {
       return; // Cancelled or error
     }
 
+    // Track created rows for rollback support
+    for (var rowIdx = 0; rowIdx < rowItems.length; rowIdx++) {
+      context.createdItems.push({
+        type: 'Row',
+        itemNumber: rowItems[rowIdx].itemNumber,
+        guid: rowItems[rowIdx].guid
+      });
+    }
+    Logger.log('Tracked ' + rowItems.length + ' row(s) in context for rollback');
+
     // Step 8: Prompt for POD item category
     var podCategorySelection = showCategorySelector(
       'Category for POD Item',
@@ -2010,6 +2368,14 @@ function pushPODStructureToArena() {
       return; // Cancelled or error
     }
 
+    // Track created POD for rollback support (though at this point, success is almost certain)
+    context.createdItems.push({
+      type: 'POD',
+      itemNumber: podItem.itemNumber,
+      guid: podItem.guid
+    });
+    Logger.log('Tracked POD in context for rollback');
+
     // Step 10: Update overview sheet with POD/Row info
     updateOverviewWithPODInfo(overviewSheet, podItem, rowItems);
 
@@ -2022,8 +2388,43 @@ function pushPODStructureToArena() {
     ui.alert('Success', successMsg, ui.ButtonSet.OK);
 
   } catch (error) {
-    Logger.log('Error in pushPODStructureToArena: ' + error.message);
-    ui.alert('Error', 'Failed to create POD structure: ' + error.message, ui.ButtonSet.OK);
+    Logger.log('ERROR in pushPODStructureToArena: ' + error.message);
+    Logger.log('Stack trace: ' + error.stack);
+
+    // Attempt rollback if any items were created
+    var rollbackMsg = '';
+    if (context.createdItems.length > 0 && client) {
+      Logger.log('Attempting rollback of ' + context.createdItems.length + ' created item(s)...');
+
+      var rollbackChoice = ui.alert(
+        'Error - Rollback?',
+        'Failed to create POD structure: ' + error.message + '\n\n' +
+        'Created items so far: ' + context.createdItems.length + '\n\n' +
+        'Would you like to rollback (delete) the items that were created?\n\n' +
+        'YES = Delete created items\n' +
+        'NO = Keep items in Arena (you can continue manually)',
+        ui.ButtonSet.YES_NO
+      );
+
+      if (rollbackChoice === ui.Button.YES) {
+        ui.alert('Rolling Back', 'Deleting created items from Arena...', ui.ButtonSet.OK);
+
+        var rollbackResult = attemptRollback(context, client);
+
+        if (rollbackResult.success) {
+          rollbackMsg = '\n\n✓ Rollback successful. Deleted ' + rollbackResult.deletedCount + ' item(s) from Arena.';
+        } else {
+          rollbackMsg = '\n\n⚠ Rollback partially failed.\n' +
+                       'Deleted: ' + rollbackResult.deletedCount + ' item(s)\n' +
+                       'Errors: ' + rollbackResult.errors.length + '\n\n' +
+                       'Some items may still exist in Arena. Check View → Executions for details.';
+        }
+      } else {
+        rollbackMsg = '\n\nRollback skipped. ' + context.createdItems.length + ' item(s) remain in Arena.';
+      }
+    }
+
+    ui.alert('Error', 'Failed to create POD structure: ' + error.message + rollbackMsg, ui.ButtonSet.OK);
   }
 }
 
