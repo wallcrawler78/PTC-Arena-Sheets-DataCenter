@@ -1946,7 +1946,7 @@ function validatePreconditions(overviewSheet, customRacks) {
   Logger.log('1. Validating Arena connection...');
   try {
     client = new ArenaAPIClient();
-    var testEndpoint = client.makeRequest('/settings/workspace', { method: 'GET' });
+    var testEndpoint = client.makeRequest('/settings/items/attributes', { method: 'GET' });
     if (!testEndpoint) {
       errors.push('Arena connection test failed - no response from API');
     } else {
