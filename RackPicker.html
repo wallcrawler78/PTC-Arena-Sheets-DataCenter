@@ -403,8 +403,13 @@
 <body>
   <div class="sidebar">
     <div class="header">
-      <h2>Rack Picker</h2>
-      <p>Select rack configurations to place in overview</p>
+      <div style="display: flex; justify-content: space-between; align-items: flex-start;">
+        <div>
+          <h2 style="margin: 0;">Rack Picker</h2>
+          <p style="margin: 4px 0 0 0;">Select rack configurations to place in overview</p>
+        </div>
+        <span class="help-icon" onclick="showContextualHelp()" title="Click for help" style="margin-top: 4px;">?</span>
+      </div>
     </div>
 
     <div class="tab-nav">
@@ -418,7 +423,6 @@
       <div class="content">
         <div class="tab-header">
           🗄️ Existing Rack Configurations
-          <span class="help-icon" onclick="showRacksHelp()" title="Click for help">?</span>
         </div>
 
         <div class="search-box">
@@ -446,7 +450,6 @@
       <div class="content">
         <div class="tab-header">
           🌐 Browse All Arena Items
-          <span class="help-icon" onclick="showArenaHelp()" title="Click for help">?</span>
         </div>
 
         <div class="search-box">
@@ -701,6 +704,17 @@
       }, 2000);
     }
 
+    function showContextualHelp() {
+      // Determine which tab is active and show appropriate help
+      if (document.getElementById('racksTab').classList.contains('active')) {
+        showRacksHelp();
+      } else if (document.getElementById('arenaTab').classList.contains('active')) {
+        showArenaHelp();
+      } else if (document.getElementById('quantitiesTab').classList.contains('active')) {
+        showQuantitiesHelp();
+      }
+    }
+
     function showRacksHelp() {
       alert(
         '🗄️ RACKS TAB HELP\n\n' +
@@ -735,6 +749,24 @@
         '• Pulls BOM from Arena\n' +
         '• Places rack in overview\n' +
         '• Adds to "Racks" tab list automatically'
+      );
+    }
+
+    function showQuantitiesHelp() {
+      alert(
+        '📊 QUANTITIES TAB HELP\n\n' +
+        'WHAT IT SHOWS:\n' +
+        '• How many times each rack appears\n' +
+        '• Count from different scopes\n\n' +
+        'SCOPES:\n' +
+        '• Current Sheet: Count in active sheet only\n' +
+        '• Overview Only: Count in overview layouts\n' +
+        '• All Racks: Count in all rack config tabs\n' +
+        '• All Sheets: Count across entire spreadsheet\n\n' +
+        'USE CASES:\n' +
+        '• Track rack usage across data center\n' +
+        '• Find duplicate rack placements\n' +
+        '• Inventory management'
       );
     }
 
