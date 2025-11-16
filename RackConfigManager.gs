@@ -271,12 +271,23 @@ function findRackConfigTab(itemNumber) {
 
   var rackConfigs = getAllRackConfigTabs();
 
+  // Normalize search term: trim whitespace and convert to uppercase for case-insensitive matching
+  var normalizedSearch = itemNumber.toString().trim().toUpperCase();
+
+  Logger.log('findRackConfigTab: Searching for "' + itemNumber + '" (normalized: "' + normalizedSearch + '")');
+
   for (var i = 0; i < rackConfigs.length; i++) {
-    if (rackConfigs[i].itemNumber === itemNumber) {
+    var configItemNumber = rackConfigs[i].itemNumber ? rackConfigs[i].itemNumber.toString().trim().toUpperCase() : '';
+
+    Logger.log('  Comparing with rack config: "' + rackConfigs[i].itemNumber + '" (normalized: "' + configItemNumber + '")');
+
+    if (configItemNumber === normalizedSearch) {
+      Logger.log('  ✓ MATCH FOUND: ' + rackConfigs[i].sheetName);
       return rackConfigs[i].sheet;
     }
   }
 
+  Logger.log('  ✗ No matching rack config found for "' + itemNumber + '"');
   return null;
 }
 

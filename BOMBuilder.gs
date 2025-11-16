@@ -1133,70 +1133,91 @@ function identifyCustomRacks(rackItemNumbers) {
       // Find the rack config tab
       var rackSheet = findRackConfigTab(itemNumber);
       if (!rackSheet) {
-        Logger.log('No rack config found for: ' + itemNumber);
+        Logger.log('⚠ No rack config found for: ' + itemNumber + ' - cannot create without config sheet');
         return;
       }
 
       var metadata = getRackConfigMetadata(rackSheet);
 
-      // First, check if the rack config already has BOM data (children)
-      // If it does, it was pulled from Arena or manually populated, so skip it
-      var children = getRackConfigChildren(rackSheet);
-      if (children && children.length > 0) {
-        Logger.log('Rack ' + itemNumber + ' has ' + children.length + ' children in config, skipping (already populated)');
-        return; // Skip this rack - it's already set up
-      }
-
-      // No children in config - check if item exists in Arena
+      // CRITICAL: Check Arena FIRST to determine if this is a placeholder
+      // A rack can have children locally (BOM populated) but not exist in Arena yet
+      Logger.log('Checking if rack ' + itemNumber + ' exists in Arena...');
       var arenaItem = client.getItemByNumber(itemNumber);
 
       if (!arenaItem) {
-        // Item doesn't exist in Arena - it's a custom rack placeholder
-        Logger.log('Custom rack identified (not in Arena): ' + itemNumber);
-        customRacks.push({
-          itemNumber: itemNumber,
-          metadata: metadata,
-          sheet: rackSheet,
-          reason: 'not_in_arena'
-        });
+        // Item doesn't exist in Arena - it's a placeholder rack that needs creation
+        var children = getRackConfigChildren(rackSheet);
+
+        if (children && children.length > 0) {
+          Logger.log('✓ Custom rack identified (placeholder with BOM): ' + itemNumber + ' (' + children.length + ' children)');
+          customRacks.push({
+            itemNumber: itemNumber,
+            metadata: metadata,
+            sheet: rackSheet,
+            children: children,
+            reason: 'placeholder_with_bom'
+          });
+        } else {
+          Logger.log('✓ Custom rack identified (placeholder without BOM): ' + itemNumber);
+          customRacks.push({
+            itemNumber: itemNumber,
+            metadata: metadata,
+            sheet: rackSheet,
+            children: [],
+            reason: 'placeholder_no_bom'
+          });
+        }
         return;
       }
 
-      // Item exists - check if it has a BOM in Arena
+      // Item exists in Arena - check if it needs BOM update
+      Logger.log('Rack ' + itemNumber + ' found in Arena');
       var itemGuid = arenaItem.guid || arenaItem.Guid;
       var bomData = client.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
       var bomLines = bomData.results || bomData.Results || [];
 
-      if (bomLines.length === 0) {
-        // Item exists but has no BOM - it's a custom rack that needs BOM
-        Logger.log('Custom rack identified (no BOM in Arena): ' + itemNumber);
+      // Get local BOM
+      var children = getRackConfigChildren(rackSheet);
+
+      if (bomLines.length === 0 && children && children.length > 0) {
+        // Item exists but has no BOM in Arena, but has BOM locally - needs BOM sync
+        Logger.log('✓ Rack ' + itemNumber + ' exists in Arena but missing BOM (' + children.length + ' children to sync)');
         customRacks.push({
           itemNumber: itemNumber,
           metadata: metadata,
           sheet: rackSheet,
           arenaItem: arenaItem,
-          reason: 'no_bom'
+          children: children,
+          reason: 'needs_bom_sync'
         });
+      } else if (bomLines.length > 0 && (!children || children.length === 0)) {
+        // Arena has BOM but local config is empty - suggest pull
+        Logger.log('ℹ Rack ' + itemNumber + ' exists in Arena with BOM, but local config is empty - consider pulling BOM from Arena');
       } else {
-        // Item exists with BOM in Arena, but config is empty - needs to be pulled
-        Logger.log('Rack ' + itemNumber + ' exists in Arena with BOM but local config is empty - should be pulled first');
+        // Both have BOMs or both are empty - assume synced
+        Logger.log('✓ Rack ' + itemNumber + ' appears synchronized (Arena BOM: ' + bomLines.length + ', Local: ' + (children ? children.length : 0) + ')');
       }
 
     } catch (error) {
-      Logger.log('Error checking rack ' + itemNumber + ': ' + error.message);
+      Logger.log('⚠ Error checking rack ' + itemNumber + ': ' + error.message);
 
-      // On error, check if rack config has children locally
-      // If it does, skip it (already populated). If not, we can't determine status
-      var rackSheet = findRackConfigTab(itemNumber);
-      if (rackSheet) {
-        var children = getRackConfigChildren(rackSheet);
-        if (children && children.length > 0) {
-          Logger.log('Error checking Arena, but rack ' + itemNumber + ' has local BOM data, skipping');
-          return; // Has local data, skip it
-        } else {
-          Logger.log('Error checking Arena and no local BOM data for ' + itemNumber + ' - cannot determine status, skipping to be safe');
-          // Don't add to customRacks if we can't determine status
+      // On error, check if it's a 404 (item not found) - treat as placeholder
+      if (error.message && error.message.indexOf('404') !== -1) {
+        Logger.log('✓ Rack ' + itemNumber + ' not found in Arena (404) - treating as placeholder');
+        var rackSheet = findRackConfigTab(itemNumber);
+        if (rackSheet) {
+          var children = getRackConfigChildren(rackSheet);
+          customRacks.push({
+            itemNumber: itemNumber,
+            metadata: getRackConfigMetadata(rackSheet),
+            sheet: rackSheet,
+            children: children || [],
+            reason: children && children.length > 0 ? 'placeholder_with_bom' : 'placeholder_no_bom'
+          });
         }
+      } else {
+        // Other errors - be conservative and skip
+        Logger.log('⚠ Cannot determine status for ' + itemNumber + ' - skipping to avoid errors');
       }
     }
   });
@@ -1222,7 +1243,7 @@ function createCustomRackItems(customRacks) {
     var rack = customRacks[i];
 
     // Check if Arena item exists but just needs BOM
-    if (rack.arenaItem && rack.reason === 'no_bom') {
+    if (rack.arenaItem && rack.reason === 'needs_bom_sync') {
       Logger.log('Rack exists in Arena, will add BOM: ' + rack.itemNumber);
 
       // Get rack children and push BOM
@@ -1635,7 +1656,7 @@ function createRowItems(rowData, rowCategory) {
       var positionConfig = getBOMPositionAttributeConfig();
 
       if (positionConfig) {
-        Logger.log('Position attribute configured: ' + positionConfig.name);
+        Logger.log('✓ Position tracking enabled - using attribute: ' + positionConfig.name);
 
         // Build rack-to-positions mapping
         var rackPositions = {}; // Map: rackNumber => [positionNames]
@@ -1662,12 +1683,12 @@ function createRowItems(rowData, rowCategory) {
             }
           ];
 
-          Logger.log('Position attribute for ' + rackNumber + ': ' + formattedPositions);
+          Logger.log('  ' + rackNumber + ' positions: ' + formattedPositions);
         }
 
         bomOptions.bomAttributes = bomAttributes;
       } else {
-        Logger.log('No position attribute configured - skipping position tracking');
+        Logger.log('✓ Position tracking DISABLED - skipping BOM position attributes');
       }
 
       syncBOMToArena(client, rowItemGuid, bomLines, bomOptions);
@@ -1958,11 +1979,11 @@ function validatePreconditions(overviewSheet, customRacks) {
   }
 
   // 3. Validate BOM position attribute (if configured)
-  Logger.log('3. Validating BOM Position attribute (optional)...');
   try {
     var positionConfig = getBOMPositionAttributeConfig();
     if (positionConfig) {
-      Logger.log('BOM Position attribute configured: ' + positionConfig.name);
+      Logger.log('3. Validating BOM Position attribute...');
+      Logger.log('   BOM Position attribute configured: ' + positionConfig.name);
 
       // Try to fetch the attribute to ensure it exists in Arena
       try {
@@ -1971,13 +1992,13 @@ function validatePreconditions(overviewSheet, customRacks) {
         for (var i = 0; i < bomAttrs.length; i++) {
           if (bomAttrs[i].guid === positionConfig.guid) {
             attrFound = true;
-            Logger.log('  Found BOM attribute: ' + bomAttrs[i].name + ' (GUID: ' + bomAttrs[i].guid + ')');
+            Logger.log('   ✓ Found BOM attribute: ' + bomAttrs[i].name + ' (GUID: ' + bomAttrs[i].guid + ')');
             break;
           }
         }
 
         if (!attrFound) {
-          Logger.log('⚠ BOM Position attribute not found - clearing invalid configuration');
+          Logger.log('   ⚠ BOM Position attribute not found - clearing invalid configuration');
           // Clear the invalid configuration so it won't be used during row creation
           clearBOMPositionAttribute();
 
@@ -1986,10 +2007,10 @@ function validatePreconditions(overviewSheet, customRacks) {
                        'Configuration has been cleared automatically. ' +
                        'Reconfigure using: Arena Data Center > Configuration > Rack BOM Location Setting');
         } else {
-          Logger.log('✓ BOM Position attribute "' + positionConfig.name + '" exists in Arena');
+          Logger.log('   ✓ BOM Position attribute "' + positionConfig.name + '" exists in Arena');
         }
       } catch (bomAttrError) {
-        Logger.log('⚠ Could not fetch BOM attributes - clearing invalid configuration');
+        Logger.log('   ⚠ Could not fetch BOM attributes - clearing invalid configuration');
         // If we can't fetch BOM attributes, clear the config to prevent errors during row creation
         clearBOMPositionAttribute();
 
@@ -1997,7 +2018,7 @@ function validatePreconditions(overviewSheet, customRacks) {
                      'Configuration has been cleared automatically. Position tracking will be disabled for this POD push.');
       }
     } else {
-      Logger.log('✓ BOM Position attribute not configured (optional feature)');
+      Logger.log('3. BOM Position attribute - DISABLED (position tracking will be skipped)');
     }
   } catch (bomConfigError) {
     warnings.push('Error checking BOM Position config: ' + bomConfigError.message);
