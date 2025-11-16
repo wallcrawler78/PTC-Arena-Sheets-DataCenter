@@ -1118,49 +1118,6 @@ function readBOMFromSheet(sheet) {
   return bomLines;
 }
 
-/**
- * Validates that the "Row Location" custom attribute exists in Arena
- * @return {Object} Validation result with success status and attribute info
- */
-function validateRowLocationAttribute() {
-  try {
-    var attributes = getArenaAttributes();
-    var rowLocationAttr = null;
-
-    // Look for "Row Location" attribute (case-insensitive)
-    for (var i = 0; i < attributes.length; i++) {
-      var attr = attributes[i];
-      var name = (attr.name || '').toLowerCase();
-      var apiName = (attr.apiName || '').toLowerCase();
-
-      if (name === 'row location' || apiName === 'row location' || apiName === 'rowlocation') {
-        rowLocationAttr = attr;
-        break;
-      }
-    }
-
-    if (!rowLocationAttr) {
-      return {
-        success: false,
-        message: 'Row Location custom attribute not found in Arena.\n\n' +
-                 'Please create a custom attribute named "Row Location" ' +
-                 '(type: SINGLE_LINE_TEXT) in Arena before using this feature.'
-      };
-    }
-
-    return {
-      success: true,
-      attribute: rowLocationAttr
-    };
-
-  } catch (error) {
-    Logger.log('Error validating Row Location attribute: ' + error.message);
-    return {
-      success: false,
-      message: 'Error checking Arena attributes: ' + error.message
-    };
-  }
-}
 
 /**
  * Identifies custom racks that need Arena items created
@@ -1531,13 +1488,12 @@ function scanOverviewByRow(sheet) {
 }
 
 /**
- * Creates Row items in Arena with Row Location attribute
+ * Creates Row items in Arena with BOM position tracking
  * @param {Array} rowData - Array of row objects from scanOverviewByRow
- * @param {Object} rowLocationAttr - Row Location attribute metadata
  * @param {string} rowCategory - Category to use for Row items
  * @return {Array} Array of created row items with metadata
  */
-function createRowItems(rowData, rowLocationAttr, rowCategory) {
+function createRowItems(rowData, rowCategory) {
   var ui = SpreadsheetApp.getUi();
   var client = new ArenaAPIClient();
   var rowItems = [];
@@ -1571,7 +1527,7 @@ function createRowItems(rowData, rowLocationAttr, rowCategory) {
       rowName = 'Row ' + row.rowNumber;
     }
 
-    // Build Row Location value (comma-separated position names)
+    // Build position names for item description (comma-separated)
     var positionNames = row.positions.map(function(pos) {
       return pos.positionName;
     }).join(', ');
@@ -1642,15 +1598,8 @@ function createRowItems(rowData, rowLocationAttr, rowCategory) {
         Logger.log('✓ Item number set to: ' + rowItemNumber);
       }
 
-      // Try to set Row Location attribute (may not be configured for this category)
-      try {
-        client.setItemAttribute(rowItemGuid, rowLocationAttr.guid, positionNames);
-        Logger.log('✓ Set Row Location attribute: ' + positionNames);
-      } catch (attrError) {
-        Logger.log('⚠ Warning: Could not set Row Location attribute: ' + attrError.message);
-        Logger.log('  This attribute may not be configured for the ROW category');
-        // Continue anyway - attribute is optional
-      }
+      // Position tracking is now handled via BOM attributes (see Rack BOM Location Setting)
+      // Each rack on the BOM will have its positions tagged via the configured BOM attribute
 
       // Create BOM for row (add each rack with its quantity)
       // First, look up GUIDs for each rack from Arena
@@ -2008,21 +1957,8 @@ function validatePreconditions(overviewSheet, customRacks) {
     errors.push('Error validating overview sheet: ' + sheetError.message);
   }
 
-  // 3. Validate Row Location attribute exists
-  Logger.log('3. Validating Row Location attribute...');
-  try {
-    var rowLocValidation = validateRowLocationAttribute();
-    if (!rowLocValidation.success) {
-      errors.push('Row Location attribute validation failed: ' + rowLocValidation.message);
-    } else {
-      Logger.log('✓ Row Location attribute found: ' + rowLocValidation.attribute.guid);
-    }
-  } catch (attrError) {
-    errors.push('Error validating Row Location attribute: ' + attrError.message);
-  }
-
-  // 4. Validate BOM position attribute (if configured)
-  Logger.log('4. Validating BOM Position attribute (optional)...');
+  // 3. Validate BOM position attribute (if configured)
+  Logger.log('3. Validating BOM Position attribute (optional)...');
   try {
     var positionConfig = getBOMPositionAttributeConfig();
     if (positionConfig) {
@@ -2189,19 +2125,7 @@ function pushPODStructureToArena() {
       return;
     }
 
-    // Step 1: Validate Row Location attribute exists
-    ui.alert('Validation', 'Validating Arena configuration...', ui.ButtonSet.OK);
-    var validation = validateRowLocationAttribute();
-
-    if (!validation.success) {
-      ui.alert('Validation Failed', validation.message, ui.ButtonSet.OK);
-      return;
-    }
-
-    var rowLocationAttr = validation.attribute;
-    Logger.log('Row Location attribute found: ' + rowLocationAttr.guid);
-
-    // Step 2: Scan overview for racks
+    // Step 1: Scan overview for racks
     var overviewData = scanOverviewByRow(overviewSheet);
 
     if (overviewData.length === 0) {
@@ -2341,7 +2265,7 @@ function pushPODStructureToArena() {
     Logger.log('Selected Row category: ' + rowCategoryName + ' (GUID: ' + rowCategoryGuid + ')');
 
     // Step 7: Create Row items
-    var rowItems = createRowItems(overviewData, rowLocationAttr, rowCategoryGuid);
+    var rowItems = createRowItems(overviewData, rowCategoryGuid);
 
     if (!rowItems) {
       return; // Cancelled or error

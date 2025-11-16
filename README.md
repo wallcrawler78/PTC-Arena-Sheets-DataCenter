@@ -8,7 +8,7 @@ Arena Data Center helps you:
 - **Design rack configurations** with components from Arena
 - **Create visual data center layouts** with rack placements in an overview grid
 - **Generate consolidated BOMs** that aggregate materials across all racks
-- **Push complete POD/Row/Rack hierarchies to Arena** with proper BOM structures and Row Location tracking
+- **Push complete POD/Row/Rack hierarchies to Arena** with proper BOM structures and position tracking
 
 ## Quick Start
 
@@ -50,10 +50,11 @@ Arena Data Center helps you:
 ### POD Structure Publishing
 - Creates hierarchical structure in Arena:
   - **POD** (top-level assembly)
-  - **Rows** (with Row Location attribute: "Pos 1, Pos 3, Pos 5")
-  - **Racks** (with full component BOMs)
+  - **Rows** (with BOMs containing racks)
+  - **Racks** (with full component BOMs and position tracking via configurable BOM attributes)
 - Automatically handles custom rack creation
 - Updates overview sheet with Arena links
+- Configurable position attribute tagging (see "Rack BOM Location Setting")
 
 ### Configuration
 - **Category Colors**: Visual coding for component categories
@@ -158,13 +159,19 @@ git push
 
 ## Arena Setup Requirements
 
-Before using POD structure features, create a custom attribute in Arena:
+Before using POD structure features with position tracking:
 
-1. In Arena: Settings → Item Attributes
-2. Create attribute:
-   - **Name**: `Row Location`
-   - **Type**: `SINGLE_LINE_TEXT`
-3. This stores position information (e.g., "Pos 1, Pos 3, Pos 5")
+1. In Arena: Create a **BOM-level** custom attribute (not an Item attribute)
+   - Go to Workspaces → Items → Custom BOMs
+   - Create or edit a Custom BOM view for your category
+   - Add a new BOM attribute:
+     - **Type**: `SINGLE_LINE_TEXT` or `MULTI_LINE_TEXT`
+     - **Name**: Your choice (e.g., "Rack Location", "Position")
+2. In Google Sheets: Configure the BOM position attribute
+   - Menu: **Arena Data Center → Configuration → Rack BOM Location Setting**
+   - Select your BOM attribute from the dropdown
+   - Save configuration
+3. Position information will be automatically tagged on BOM lines (e.g., "Pos 1, Pos 3, Pos 5")
 
 ## Use Cases
 
