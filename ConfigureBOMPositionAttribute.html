@@ -343,9 +343,9 @@
       google.script.run
         .withSuccessHandler(function(result) {
           if (config.guid) {
-            showMessage('Position attribute configured: ' + config.name, 'success');
+            showMessage('Position attribute configured: ' + config.name, 'success', false);
           } else {
-            showMessage('Position tracking disabled', 'success');
+            showMessage('Position tracking disabled', 'success', false);
           }
 
           setTimeout(function() {
@@ -353,16 +353,17 @@
           }, 1500);
         })
         .withFailureHandler(function(error) {
-          showMessage('Error saving configuration: ' + error.message, 'error');
+          showMessage('Error saving configuration: ' + error.message, 'error', false);
         })
         .saveBOMPositionAttribute(config);
     }
 
     function validateConfiguration() {
       var select = document.getElementById('attributeSelect');
+      var validateBtn = document.querySelector('button[onclick="validateConfiguration()"]');
 
       if (!select.value) {
-        showMessage('Please select a BOM attribute first', 'error');
+        showMessage('Please select a BOM attribute first', 'error', false);
         return;
       }
 
@@ -371,18 +372,37 @@
         name: select.options[select.selectedIndex].dataset.name
       };
 
-      showMessage('Validating configuration...', 'success');
+      // Disable button and show loading state
+      if (validateBtn) {
+        validateBtn.disabled = true;
+        validateBtn.textContent = 'Validating...';
+      }
+
+      // Show persistent loading message (no auto-hide)
+      showMessage('🔄 Validating configuration with Arena API...', 'success', true);
 
       google.script.run
         .withSuccessHandler(function(result) {
+          // Re-enable button
+          if (validateBtn) {
+            validateBtn.disabled = false;
+            validateBtn.textContent = 'Validate Config';
+          }
+
           if (result.success) {
-            showMessage('✓ Configuration is valid! Attribute "' + config.name + '" can be used on BOM lines.', 'success');
+            showMessage('✓ Configuration is valid! Attribute "' + config.name + '" can be used on BOM lines.', 'success', false);
           } else {
-            showMessage('✗ Validation failed: ' + result.message, 'error');
+            showMessage('✗ Validation failed: ' + result.message, 'error', false);
           }
         })
         .withFailureHandler(function(error) {
-          showMessage('✗ Validation error: ' + error.message, 'error');
+          // Re-enable button
+          if (validateBtn) {
+            validateBtn.disabled = false;
+            validateBtn.textContent = 'Validate Config';
+          }
+
+          showMessage('✗ Validation error: ' + error.message, 'error', false);
         })
         .validateBOMAttributeConfig(config);
     }
@@ -397,18 +417,30 @@
       formatInput.value = 'Pos {n}';
       updateExample();
 
-      showMessage('Configuration cleared. Click Save to apply.', 'success');
+      showMessage('Configuration cleared. Click Save to apply.', 'success', false);
     }
 
-    function showMessage(text, type) {
+    var messageTimeout = null; // Track the auto-hide timeout
+
+    function showMessage(text, type, persistent) {
       var messageDiv = document.getElementById('message');
       messageDiv.textContent = text;
       messageDiv.className = 'message ' + type;
       messageDiv.classList.remove('hidden');
 
-      setTimeout(function() {
-        messageDiv.classList.add('hidden');
-      }, 5000);
+      // Clear any existing timeout
+      if (messageTimeout) {
+        clearTimeout(messageTimeout);
+        messageTimeout = null;
+      }
+
+      // Only auto-hide if not persistent
+      if (!persistent) {
+        messageTimeout = setTimeout(function() {
+          messageDiv.classList.add('hidden');
+          messageTimeout = null;
+        }, 5000);
+      }
     }
   </script>
 </body>
