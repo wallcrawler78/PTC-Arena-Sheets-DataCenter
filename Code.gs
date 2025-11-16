@@ -997,36 +997,69 @@ function insertItemIntoRackConfig(sheet, row, item) {
   Logger.log('=== INSERT ITEM INTO RACK CONFIG ===');
   Logger.log('Sheet: ' + sheet.getName());
   Logger.log('Row: ' + row);
-  Logger.log('Item object: ' + JSON.stringify(item));
-  Logger.log('Item number: ' + item.number);
-  Logger.log('Item name: ' + item.name);
-  Logger.log('Item description: ' + item.description);
-  Logger.log('Item categoryName: ' + item.categoryName);
-  Logger.log('Item lifecyclePhase: ' + item.lifecyclePhase);
-  Logger.log('Item attributes: ' + (item.attributes ? item.attributes.length : 'none'));
+  Logger.log('Item object (from picker): ' + JSON.stringify(item));
+
+  // Fetch full item details from Arena to get description and complete data
+  // The /items list endpoint doesn't include descriptions, so we need to fetch individually
+  var fullItem = item;
+  if (item.guid) {
+    try {
+      Logger.log('Fetching full item details from Arena for GUID: ' + item.guid);
+      var arenaClient = new ArenaAPIClient();
+      var arenaItem = arenaClient.getItem(item.guid);
+
+      if (arenaItem) {
+        Logger.log('Full item fetched from Arena');
+
+        // Merge Arena data with picker data (Arena has full details)
+        fullItem = {
+          guid: item.guid,
+          number: item.number,
+          name: arenaItem.name || arenaItem.Name || item.name,
+          description: arenaItem.description || arenaItem.Description || '',
+          categoryName: item.categoryName,
+          categoryGuid: item.categoryGuid,
+          lifecyclePhase: item.lifecyclePhase,
+          attributes: arenaItem.attributes || arenaItem.Attributes || item.attributes || []
+        };
+
+        Logger.log('Full item description: ' + fullItem.description);
+      }
+    } catch (fetchError) {
+      Logger.log('WARNING: Could not fetch full item details: ' + fetchError.message);
+      Logger.log('Continuing with basic item data from picker');
+    }
+  }
+
+  Logger.log('Item number: ' + fullItem.number);
+  Logger.log('Item name: ' + fullItem.name);
+  Logger.log('Item description: ' + fullItem.description);
+  Logger.log('Item categoryName: ' + fullItem.categoryName);
+  Logger.log('Item lifecyclePhase: ' + fullItem.lifecyclePhase);
+  Logger.log('Item attributes: ' + (fullItem.attributes ? fullItem.attributes.length : 'none'));
 
   // Column structure: Item Number | Name | Description | Category | Lifecycle | Qty | ...attributes
   var col = 1;
 
   // Item Number
   Logger.log('Setting item number in column ' + col);
-  sheet.getRange(row, col++).setValue(item.number);
+  sheet.getRange(row, col++).setValue(fullItem.number);
 
   // Name
   Logger.log('Setting name in column ' + col);
-  sheet.getRange(row, col++).setValue(item.name || '');
+  sheet.getRange(row, col++).setValue(fullItem.name || '');
 
   // Description
   Logger.log('Setting description in column ' + col);
-  sheet.getRange(row, col++).setValue(item.description || '');
+  sheet.getRange(row, col++).setValue(fullItem.description || '');
 
   // Category
   Logger.log('Setting category in column ' + col);
-  sheet.getRange(row, col++).setValue(item.categoryName || '');
+  sheet.getRange(row, col++).setValue(fullItem.categoryName || '');
 
   // Lifecycle
   Logger.log('Setting lifecycle in column ' + col);
-  sheet.getRange(row, col++).setValue(item.lifecyclePhase || '');
+  sheet.getRange(row, col++).setValue(fullItem.lifecyclePhase || '');
 
   // Qty (default to 1)
   Logger.log('Setting quantity in column ' + col);
@@ -1036,7 +1069,7 @@ function insertItemIntoRackConfig(sheet, row, item) {
   var columns = getItemColumns();
   Logger.log('Populating ' + columns.length + ' attribute columns');
   columns.forEach(function(column) {
-    var value = getAttributeValue(item, column.attributeGuid);
+    var value = getAttributeValue(fullItem, column.attributeGuid);
     if (value) {
       Logger.log('Setting attribute "' + column.header + '" in column ' + col);
       sheet.getRange(row, col).setValue(value);
@@ -1045,7 +1078,7 @@ function insertItemIntoRackConfig(sheet, row, item) {
   });
 
   // Apply category color to entire row
-  var categoryColor = getCategoryColor(item.categoryName);
+  var categoryColor = getCategoryColor(fullItem.categoryName);
   if (categoryColor) {
     Logger.log('Applying category color: ' + categoryColor);
     var lastCol = sheet.getLastColumn();
