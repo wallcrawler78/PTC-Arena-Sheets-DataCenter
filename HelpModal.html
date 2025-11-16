@@ -316,6 +316,40 @@
       <div class="menu-path">Arena Data Center → Configuration → Configure Item Columns</div>
       <p>Customize what information you see for each component.</p>
 
+      <h3>Configure BOM Position Attribute (NEW!)</h3>
+      <p>Enable automatic position tracking for racks in Row BOMs - similar to reference designators for electrical components.</p>
+      <div class="menu-path">Arena Data Center → Configuration → Configure BOM Position Attribute</div>
+
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Create BOM attribute in Arena first</strong>
+        <ul>
+          <li>In Arena, go to Settings → BOM Attributes (or Item Attributes)</li>
+          <li>Create a new attribute (e.g., "Rack Positions")</li>
+          <li>Type: <code>SINGLE_LINE_TEXT</code></li>
+          <li>Apply to categories that will have BOMs (e.g., Row categories)</li>
+        </ul>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Configure in the spreadsheet</strong>
+        <ul>
+          <li>Open the BOM Position Attribute configuration dialog</li>
+          <li>Select your Arena BOM attribute from the dropdown</li>
+          <li>Optionally adjust the position format (default: "Pos {n}")</li>
+          <li>Click Save</li>
+        </ul>
+      </div>
+
+      <p><strong>What this does:</strong> When you push a POD structure, each rack on a Row's BOM will be automatically tagged with its specific positions.</p>
+
+      <p><strong>Example:</strong> If Rack-001 appears in Pos 1, Pos 3, and Pos 8, the BOM line will have the position attribute set to "Pos 1, Pos 3, Pos 8"</p>
+
+      <div class="tip-box">
+        <strong>Pro Tip:</strong> This feature is optional! To disable it, select "No position tracking (disabled)" in the configuration dialog.
+      </div>
+
       <div class="tip-box">
         <strong>Pro Tip:</strong> Start with category colors and rack colors first - they make the biggest visual impact!
       </div>
@@ -467,8 +501,13 @@
       <ul>
         <li><strong>Custom Rack Items:</strong> Created with full BOMs from your configurations</li>
         <li><strong>Row Items:</strong> Each with "Row Location" attribute (e.g., "Pos 1, Pos 3, Pos 5") and BOM showing all racks with correct quantities</li>
+        <li><strong>Rack Position Tracking (if configured):</strong> Each rack on a Row's BOM is tagged with its specific positions (e.g., "Pos 1, Pos 3, Pos 8")</li>
         <li><strong>POD Item:</strong> Top-level assembly containing all rows</li>
       </ul>
+
+      <div class="tip-box">
+        <strong>New Feature:</strong> Enable BOM Position Attribute tracking in Configuration to automatically tag racks with their position locations - just like reference designators!
+      </div>
 
       <div class="warning-box">
         <strong>Note:</strong> The system creates Arena items in the correct order:

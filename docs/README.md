@@ -49,6 +49,15 @@ Start here to get up and running:
    - Quick reference patterns
    - Top 10 most important lessons
 
+### Feature-Specific Documentation
+
+6. **[BOM-Position-Attribute-Feature.md](./BOM-Position-Attribute-Feature.md)**
+   - BOM-level position tracking for racks
+   - Configuration and setup instructions
+   - Technical implementation details
+   - Usage examples and data flow
+   - Testing recommendations
+
 ## Quick Start Guide
 
 ### I want to...
@@ -72,6 +81,9 @@ Start here to get up and running:
 **...understand why something is done a certain way**
 → Search [LESSONS_LEARNED.md](./LESSONS_LEARNED.md) for context
 
+**...configure BOM position tracking**
+→ See [BOM-Position-Attribute-Feature.md](./BOM-Position-Attribute-Feature.md) → "Usage Instructions"
+
 ## Documentation Standards
 
 Each documentation file follows this structure:
@@ -88,21 +100,23 @@ Each documentation file follows this structure:
 ```
 POD (Point of Delivery)
  ├─ Row 1 (with Row Location attribute)
- │   ├─ Rack A (quantity: 2)
- │   └─ Rack B (quantity: 1)
+ │   ├─ Rack A (quantity: 2) [with Position attribute if configured]
+ │   └─ Rack B (quantity: 1) [with Position attribute if configured]
  ├─ Row 2
- │   └─ Rack C (quantity: 3)
+ │   └─ Rack C (quantity: 3) [with Position attribute if configured]
  └─ ...
 ```
 
 ### File Organization
 ```
-Code.gs              - Main entry point, menu, events
-ArenaAPI.gs          - Arena API client
-BOMBuilder.gs        - BOM operations, POD structure
-RackConfigManager.gs - Rack management
-LayoutManager.gs     - Overview layouts
-CategoryManager.gs   - Categories, colors, BOM levels
+Code.gs                 - Main entry point, menu, events
+ArenaAPI.gs             - Arena API client
+Authorization.gs        - Arena authentication and session management
+BOMBuilder.gs           - BOM operations, POD structure
+BOMConfiguration.gs     - BOM attribute configuration (position tracking)
+RackConfigManager.gs    - Rack management
+LayoutManager.gs        - Overview layouts
+CategoryManager.gs      - Categories, colors, BOM levels
 ```
 
 ### Common Patterns
@@ -117,6 +131,15 @@ var data = response.results || response.Results || [];
 // Cache data
 var cache = CacheService.getUserCache();
 cache.put('key', JSON.stringify(data), 3600);
+
+// Get BOM position configuration
+var positionConfig = getBOMPositionAttributeConfig();
+if (positionConfig) {
+  // Position tracking is enabled
+  var bomAttributes = {};
+  bomAttributes[itemNumber] = {};
+  bomAttributes[itemNumber][positionConfig.guid] = "Pos 1, Pos 3";
+}
 ```
 
 ## Archive
@@ -138,6 +161,7 @@ When adding features or fixing bugs:
 2. **Add to LESSONS_LEARNED.md** - Share what you learned
 3. **Update code examples** - Keep them accurate
 4. **Add to Quick Reference** - If it's a common pattern
+5. **Create feature docs** - For substantial new features
 
 ### Documentation Checklist
 
@@ -148,7 +172,9 @@ When making changes:
 - [ ] Updated ARENA_API_GUIDE.md (if API usage changed)
 - [ ] Added to LESSONS_LEARNED.md (if you learned something)
 - [ ] Updated DEVELOPER_GUIDE.md (if setup/workflow changed)
+- [ ] Created feature documentation (for new features)
 - [ ] Updated code comments
+- [ ] Updated HelpModal.html (for user-facing changes)
 
 ## Getting Help
 
