@@ -1,0 +1,505 @@
+/**
+ * Status Manager
+ * Manages sync status indicators for rack configuration and overview sheets
+ */
+
+// ============================================================================
+// STATUS CONSTANTS
+// ============================================================================
+
+/**
+ * Status values for rack configuration sheets
+ */
+var RACK_STATUS = {
+  PLACEHOLDER: 'PLACEHOLDER',      // Created locally, not yet in Arena
+  SYNCED: 'SYNCED',               // Matches Arena exactly
+  LOCAL_MODIFIED: 'LOCAL_MODIFIED', // User edited after sync
+  ARENA_MODIFIED: 'ARENA_MODIFIED', // Arena changed externally
+  ERROR: 'ERROR'                   // Last sync failed
+};
+
+/**
+ * Status indicators (emoji with text fallback)
+ * Using Unicode colored circles
+ */
+var STATUS_INDICATORS = {
+  PLACEHOLDER: '\u{1F534}',      // 🔴 Red circle
+  SYNCED: '\u{1F7E2}',           // 🟢 Green circle
+  LOCAL_MODIFIED: '\u{1F7E0}',   // 🟠 Orange circle
+  ARENA_MODIFIED: '\u{1F7E1}',   // 🟡 Yellow circle
+  ERROR: '\u274C'                 // ❌ Cross mark
+};
+
+/**
+ * Text fallback indicators (if emojis don't work)
+ */
+var STATUS_TEXT_INDICATORS = {
+  PLACEHOLDER: '[NEW]',
+  SYNCED: '[OK]',
+  LOCAL_MODIFIED: '[EDIT]',
+  ARENA_MODIFIED: '[DIFF]',
+  ERROR: '[ERR]'
+};
+
+/**
+ * Metadata column constants for status tracking
+ * Extends existing RackConfigManager.gs metadata structure
+ */
+var META_STATUS_COL = 6;        // Column F - Sync status
+var META_ARENA_GUID_COL = 7;    // Column G - Arena item GUID
+var META_LAST_SYNC_COL = 8;     // Column H - Last sync timestamp
+var META_CHECKSUM_COL = 9;      // Column I - BOM checksum for change detection
+
+// ============================================================================
+// CORE STATUS MANAGEMENT FUNCTIONS
+// ============================================================================
+
+/**
+ * Updates the sync status of a rack configuration sheet
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @param {string} status - Status value from RACK_STATUS
+ * @param {string} arenaGuid - Arena item GUID (optional, null for PLACEHOLDER)
+ */
+function updateRackSheetStatus(sheet, status, arenaGuid) {
+  if (!sheet) {
+    Logger.log('updateRackSheetStatus: No sheet provided');
+    return;
+  }
+
+  // Verify it's a rack config sheet
+  if (!isRackConfigSheet(sheet)) {
+    Logger.log('updateRackSheetStatus: Not a rack config sheet: ' + sheet.getName());
+    return;
+  }
+
+  try {
+    // Update status
+    sheet.getRange(METADATA_ROW, META_STATUS_COL).setValue(status);
+
+    // Update Arena GUID if provided
+    if (arenaGuid) {
+      sheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).setValue(arenaGuid);
+    }
+
+    // Update timestamp
+    sheet.getRange(METADATA_ROW, META_LAST_SYNC_COL).setValue(new Date());
+
+    // Calculate and store checksum if status is SYNCED
+    if (status === RACK_STATUS.SYNCED) {
+      var checksum = calculateBOMChecksum(sheet);
+      sheet.getRange(METADATA_ROW, META_CHECKSUM_COL).setValue(checksum);
+    }
+
+    // Update tab name with status indicator
+    updateRackTabName(sheet);
+
+    Logger.log('✓ Updated rack status: ' + sheet.getName() + ' → ' + status);
+
+  } catch (error) {
+    Logger.log('Error updating rack status: ' + error.message);
+  }
+}
+
+/**
+ * Gets the current sync status of a rack configuration sheet
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @return {string|null} Status value or null if not found
+ */
+function getRackSheetStatus(sheet) {
+  if (!sheet) return null;
+
+  try {
+    var status = sheet.getRange(METADATA_ROW, META_STATUS_COL).getValue();
+    return status || null;
+  } catch (error) {
+    Logger.log('Error reading rack status: ' + error.message);
+    return null;
+  }
+}
+
+/**
+ * Updates the tab name of a rack sheet with status indicator
+ * Tries emoji first, falls back to text if emoji fails
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @return {boolean} True if successful
+ */
+function updateRackTabName(sheet) {
+  var metadata = getRackConfigMetadata(sheet);
+  if (!metadata) {
+    Logger.log('updateRackTabName: No metadata found for sheet');
+    return false;
+  }
+
+  var status = getRackSheetStatus(sheet);
+  if (!status) {
+    // No status set, use original name
+    return false;
+  }
+
+  var indicator = STATUS_INDICATORS[status] || '';
+  var baseName = 'Rack - ' + metadata.itemNumber + ' (' + metadata.itemName + ')';
+  var newName = indicator + ' ' + baseName;
+
+  // Google Sheets tab name limit: 100 characters
+  if (newName.length > 100) {
+    newName = newName.substring(0, 97) + '...';
+  }
+
+  try {
+    sheet.setName(newName);
+    return true;
+  } catch (e) {
+    // Emoji might not be supported, try text fallback
+    Logger.log('Emoji failed in tab name, using text indicator: ' + e.message);
+
+    var textIndicator = STATUS_TEXT_INDICATORS[status] || '[???]';
+    newName = textIndicator + ' ' + baseName;
+
+    if (newName.length > 100) {
+      newName = newName.substring(0, 97) + '...';
+    }
+
+    try {
+      sheet.setName(newName);
+      return true;
+    } catch (e2) {
+      Logger.log('Tab name update failed completely: ' + e2.message);
+      return false;
+    }
+  }
+}
+
+/**
+ * Calculates a checksum of the rack BOM data for change detection
+ * Uses simple concatenation of key BOM fields
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @return {string} Checksum string
+ */
+function calculateBOMChecksum(sheet) {
+  try {
+    var lastRow = sheet.getLastRow();
+    if (lastRow < DATA_START_ROW) {
+      return ''; // No BOM data
+    }
+
+    var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 6).getValues();
+
+    // Build checksum from item numbers and quantities
+    var checksumParts = [];
+    data.forEach(function(row) {
+      var itemNumber = row[0]; // Column A
+      var quantity = row[5];    // Column F (Qty)
+
+      if (itemNumber && itemNumber.toString().trim() !== '') {
+        // Format: "ITEM-NUMBER:QTY"
+        checksumParts.push(itemNumber + ':' + (quantity || 1));
+      }
+    });
+
+    return checksumParts.join('|');
+
+  } catch (error) {
+    Logger.log('Error calculating BOM checksum: ' + error.message);
+    return '';
+  }
+}
+
+/**
+ * Detects if the rack sheet has been modified locally since last sync
+ * Compares current BOM checksum with stored checksum
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @return {boolean} True if modified locally
+ */
+function detectLocalChanges(sheet) {
+  var currentChecksum = calculateBOMChecksum(sheet);
+  var storedChecksum = sheet.getRange(METADATA_ROW, META_CHECKSUM_COL).getValue();
+
+  if (!storedChecksum) {
+    return false; // No baseline to compare against
+  }
+
+  return currentChecksum !== storedChecksum;
+}
+
+// ============================================================================
+// OVERVIEW SHEET STATUS MANAGEMENT
+// ============================================================================
+
+/**
+ * Updates the sync status of an overview sheet
+ * @param {Sheet} sheet - Overview sheet
+ * @param {string} status - Status value
+ * @param {string} podGuid - POD item GUID (optional)
+ */
+function updateOverviewSheetStatus(sheet, status, podGuid) {
+  if (!sheet) return;
+
+  try {
+    // Check if metadata row exists (Row 1 might not be set up for overview)
+    var metaLabel = sheet.getRange(1, 1).getValue();
+    if (metaLabel !== 'OVERVIEW_METADATA') {
+      // Initialize overview metadata
+      sheet.getRange(1, 1).setValue('OVERVIEW_METADATA');
+      sheet.getRange(1, 1, 1, 10).setBackground('#f3f3f3').setFontWeight('bold');
+    }
+
+    // Store status in metadata
+    sheet.getRange(1, 6).setValue(status); // Column F
+    if (podGuid) {
+      sheet.getRange(1, 7).setValue(podGuid); // Column G
+    }
+    sheet.getRange(1, 8).setValue(new Date()); // Column H - timestamp
+
+    // Update tab name
+    updateOverviewTabName(sheet, status);
+
+    Logger.log('✓ Updated overview status: ' + sheet.getName() + ' → ' + status);
+
+  } catch (error) {
+    Logger.log('Error updating overview status: ' + error.message);
+  }
+}
+
+/**
+ * Gets the current status of an overview sheet
+ * @param {Sheet} sheet - Overview sheet
+ * @return {string|null} Status value or null
+ */
+function getOverviewSheetStatus(sheet) {
+  if (!sheet) return null;
+
+  try {
+    var metaLabel = sheet.getRange(1, 1).getValue();
+    if (metaLabel !== 'OVERVIEW_METADATA') {
+      return null; // Not initialized
+    }
+
+    return sheet.getRange(1, 6).getValue() || null;
+  } catch (error) {
+    return null;
+  }
+}
+
+/**
+ * Updates the tab name of an overview sheet with status indicator
+ * @param {Sheet} sheet - Overview sheet
+ * @param {string} status - Status value
+ */
+function updateOverviewTabName(sheet, status) {
+  var sheetName = sheet.getName();
+
+  // Remove existing indicator if present
+  var baseName = sheetName.replace(/^(\u{1F534}|\u{1F7E2}|\u{1F7E1}|\[NEW\]|\[OK\]|\[DIFF\])\s+/, '');
+
+  var indicator = STATUS_INDICATORS[status] || '';
+  var newName = indicator + ' ' + baseName;
+
+  if (newName.length > 100) {
+    newName = newName.substring(0, 97) + '...';
+  }
+
+  try {
+    sheet.setName(newName);
+  } catch (e) {
+    // Try text fallback
+    var textIndicator = STATUS_TEXT_INDICATORS[status] || '';
+    newName = textIndicator + ' ' + baseName;
+    try {
+      sheet.setName(newName);
+    } catch (e2) {
+      Logger.log('Failed to update overview tab name: ' + e2.message);
+    }
+  }
+}
+
+// ============================================================================
+// BATCH STATUS CHECKING
+// ============================================================================
+
+/**
+ * Checks the status of all rack configuration sheets against Arena
+ * Uses batch API calls with caching for performance
+ * @return {Object} Summary of status check results
+ */
+function checkAllRackStatuses() {
+  Logger.log('=== CHECK ALL RACK STATUSES START ===');
+
+  var client = new ArenaAPIClient();
+  var results = {
+    synced: 0,
+    outOfSync: 0,
+    localModified: 0,
+    placeholder: 0,
+    error: 0,
+    total: 0
+  };
+
+  try {
+    // Get all rack configuration sheets
+    var racks = getAllRackConfigTabs();
+    results.total = racks.length;
+
+    Logger.log('Found ' + racks.length + ' rack configuration sheets');
+
+    if (racks.length === 0) {
+      SpreadsheetApp.getUi().alert('No Racks Found', 'No rack configuration sheets found in this spreadsheet.', SpreadsheetApp.getUi().ButtonSet.OK);
+      return results;
+    }
+
+    // Build map of Arena GUIDs to check
+    var guidsToCheck = [];
+    var rackByGuid = {};
+
+    racks.forEach(function(rack) {
+      var status = getRackSheetStatus(rack.sheet);
+      if (status === RACK_STATUS.PLACEHOLDER) {
+        results.placeholder++;
+        return; // Skip placeholders
+      }
+
+      var arenaGuid = rack.sheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).getValue();
+      if (arenaGuid) {
+        guidsToCheck.push(arenaGuid);
+        rackByGuid[arenaGuid] = rack;
+      }
+    });
+
+    Logger.log('Checking ' + guidsToCheck.length + ' racks against Arena...');
+
+    // Check each rack against Arena
+    guidsToCheck.forEach(function(guid) {
+      var rack = rackByGuid[guid];
+
+      try {
+        // Fetch Arena BOM
+        var arenaBOM = client.makeRequest('/items/' + guid + '/bom', { method: 'GET' });
+        var arenaBOMLines = arenaBOM.results || arenaBOM.Results || [];
+
+        // Get current sheet BOM
+        var sheetBOM = getCurrentRackBOMData(rack.sheet);
+
+        // Compare
+        var changes = compareBOMs(sheetBOM, arenaBOMLines);
+        var hasChanges = changes.modified.length > 0 || changes.added.length > 0 || changes.removed.length > 0;
+
+        if (hasChanges) {
+          // Determine if local or Arena modified
+          if (detectLocalChanges(rack.sheet)) {
+            updateRackSheetStatus(rack.sheet, RACK_STATUS.LOCAL_MODIFIED, guid);
+            results.localModified++;
+          } else {
+            updateRackSheetStatus(rack.sheet, RACK_STATUS.ARENA_MODIFIED, guid);
+            results.outOfSync++;
+          }
+        } else {
+          updateRackSheetStatus(rack.sheet, RACK_STATUS.SYNCED, guid);
+          results.synced++;
+        }
+
+      } catch (error) {
+        Logger.log('Error checking rack ' + rack.itemNumber + ': ' + error.message);
+        updateRackSheetStatus(rack.sheet, RACK_STATUS.ERROR, guid);
+        results.error++;
+      }
+    });
+
+    // Show summary dialog
+    showStatusCheckSummary(results);
+
+  } catch (error) {
+    Logger.log('Error in checkAllRackStatuses: ' + error.message);
+    SpreadsheetApp.getUi().alert('Error', 'Failed to check rack statuses: ' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+
+  Logger.log('=== CHECK ALL RACK STATUSES COMPLETE ===');
+  return results;
+}
+
+/**
+ * Shows a summary dialog of status check results
+ * @param {Object} results - Results object from checkAllRackStatuses
+ */
+function showStatusCheckSummary(results) {
+  var ui = SpreadsheetApp.getUi();
+
+  var message = 'Status check complete for ' + results.total + ' rack sheets:\n\n';
+  message += '🟢 Synced: ' + results.synced + '\n';
+  message += '🟡 Arena Modified: ' + results.outOfSync + '\n';
+  message += '🟠 Locally Modified: ' + results.localModified + '\n';
+  message += '🔴 Placeholder: ' + results.placeholder + '\n';
+
+  if (results.error > 0) {
+    message += '❌ Errors: ' + results.error + '\n';
+  }
+
+  message += '\n';
+
+  if (results.outOfSync > 0) {
+    message += 'TIP: Use "Refresh BOM" on yellow racks to see Arena changes.';
+  }
+
+  if (results.localModified > 0) {
+    message += 'NOTE: Orange racks have local edits not yet pushed to Arena.';
+  }
+
+  ui.alert('Rack Status Check Results', message, ui.ButtonSet.OK);
+}
+
+// ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Gets current BOM data from a rack sheet in standardized format
+ * @param {Sheet} sheet - Rack configuration sheet
+ * @return {Array} Array of BOM line objects
+ */
+function getCurrentRackBOMData(sheet) {
+  var lastRow = sheet.getLastRow();
+  if (lastRow < DATA_START_ROW) {
+    return [];
+  }
+
+  var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 6).getValues();
+  var bomLines = [];
+
+  data.forEach(function(row) {
+    var itemNumber = row[0];
+    if (!itemNumber || itemNumber.toString().trim() === '') {
+      return; // Skip empty rows
+    }
+
+    bomLines.push({
+      itemNumber: itemNumber,
+      name: row[1] || '',
+      description: row[2] || '',
+      category: row[3] || '',
+      lifecycle: row[4] || '',
+      quantity: row[5] || 1
+    });
+  });
+
+  return bomLines;
+}
+
+/**
+ * Manually mark a rack as synced (user override)
+ * Useful if user knows status is incorrect
+ */
+function markCurrentRackAsSynced() {
+  var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+
+  if (!isRackConfigSheet(sheet)) {
+    SpreadsheetApp.getUi().alert('Error', 'Current sheet is not a rack configuration sheet.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  var arenaGuid = sheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).getValue();
+  if (!arenaGuid) {
+    SpreadsheetApp.getUi().alert('Error', 'This rack has no Arena GUID. Cannot mark as synced.', SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
+  updateRackSheetStatus(sheet, RACK_STATUS.SYNCED, arenaGuid);
+  SpreadsheetApp.getUi().alert('Success', 'Rack marked as synced with Arena.', SpreadsheetApp.getUi().ButtonSet.OK);
+}

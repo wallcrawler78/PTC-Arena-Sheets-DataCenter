@@ -37,6 +37,9 @@ function onOpen(e) {
       .addItem('Create Consolidated BOM', 'createConsolidatedBOMSheet')
       .addItem('Push POD Structure to Arena', 'pushPODStructureToArena')
       .addSeparator()
+      .addItem('Check All Rack Statuses', 'checkAllRackStatuses')
+      .addItem('Mark Current Rack as Synced', 'markCurrentRackAsSynced')
+      .addSeparator()
       .addItem('Repair POD/Row BOMs', 'repairPODAndRowBOMs'))
     .addSeparator()
     .addItem('Test Connection', 'testArenaConnection')
@@ -53,6 +56,48 @@ function onOpen(e) {
 function onSelectionChange(e) {
   // Auto-insertion disabled to prevent unwanted insertions
   // Users should use the "Insert Item in Selected Cell" button in the Item Picker sidebar
+}
+
+/**
+ * Simple trigger that runs whenever a cell is edited
+ * Detects local changes to rack BOMs and updates status to LOCAL_MODIFIED
+ */
+function onEdit(e) {
+  try {
+    // Only process if we have an event object
+    if (!e || !e.range) return;
+
+    var sheet = e.range.getSheet();
+    var editedRow = e.range.getRow();
+
+    // Only monitor rack config sheets
+    if (!isRackConfigSheet(sheet)) return;
+
+    // Only monitor BOM data rows (row 3+), not metadata or headers
+    if (editedRow < DATA_START_ROW) return;
+
+    // Check current status - only update if currently SYNCED
+    var currentStatus = getRackSheetStatus(sheet);
+    if (!currentStatus || currentStatus !== RACK_STATUS.SYNCED) {
+      return; // Already marked as modified or placeholder, no need to update
+    }
+
+    // Detect if BOM has changed from synced state
+    var hasLocalChanges = detectLocalChanges(sheet);
+
+    if (hasLocalChanges) {
+      // Get Arena GUID for status update
+      var arenaGuid = sheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).getValue();
+
+      // Update status to LOCAL_MODIFIED
+      Logger.log('Local edit detected in rack: ' + sheet.getName() + ' - updating status to LOCAL_MODIFIED');
+      updateRackSheetStatus(sheet, RACK_STATUS.LOCAL_MODIFIED, arenaGuid || null);
+    }
+
+  } catch (error) {
+    // Silent failure - don't interrupt user's editing experience
+    Logger.log('Error in onEdit trigger: ' + error.message);
+  }
 }
 
 /**
@@ -826,6 +871,10 @@ function refreshCurrentRackBOM() {
       // Update last refreshed timestamp
       updateLastRefreshedTimestamp(sheet);
 
+      // Update status to SYNCED - no differences with Arena
+      Logger.log('No changes detected - updating status to SYNCED');
+      updateRackSheetStatus(sheet, RACK_STATUS.SYNCED, arenaGuid);
+
       return {
         success: true,
         message: 'BOM is up to date! No changes detected.\n\nLast refreshed: ' + new Date().toLocaleString()
@@ -841,6 +890,10 @@ function refreshCurrentRackBOM() {
     );
 
     if (response !== ui.Button.YES) {
+      // User declined to apply changes - mark as out of sync
+      Logger.log('User declined to apply changes - updating status to ARENA_MODIFIED');
+      updateRackSheetStatus(sheet, RACK_STATUS.ARENA_MODIFIED, arenaGuid);
+
       return {
         success: false,
         message: 'Refresh cancelled by user. No changes were applied.'
@@ -852,6 +905,10 @@ function refreshCurrentRackBOM() {
 
     // Update last refreshed timestamp
     updateLastRefreshedTimestamp(sheet);
+
+    // Update status to SYNCED - changes applied, now matches Arena
+    Logger.log('Changes applied successfully - updating status to SYNCED');
+    updateRackSheetStatus(sheet, RACK_STATUS.SYNCED, arenaGuid);
 
     // Return success message
     var summary = (changes.modified.length + changes.added.length + changes.removed.length) + ' changes applied';
@@ -868,6 +925,18 @@ function refreshCurrentRackBOM() {
   } catch (error) {
     Logger.log('ERROR in refreshCurrentRackBOM: ' + error.message);
     Logger.log(error.stack);
+
+    // Update status to ERROR if sync failed
+    try {
+      var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+      if (isRackConfigSheet(sheet)) {
+        var arenaGuid = sheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).getValue();
+        updateRackSheetStatus(sheet, RACK_STATUS.ERROR, arenaGuid || null);
+      }
+    } catch (statusError) {
+      Logger.log('Failed to update error status: ' + statusError.message);
+    }
+
     return {
       success: false,
       message: 'Error refreshing BOM: ' + error.message
@@ -1619,5 +1688,9 @@ function pullBOMForRack(sheet, itemNumber, itemGuid) {
     }
 
     Logger.log('Populated ' + rowData.length + ' BOM lines into rack config');
+
+    // Update status to SYNCED now that BOM has been pulled from Arena
+    Logger.log('pullBOMForRack: Updating rack status to SYNCED with GUID: ' + itemGuid);
+    updateRackSheetStatus(sheet, RACK_STATUS.SYNCED, itemGuid);
   }
 }

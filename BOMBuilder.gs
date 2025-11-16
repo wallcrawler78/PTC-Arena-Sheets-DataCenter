@@ -1283,6 +1283,10 @@ function createCustomRackItems(customRacks) {
 
       syncBOMToArena(client, itemGuid, bomLines);
 
+      // Update rack status to SYNCED now that BOM has been synced to Arena
+      Logger.log('Updating rack status to SYNCED after BOM sync: ' + rack.itemNumber);
+      updateRackSheetStatus(rack.sheet, RACK_STATUS.SYNCED, itemGuid);
+
       createdItems.push({
         itemNumber: rack.itemNumber,
         guid: itemGuid,
@@ -1398,6 +1402,10 @@ function createCustomRackItems(customRacks) {
       rack.sheet.getRange(1, 2).setValue(rack.itemNumber);
       rack.sheet.getRange(1, 3).setValue(rackName);
       rack.sheet.getRange(1, 4).setValue(description);
+
+      // Update rack status to SYNCED now that it has been created in Arena with BOM
+      Logger.log('Updating rack status to SYNCED after creation: ' + rack.itemNumber + ' (GUID: ' + newItemGuid + ')');
+      updateRackSheetStatus(rack.sheet, RACK_STATUS.SYNCED, newItemGuid);
 
       createdItems.push({
         itemNumber: rack.itemNumber,

@@ -138,8 +138,15 @@ function createNewRackConfiguration() {
   newSheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).setValue(rackItemName);
   newSheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(rackItemDescription);
 
-  // Format metadata row
-  var metaRange = newSheet.getRange(METADATA_ROW, 1, 1, 4);
+  // Initialize status metadata (will be updated after BOM pull if from Arena)
+  // Status starts as PLACEHOLDER, will be updated to SYNCED if BOM pulled from Arena
+  newSheet.getRange(METADATA_ROW, META_STATUS_COL).setValue(RACK_STATUS.PLACEHOLDER);
+  newSheet.getRange(METADATA_ROW, META_ARENA_GUID_COL).setValue(''); // Will be set if from Arena
+  newSheet.getRange(METADATA_ROW, META_LAST_SYNC_COL).setValue(new Date());
+  newSheet.getRange(METADATA_ROW, META_CHECKSUM_COL).setValue(''); // Will be calculated after BOM data added
+
+  // Format metadata row (extended to include status columns)
+  var metaRange = newSheet.getRange(METADATA_ROW, 1, 1, 9); // Extended to column I
   metaRange.setBackground('#e8f0fe');
   metaRange.setFontWeight('bold');
   metaRange.setFontColor('#1967d2');
@@ -179,6 +186,9 @@ function createNewRackConfiguration() {
   var rackIndex = getAllRackConfigTabs().length;  // Get count including this new one
   var blueColor = getCascadingBlueColor(rackIndex - 1);  // Subtract 1 for zero-based index
   newSheet.setTabColor(blueColor);
+
+  // Step 10b: Update tab name with status indicator (red dot for placeholder)
+  updateRackTabName(newSheet);
 
   // Step 11: Activate the new sheet
   newSheet.activate();
