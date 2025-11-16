@@ -64,23 +64,36 @@ Arena Data Center > Configuration > Rack BOM Location Setting
 
 ```
 1. User configures BOM position attribute via menu
-   └─> Selects Arena BOM attribute (text type)
-   └─> Configuration stored in PropertiesService
+   └─> Selects Arena BOM attribute (text type from /settings/items/bom/attributes)
+   └─> Configuration stored in PropertiesService (GUID, name, format)
 
 2. User pushes POD structure to Arena
    └─> scanOverviewByRow() extracts rack positions from Overview sheet
+   └─> identifyCustomRacks() finds racks that need Arena items
+   └─> **CREATE custom rack items** (before validation and confirmation)
+       └─> Verify newly created racks are findable (with retry logic)
+   └─> Run pre-flight validation (now all racks exist)
+       └─> Validates BOM Position attribute exists using getBOMAttributes(client)
+       └─> Endpoint: /settings/items/bom/attributes (NOT /settings/items/attributes)
+   └─> Show POD confirmation dialog
    └─> createRowItems() processes each Row:
        ├─> Retrieves position config via getBOMPositionAttributeConfig()
        ├─> Builds rack-to-positions mapping:
        │   └─> {rackItemNumber: ["Pos 1", "Pos 3", "Pos 8"]}
-       ├─> Formats as BOM attributes:
-       │   └─> {rackItemNumber: {attrGuid: "Pos 1, Pos 3, Pos 8"}}
+       ├─> Formats as BOM attributes (ARRAY format):
+       │   └─> {rackItemNumber: [{guid: attrGuid, value: "Pos 1, Pos 3, Pos 8"}]}
        └─> Passes to syncBOMToArena() via options.bomAttributes
 
 3. syncBOMToArena() includes position data in BOM line payload
    └─> Arena API: POST /items/{rowGuid}/bom
-       └─> Payload includes additionalAttributes with position values
+       └─> Payload includes additionalAttributes array with position values
 ```
+
+**Key Workflow Changes (Latest):**
+- Custom racks are now created BEFORE validation and confirmation (automatic, not prompted)
+- Newly created racks are verified with retry logic to ensure they're findable
+- BOM attribute validation now uses correct endpoint for BOM attributes
+- All racks exist before attempting to create rows (prevents lookup failures)
 
 ## Usage Instructions
 
@@ -141,9 +154,14 @@ Row | Pos 1      | Pos 2       | Pos 3      | ... | Pos 8
 
 ## Technical Details
 
-### Arena API Payload Structure
+### Arena API Details
 
-When creating a BOM line with position attributes:
+**BOM Attributes Endpoint:**
+- `/settings/items/bom/attributes` - Fetches BOM-level attributes (NOT Item attributes)
+- Used by configuration dialog to populate attribute dropdown
+- Used by validation to verify configured attribute exists
+
+**BOM Line Payload with Position Attributes:**
 
 ```javascript
 {
@@ -153,11 +171,16 @@ When creating a BOM line with position attributes:
   "quantity": 2,
   "level": 0,
   "lineNumber": 1,
-  "additionalAttributes": {
-    "ATTR-GUID-HERE": "Pos 1, Pos 3"
-  }
+  "additionalAttributes": [
+    {
+      "guid": "ATTR-GUID-HERE",
+      "value": "Pos 1, Pos 3"
+    }
+  ]
 }
 ```
+
+**Important:** `additionalAttributes` must be an **array** of objects (not a plain object).
 
 ### Position Name Detection
 
@@ -191,14 +214,19 @@ This error occurs when the configured attribute is an **Item attribute** instead
 
 **Solution:**
 1. Open Arena Data Center > Configuration > Rack BOM Location Setting
-2. Clear the current configuration (if shown as invalid)
-3. Select a valid BOM-level attribute from the dropdown
+2. Click "Validate Config" button to check if attribute is valid
+3. If validation fails, select a valid BOM-level attribute from the dropdown
 4. Verify in Arena that the attribute appears in your Custom BOM views (not just item specs)
 
 **How to verify BOM vs Item attributes:**
 - **BOM attributes**: Appear in Arena under Items > Custom BOMs > Attribute column
 - **Item attributes**: Appear on item specs page (Name, Description, etc.)
 - **API difference**: Fetched from `/settings/items/bom/attributes` (BOM) vs `/settings/items/attributes` (Item)
+
+**Fixed in latest version:**
+- `getBOMAttributes()` now correctly uses `/settings/items/bom/attributes` endpoint
+- Configuration dialog only shows true BOM attributes
+- Validation provides clearer error messages with GUID for debugging
 
 ### Configuration shows warning about "Previously configured attribute not found"
 
@@ -227,12 +255,31 @@ If you don't have a suitable BOM attribute:
 **Symptoms:**
 - Error during Row creation: "Failed to add BOM line..."
 - Attribute-related error messages
+- "Rack item not found in Arena" even though rack was just created
 
 **Solutions:**
 1. Check that attribute is configured for the ROW category's Custom BOM view
 2. Verify attribute GUID matches between configuration and Arena
 3. Try clearing configuration and running POD push without position tracking
 4. Reconfigure with a known-good BOM attribute
+
+**Fixed in latest version:**
+- Custom racks are now created BEFORE rows (prevents "rack not found" errors)
+- Automatic verification with retry logic ensures newly created racks are findable
+- If verification fails, user is warned before proceeding to row creation
+
+### POD confirmation shows before custom racks are created
+
+**Old behavior (fixed):**
+- POD confirmation dialog appeared first
+- Custom racks created after user confirmed
+- Could fail during row creation if racks weren't immediately findable
+
+**New behavior:**
+- Custom racks detected and created automatically first
+- Verification step ensures racks are findable
+- POD confirmation only appears after all racks exist
+- No more "rack not found" errors during row creation
 
 ## Future Enhancements
 

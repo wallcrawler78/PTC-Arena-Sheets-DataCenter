@@ -89,12 +89,9 @@ function loadBOMPositionConfigData() {
  */
 function getBOMAttributes(client) {
   try {
-    // Arena API endpoint for BOM attributes
-    // Note: This might need adjustment based on actual Arena API structure
-    // For now, we'll use the item attributes endpoint as a placeholder
-
-    // Get attributes from workspace settings
-    var endpoint = '/settings/items/attributes';
+    // Arena API endpoint for BOM-level attributes
+    // BOM attributes are different from Item attributes - they appear on BOM lines
+    var endpoint = '/settings/items/bom/attributes';
     var response = client.makeRequest(endpoint);
 
     if (response && response.results) {

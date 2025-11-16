@@ -1966,19 +1966,22 @@ function validatePreconditions(overviewSheet, customRacks) {
 
       // Try to fetch the attribute to ensure it exists in Arena
       try {
-        var bomAttrs = getBOMAttributes();
+        var bomAttrs = getBOMAttributes(client);
         var attrFound = false;
         for (var i = 0; i < bomAttrs.length; i++) {
           if (bomAttrs[i].guid === positionConfig.guid) {
             attrFound = true;
+            Logger.log('  Found BOM attribute: ' + bomAttrs[i].name + ' (GUID: ' + bomAttrs[i].guid + ')');
             break;
           }
         }
 
         if (!attrFound) {
-          warnings.push('BOM Position attribute configured but not found in Arena: ' + positionConfig.name);
+          warnings.push('BOM Position attribute "' + positionConfig.name + '" (GUID: ' + positionConfig.guid + ') configured but not found in Arena BOM attributes. ' +
+                       'It may have been deleted or is an Item attribute (not a BOM attribute). ' +
+                       'Reconfigure using: Arena Data Center > Configuration > Rack BOM Location Setting');
         } else {
-          Logger.log('✓ BOM Position attribute exists in Arena');
+          Logger.log('✓ BOM Position attribute "' + positionConfig.name + '" exists in Arena');
         }
       } catch (bomAttrError) {
         warnings.push('Could not verify BOM Position attribute: ' + bomAttrError.message);
@@ -2145,13 +2148,101 @@ function pushPODStructureToArena() {
 
     Logger.log('Found ' + allRackNumbers.length + ' unique racks in overview');
 
-    // Step 3: Identify custom racks
+    // Step 2: Identify custom racks
+    Logger.log('Step 2: Identifying custom racks...');
     ui.alert('Checking Racks', 'Checking which racks need to be created in Arena...', ui.ButtonSet.OK);
     var customRacks = identifyCustomRacks(allRackNumbers);
 
-    // Step 3.5: PRE-FLIGHT VALIDATION - Check everything before creating items
-    Logger.log('Step 3.5: Running pre-flight validation...');
-    ui.alert('Validation', 'Running comprehensive pre-flight validation...\n\nThis will check:\n• Arena connection\n• Overview sheet structure\n• Required attributes\n• All child components exist', ui.ButtonSet.OK);
+    // Step 3: Create custom rack items FIRST (before validation)
+    // This ensures all racks exist before we try to create rows that reference them
+    if (customRacks.length > 0) {
+      Logger.log('Step 3: Creating ' + customRacks.length + ' custom rack item(s)...');
+      var msg = 'Found ' + customRacks.length + ' custom rack(s) that need Arena items:\n\n';
+      customRacks.forEach(function(rack) {
+        msg += '  - ' + rack.itemNumber + '\n';
+      });
+      msg += '\nThese will be created automatically before building the POD structure.';
+
+      ui.alert('Custom Racks Detected', msg, ui.ButtonSet.OK);
+
+      var rackResult = createCustomRackItems(customRacks);
+
+      if (!rackResult.success) {
+        ui.alert('Error', 'Failed to create custom racks: ' + rackResult.message, ui.ButtonSet.OK);
+        return;
+      }
+
+      // Track created racks for rollback support
+      if (rackResult.createdItems) {
+        for (var ri = 0; ri < rackResult.createdItems.length; ri++) {
+          context.createdItems.push({
+            type: 'Rack',
+            itemNumber: rackResult.createdItems[ri].itemNumber,
+            guid: rackResult.createdItems[ri].guid
+          });
+        }
+        Logger.log('Tracked ' + rackResult.createdItems.length + ' rack(s) in context for rollback');
+      }
+
+      ui.alert('Success', 'Created ' + rackResult.createdItems.length + ' rack item(s) in Arena.\n\nNow running validation...', ui.ButtonSet.OK);
+
+      // Step 3.5: Verify newly created racks are findable in Arena
+      Logger.log('Step 3.5: Verifying newly created racks are findable...');
+      var verificationErrors = [];
+
+      for (var vi = 0; vi < rackResult.createdItems.length; vi++) {
+        var createdRack = rackResult.createdItems[vi];
+        var maxRetries = 3;
+        var retryDelay = 1000; // 1 second
+        var found = false;
+
+        for (var attempt = 1; attempt <= maxRetries; attempt++) {
+          try {
+            Logger.log('  Verifying rack ' + createdRack.itemNumber + ' (attempt ' + attempt + '/' + maxRetries + ')');
+            var verifyItem = client.getItemByNumber(createdRack.itemNumber);
+
+            if (verifyItem && verifyItem.guid) {
+              Logger.log('  ✓ Rack ' + createdRack.itemNumber + ' verified (GUID: ' + verifyItem.guid + ')');
+              found = true;
+              break;
+            }
+          } catch (verifyError) {
+            Logger.log('  Attempt ' + attempt + ' failed: ' + verifyError.message);
+            if (attempt < maxRetries) {
+              Logger.log('  Waiting ' + retryDelay + 'ms before retry...');
+              Utilities.sleep(retryDelay);
+              retryDelay *= 2; // Exponential backoff
+            }
+          }
+        }
+
+        if (!found) {
+          verificationErrors.push('Rack ' + createdRack.itemNumber + ' was created but could not be verified in Arena');
+        }
+      }
+
+      if (verificationErrors.length > 0) {
+        var verifyMsg = 'WARNING: Some newly created racks could not be verified:\n\n';
+        verificationErrors.forEach(function(err) {
+          verifyMsg += '• ' + err + '\n';
+        });
+        verifyMsg += '\nThis may cause issues when creating rows. Continue anyway?';
+
+        var verifyResponse = ui.alert('Verification Warning', verifyMsg, ui.ButtonSet.YES_NO);
+        if (verifyResponse !== ui.Button.YES) {
+          ui.alert('Cancelled', 'POD creation cancelled.', ui.ButtonSet.OK);
+          return;
+        }
+      } else {
+        Logger.log('✓ All newly created racks verified successfully');
+      }
+    } else {
+      Logger.log('Step 3: No custom racks need to be created');
+    }
+
+    // Step 4: PRE-FLIGHT VALIDATION - Now that all racks exist, validate everything
+    Logger.log('Step 4: Running pre-flight validation...');
+    ui.alert('Validation', 'Running comprehensive pre-flight validation...\n\nThis will check:\n• Arena connection\n• Overview sheet structure\n• BOM Position attribute (if configured)\n• All child components exist', ui.ButtonSet.OK);
 
     var validation = validatePreconditions(overviewSheet, customRacks);
 
@@ -2186,43 +2277,6 @@ function pushPODStructureToArena() {
 
     Logger.log('✓ Pre-flight validation passed!');
     ui.alert('Validation Passed', 'All pre-flight checks passed!\n\nReady to create POD structure.', ui.ButtonSet.OK);
-
-    // Step 4: Create custom rack items (if any)
-    if (customRacks.length > 0) {
-      var msg = 'Found ' + customRacks.length + ' custom rack(s) that need Arena items:\n\n';
-      customRacks.forEach(function(rack) {
-        msg += '  - ' + rack.itemNumber + '\n';
-      });
-      msg += '\nWould you like to create these now?';
-
-      var response = ui.alert('Custom Racks Found', msg, ui.ButtonSet.YES_NO);
-
-      if (response === ui.Button.NO) {
-        ui.alert('Cancelled', 'POD creation cancelled. Please create rack items first.', ui.ButtonSet.OK);
-        return;
-      }
-
-      var rackResult = createCustomRackItems(customRacks);
-
-      if (!rackResult.success) {
-        ui.alert('Error', 'Failed to create custom racks: ' + rackResult.message, ui.ButtonSet.OK);
-        return;
-      }
-
-      // Track created racks for rollback support
-      if (rackResult.createdItems) {
-        for (var ri = 0; ri < rackResult.createdItems.length; ri++) {
-          context.createdItems.push({
-            type: 'Rack',
-            itemNumber: rackResult.createdItems[ri].itemNumber,
-            guid: rackResult.createdItems[ri].guid
-          });
-        }
-        Logger.log('Tracked ' + rackResult.createdItems.length + ' rack(s) in context for rollback');
-      }
-
-      ui.alert('Success', 'Created ' + rackResult.createdItems.length + ' rack item(s) in Arena.', ui.ButtonSet.OK);
-    }
 
     // Step 5: Show summary and confirm
     var summaryMsg = '========================================\n' +
