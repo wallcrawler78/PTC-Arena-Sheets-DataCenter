@@ -205,32 +205,34 @@
     }
 
     .item-badge {
-      font-size: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 16px;
+      height: 16px;
       cursor: default;
       user-select: none;
-      line-height: 1;
-      opacity: 0.9;
     }
 
-    .item-badge.eco-badge {
-      color: #ff9800;
-      filter: drop-shadow(0 1px 2px rgba(255, 152, 0, 0.3));
+    .badge-eco-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: #d32f2f;
+      box-shadow: 0 2px 4px rgba(211, 47, 47, 0.3);
     }
 
-    .item-badge.files-badge {
-      color: #1a73e8;
-      filter: drop-shadow(0 1px 2px rgba(26, 115, 232, 0.3));
-    }
-
-    .item-badge.arena-link {
+    .badge-link-icon {
       color: #5f6368;
+      font-size: 16px;
       cursor: pointer;
       transition: all 0.2s;
+      line-height: 1;
     }
 
-    .item-badge.arena-link:hover {
+    .badge-link-icon:hover {
       color: #1a73e8;
-      transform: scale(1.15);
+      transform: translateY(-1px);
     }
 
     .item-description {
@@ -839,39 +841,30 @@
         number.className = 'item-number';
         number.textContent = item.number || 'No Number';
 
-        // Badges container (ECO, Files, Arena link)
+        // Badges container (ECO red dot, Arena link)
         var badgesContainer = document.createElement('div');
         badgesContainer.className = 'item-badges';
 
-        // ECO badge (⚠️) if item has pending changes
+        // Red dot for pending changes
         if (item.hasPendingChanges) {
-          var ecoBadge = document.createElement('span');
-          ecoBadge.className = 'item-badge eco-badge';
-          ecoBadge.textContent = '⚠️';
-          ecoBadge.title = 'Pending change order (ECO)';
-          badgesContainer.appendChild(ecoBadge);
+          var ecoDot = document.createElement('span');
+          ecoDot.className = 'item-badge';
+          ecoDot.innerHTML = '<span class="badge-eco-dot"></span>';
+          ecoDot.title = 'Pending change order (ECO)';
+          badgesContainer.appendChild(ecoDot);
         }
 
-        // Files badge (📎) if item has attachments
-        if (item.hasFiles) {
-          var filesBadge = document.createElement('span');
-          filesBadge.className = 'item-badge files-badge';
-          filesBadge.textContent = '📎';
-          filesBadge.title = 'Has file attachments';
-          badgesContainer.appendChild(filesBadge);
-        }
-
-        // Arena link icon (🔗)
+        // External link arrow icon
         if (item.arenaWebURL) {
-          var arenaLink = document.createElement('span');
-          arenaLink.className = 'item-badge arena-link';
-          arenaLink.textContent = '🔗';
-          arenaLink.title = 'Open in Arena';
-          arenaLink.onclick = function(e) {
+          var linkIcon = document.createElement('span');
+          linkIcon.className = 'item-badge badge-link-icon';
+          linkIcon.textContent = '↗';
+          linkIcon.title = 'Open in Arena';
+          linkIcon.onclick = function(e) {
             e.stopPropagation();
             window.open(item.arenaWebURL, '_blank');
           };
-          badgesContainer.appendChild(arenaLink);
+          badgesContainer.appendChild(linkIcon);
         }
 
         // Favorite toggle

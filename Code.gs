@@ -645,14 +645,9 @@ function loadItemPickerData(forceRefresh) {
         arenaWebURL = 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
       }
 
-      // Check for pending changes (ECO) and files
+      // Check for pending changes (ECO)
       var hasPendingChanges = false;
-      var hasFiles = false;
-
-      // Use modifiedFiles field to detect if item has file attachments
-      if (item.modifiedFiles === true || item.ModifiedFiles === true) {
-        hasFiles = true;
-      }
+      var hasFiles = false;  // Not using file badges - removed for cleaner UI
 
       // Check for pending changes (futureChanges not in response, will need Phase 2)
       if (item.futureChanges || item.FutureChanges) {
