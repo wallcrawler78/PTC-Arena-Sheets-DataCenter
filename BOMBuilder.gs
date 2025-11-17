@@ -2351,6 +2351,21 @@ function showPODPushWizardWithData(wizardData) {
 }
 
 /**
+ * Transitions from loading modal to wizard
+ * Called by loading modal when data is ready
+ * Opens wizard then signals back so loading modal can close
+ */
+function transitionToWizard(wizardData) {
+  Logger.log('Transitioning from loading modal to wizard...');
+
+  // Open the wizard with prepared data
+  showPODPushWizardWithData(wizardData);
+
+  // Return success so loading modal knows wizard is open and can close itself
+  return { success: true };
+}
+
+/**
  * Executes the batch POD push with data from the wizard
  * This is called by the wizard after user fills in all data
  */
