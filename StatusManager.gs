@@ -156,13 +156,20 @@ function updateRackTabName(sheet) {
 
   var status = getRackSheetStatus(sheet);
   if (!status) {
-    // No status set, use original name
+    Logger.log('updateRackTabName: No status found for ' + metadata.itemNumber);
     return false;
   }
 
+  var currentName = sheet.getName();
   var indicator = STATUS_INDICATORS[status] || '';
   var baseName = 'Rack - ' + metadata.itemNumber + ' (' + metadata.itemName + ')';
   var newName = indicator + ' ' + baseName;
+
+  Logger.log('updateRackTabName: ' + metadata.itemNumber);
+  Logger.log('  Current name: "' + currentName + '"');
+  Logger.log('  Status: ' + status);
+  Logger.log('  Indicator emoji: "' + indicator + '"');
+  Logger.log('  New name: "' + newName + '"');
 
   // Google Sheets tab name limit: 100 characters
   if (newName.length > 100) {
@@ -171,10 +178,13 @@ function updateRackTabName(sheet) {
 
   try {
     sheet.setName(newName);
+    var actualName = sheet.getName();
+    Logger.log('  ✓ Name set successfully to: "' + actualName + '"');
     return true;
   } catch (e) {
     // Emoji might not be supported, try text fallback
-    Logger.log('Emoji failed in tab name, using text indicator: ' + e.message);
+    Logger.log('  ⚠ Emoji failed in tab name: ' + e.message);
+    Logger.log('  Trying text indicator fallback...');
 
     var textIndicator = STATUS_TEXT_INDICATORS[status] || '[???]';
     newName = textIndicator + ' ' + baseName;
@@ -185,9 +195,11 @@ function updateRackTabName(sheet) {
 
     try {
       sheet.setName(newName);
+      var actualName = sheet.getName();
+      Logger.log('  ✓ Fallback name set to: "' + actualName + '"');
       return true;
     } catch (e2) {
-      Logger.log('Tab name update failed completely: ' + e2.message);
+      Logger.log('  ✗ Tab name update failed completely: ' + e2.message);
       return false;
     }
   }
