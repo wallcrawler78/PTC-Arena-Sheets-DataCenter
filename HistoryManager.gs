@@ -86,8 +86,8 @@ function getOrCreateRackHistoryTab() {
   headerRange.setHorizontalAlignment('center');
   headerRange.setVerticalAlignment('middle');
 
-  // Freeze header row
-  historySheet.setFrozenRows(HISTORY_FROZEN_ROWS);
+  // Initial freeze - will be updated dynamically as racks are added
+  historySheet.setFrozenRows(3);  // Header + separator + detail header
 
   // Set column widths for summary section
   historySheet.setColumnWidth(HIST_SUMMARY_ITEM_NUM_COL, 120);      // Item#
@@ -253,6 +253,10 @@ function createRackHistorySummaryRow(itemNumber, rackName, metadata) {
   statusCell.setValue(statusWithEmoji);
 
   Logger.log('Created summary row for rack ' + itemNumber + ' at row ' + insertRow);
+
+  // Update freeze point after adding new rack
+  updateHistoryTabFreeze();
+
   return insertRow;
 }
 
@@ -619,6 +623,9 @@ function migrateRackMetadataToHistory() {
       }
     });
 
+    // Update freeze point after migration
+    updateHistoryTabFreeze();
+
     // Show summary
     var message = 'Migration Complete!\n\n';
     message += '✓ Migrated: ' + results.migrated + '\n';
@@ -696,5 +703,164 @@ function clearOldRackMetadata() {
 
   } catch (error) {
     ui.alert('Error', 'Failed to clear metadata: ' + error.message, ui.ButtonSet.OK);
+  }
+}
+
+// ============================================================================
+// DYNAMIC FREEZE & SIDEBAR FUNCTIONS
+// ============================================================================
+
+/**
+ * Updates the freeze point in History tab based on number of racks
+ * Freezes: Summary header + All rack summaries + Separator + Detail header
+ * Scrolls: Detail history rows only
+ */
+function updateHistoryTabFreeze() {
+  try {
+    var historySheet = getOrCreateRackHistoryTab();
+
+    // Count rack summary rows (between row 2 and the separator/detail header)
+    var lastRow = historySheet.getLastRow();
+    var rackCount = 0;
+
+    // Find where rack summaries end (look for separator or detail header)
+    for (var i = 2; i <= lastRow; i++) {
+      var cell = historySheet.getRange(i, 1);
+      var value = cell.getValue();
+      var background = cell.getBackground();
+
+      // Stop at separator (gray) or detail header (green) or "Timestamp"
+      if (background === '#f0f0f0' || background === '#34a853' || value === 'Timestamp') {
+        break;
+      }
+
+      // Count non-empty rows with item numbers
+      if (value && value.toString().trim() !== '') {
+        rackCount++;
+      }
+    }
+
+    // Calculate freeze point: 1 (header) + rackCount + 1 (separator) + 1 (detail header)
+    var freezePoint = 1 + rackCount + 1 + 1;
+
+    // Ensure minimum freeze of 3 (header + separator + detail header)
+    freezePoint = Math.max(3, freezePoint);
+
+    Logger.log('updateHistoryTabFreeze: Setting freeze to row ' + freezePoint + ' (for ' + rackCount + ' racks)');
+    historySheet.setFrozenRows(freezePoint);
+
+  } catch (error) {
+    Logger.log('Error updating History tab freeze: ' + error.message);
+  }
+}
+
+/**
+ * Shows the History Filter Sidebar
+ */
+function showHistoryFilterSidebar() {
+  try {
+    var html = HtmlService.createHtmlOutputFromFile('HistoryFilterSidebar')
+      .setTitle('Rack History Filter')
+      .setWidth(300);
+    SpreadsheetApp.getUi().showSidebar(html);
+
+    Logger.log('History Filter Sidebar opened');
+  } catch (error) {
+    Logger.log('Error showing History Filter Sidebar: ' + error.message);
+  }
+}
+
+/**
+ * Gets list of all racks for sidebar dropdown
+ * @return {Array} Array of {itemNumber, name, status}
+ */
+function getHistoryRackList() {
+  try {
+    var racks = getAllRackConfigTabs();
+
+    return racks.map(function(rack) {
+      var status = getRackStatusFromHistory(rack.itemNumber);
+      return {
+        itemNumber: rack.itemNumber,
+        name: rack.itemName,
+        status: status || RACK_STATUS.PLACEHOLDER
+      };
+    });
+  } catch (error) {
+    Logger.log('Error getting rack list: ' + error.message);
+    return [];
+  }
+}
+
+/**
+ * Gets status statistics for sidebar
+ * @return {Object} Status counts
+ */
+function getHistoryStats() {
+  try {
+    var racks = getAllRackConfigTabs();
+    var stats = {
+      total: racks.length,
+      synced: 0,
+      outOfSync: 0,
+      localModified: 0,
+      placeholder: 0,
+      error: 0
+    };
+
+    racks.forEach(function(rack) {
+      var status = getRackStatusFromHistory(rack.itemNumber);
+      switch(status) {
+        case RACK_STATUS.SYNCED:
+          stats.synced++;
+          break;
+        case RACK_STATUS.ARENA_MODIFIED:
+          stats.outOfSync++;
+          break;
+        case RACK_STATUS.LOCAL_MODIFIED:
+          stats.localModified++;
+          break;
+        case RACK_STATUS.PLACEHOLDER:
+          stats.placeholder++;
+          break;
+        case RACK_STATUS.ERROR:
+          stats.error++;
+          break;
+      }
+    });
+
+    return stats;
+  } catch (error) {
+    Logger.log('Error getting history stats: ' + error.message);
+    return {
+      total: 0,
+      synced: 0,
+      outOfSync: 0,
+      localModified: 0,
+      placeholder: 0,
+      error: 0
+    };
+  }
+}
+
+/**
+ * Clears filter from History tab
+ */
+function clearHistoryFilter() {
+  try {
+    var historySheet = getOrCreateRackHistoryTab();
+    var filter = historySheet.getFilter();
+
+    if (filter) {
+      filter.remove();
+      Logger.log('History filter cleared');
+      return { success: true, message: 'Filter cleared' };
+    } else {
+      Logger.log('No filter to clear');
+      return { success: true, message: 'No filter applied' };
+    }
+  } catch (error) {
+    Logger.log('Error clearing history filter: ' + error.message);
+    return { success: false, message: error.message };
   }
 }

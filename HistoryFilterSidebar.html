@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: 'Google Sans', Arial, sans-serif;
+      margin: 0;
+      padding: 16px;
+      background-color: #f8f9fa;
+      font-size: 14px;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #1a73e8;
+    }
+
+    .header h2 {
+      margin: 0;
+      font-size: 18px;
+      color: #1a73e8;
+      font-weight: 500;
+    }
+
+    .help-icon {
+      cursor: pointer;
+      font-size: 20px;
+      color: #5f6368;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: background-color 0.2s;
+    }
+
+    .help-icon:hover {
+      background-color: #e8f0fe;
+    }
+
+    .section {
+      background: white;
+      border-radius: 8px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .section-title {
+      font-weight: 500;
+      color: #202124;
+      margin-bottom: 12px;
+      font-size: 14px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #5f6368;
+      font-size: 13px;
+    }
+
+    select {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 14px;
+      background-color: white;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    select:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      flex: 1;
+      padding: 10px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .btn-primary:active {
+      background-color: #0d47a1;
+    }
+
+    .btn-secondary {
+      background-color: #f1f3f4;
+      color: #5f6368;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e8eaed;
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+
+    .stat-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 0;
+    }
+
+    .stat-label {
+      color: #5f6368;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .stat-value {
+      font-weight: 500;
+      color: #202124;
+      font-size: 14px;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: rgba(0, 0, 0, 0.5);
+      z-index: 1000;
+      padding: 20px;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      padding: 24px;
+      max-width: 500px;
+      margin: 40px auto;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+    }
+
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      color: #1a73e8;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .close-modal {
+      cursor: pointer;
+      font-size: 24px;
+      color: #5f6368;
+      line-height: 1;
+      padding: 0;
+      background: none;
+      border: none;
+      width: auto;
+    }
+
+    .close-modal:hover {
+      color: #202124;
+    }
+
+    .help-content {
+      color: #5f6368;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+
+    .help-content h4 {
+      color: #202124;
+      font-size: 15px;
+      margin-top: 16px;
+      margin-bottom: 8px;
+      font-weight: 500;
+    }
+
+    .help-content ul {
+      margin: 8px 0;
+      padding-left: 20px;
+    }
+
+    .help-content li {
+      margin: 6px 0;
+    }
+
+    .loading {
+      color: #5f6368;
+      font-style: italic;
+      padding: 8px 0;
+    }
+
+    .error {
+      color: #d93025;
+      padding: 8px;
+      background-color: #fce8e6;
+      border-radius: 4px;
+      font-size: 13px;
+      margin-top: 8px;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h2>📊 Rack History Filter</h2>
+    <div class="help-icon" onclick="showHelp()">❔</div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">Filter by Rack</div>
+    <label for="rackSelector">Select a rack to view its history:</label>
+    <select id="rackSelector">
+      <option value="">Loading...</option>
+    </select>
+
+    <div class="button-group">
+      <button class="btn-primary" onclick="applyFilter()">Apply Filter</button>
+      <button class="btn-secondary" onclick="clearFilter()">Clear Filter</button>
+    </div>
+
+    <div id="filterError" class="error" style="display: none;"></div>
+  </div>
+
+  <div class="section">
+    <div class="section-title">📈 Quick Stats</div>
+    <div id="statsContainer" class="stats-grid">
+      <div class="loading">Loading stats...</div>
+    </div>
+  </div>
+
+  <!-- Help Modal -->
+  <div id="helpModal" class="modal" onclick="hideHelp(event)">
+    <div class="modal-content" onclick="event.stopPropagation()">
+      <div class="modal-header">
+        <h3>Rack History Help</h3>
+        <button class="close-modal" onclick="hideHelp()">&times;</button>
+      </div>
+      <div class="help-content">
+        <h4>About Rack History</h4>
+        <p>The Rack History tab tracks all changes and events for your rack configurations in one centralized location.</p>
+
+        <h4>Using the Filter</h4>
+        <ul>
+          <li><strong>Select Rack:</strong> Choose a rack from the dropdown to view only its history events</li>
+          <li><strong>Apply Filter:</strong> Click to filter the detail section to show only the selected rack's events</li>
+          <li><strong>Clear Filter:</strong> Remove the filter to show all events for all racks</li>
+          <li><strong>Show All:</strong> Select "Show All Racks" to remove filters and see everything</li>
+        </ul>
+
+        <h4>Understanding Stats</h4>
+        <ul>
+          <li><strong>🟢 Synced:</strong> Rack matches Arena exactly</li>
+          <li><strong>🟡 Out of Sync:</strong> Arena has changes not yet applied to sheet</li>
+          <li><strong>🟠 Locally Modified:</strong> Sheet has changes not yet pushed to Arena</li>
+          <li><strong>🔴 Placeholder:</strong> Rack created but not yet in Arena</li>
+        </ul>
+
+        <h4>Event Types</h4>
+        <p>The detail section logs various events including:</p>
+        <ul>
+          <li>Rack creation</li>
+          <li>Status changes</li>
+          <li>BOM refreshes (accepted/declined)</li>
+          <li>POD pushes to Arena</li>
+          <li>Local edits detected</li>
+          <li>Errors</li>
+        </ul>
+
+        <h4>Tab Navigation</h4>
+        <p>Click the <strong>📋 History</strong> link in any rack sheet (cell D1) to jump to this History tab and view that rack's events.</p>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Load racks and stats on page load
+    window.onload = function() {
+      loadRacks();
+      loadStats();
+    };
+
+    /**
+     * Loads rack list into dropdown
+     */
+    function loadRacks() {
+      google.script.run
+        .withSuccessHandler(function(racks) {
+          var selector = document.getElementById('rackSelector');
+          selector.innerHTML = '<option value="">-- Show All Racks --</option>';
+
+          racks.forEach(function(rack) {
+            var option = document.createElement('option');
+            option.value = rack.itemNumber;
+
+            // Get status emoji
+            var emoji = getStatusEmoji(rack.status);
+            option.textContent = emoji + ' ' + rack.itemNumber + ' - ' + rack.name;
+
+            selector.appendChild(option);
+          });
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading racks:', error);
+          var selector = document.getElementById('rackSelector');
+          selector.innerHTML = '<option value="">Error loading racks</option>';
+        })
+        .getHistoryRackList();
+    }
+
+    /**
+     * Loads statistics
+     */
+    function loadStats() {
+      google.script.run
+        .withSuccessHandler(function(stats) {
+          var container = document.getElementById('statsContainer');
+          container.innerHTML = '';
+
+          // Total racks
+          addStat(container, 'Total Racks', stats.total, '');
+
+          // Status counts
+          if (stats.synced > 0) {
+            addStat(container, '🟢 Synced', stats.synced, 'synced');
+          }
+          if (stats.outOfSync > 0) {
+            addStat(container, '🟡 Out of Sync', stats.outOfSync, 'out-of-sync');
+          }
+          if (stats.localModified > 0) {
+            addStat(container, '🟠 Locally Modified', stats.localModified, 'local-modified');
+          }
+          if (stats.placeholder > 0) {
+            addStat(container, '🔴 Placeholder', stats.placeholder, 'placeholder');
+          }
+          if (stats.error > 0) {
+            addStat(container, '❌ Errors', stats.error, 'error');
+          }
+
+          // If no racks
+          if (stats.total === 0) {
+            container.innerHTML = '<div class="loading">No racks found</div>';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading stats:', error);
+          var container = document.getElementById('statsContainer');
+          container.innerHTML = '<div class="error">Error loading stats</div>';
+        })
+        .getHistoryStats();
+    }
+
+    /**
+     * Adds a stat item to the container
+     */
+    function addStat(container, label, value, className) {
+      var item = document.createElement('div');
+      item.className = 'stat-item ' + className;
+
+      var labelDiv = document.createElement('div');
+      labelDiv.className = 'stat-label';
+      labelDiv.textContent = label;
+
+      var valueDiv = document.createElement('div');
+      valueDiv.className = 'stat-value';
+      valueDiv.textContent = value;
+
+      item.appendChild(labelDiv);
+      item.appendChild(valueDiv);
+      container.appendChild(item);
+    }
+
+    /**
+     * Gets status emoji
+     */
+    function getStatusEmoji(status) {
+      var emojis = {
+        'SYNCED': '🟢',
+        'ARENA_MODIFIED': '🟡',
+        'LOCAL_MODIFIED': '🟠',
+        'PLACEHOLDER': '🔴',
+        'ERROR': '❌'
+      };
+      return emojis[status] || '';
+    }
+
+    /**
+     * Applies filter for selected rack
+     */
+    function applyFilter() {
+      var selector = document.getElementById('rackSelector');
+      var itemNumber = selector.value;
+      var errorDiv = document.getElementById('filterError');
+
+      if (!itemNumber) {
+        clearFilter();
+        return;
+      }
+
+      errorDiv.style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function() {
+          errorDiv.style.display = 'none';
+          // Success - filter applied (alert shown by server-side function)
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error applying filter:', error);
+          errorDiv.textContent = 'Error applying filter: ' + error.message;
+          errorDiv.style.display = 'block';
+        })
+        .filterHistoryByRack(itemNumber);
+    }
+
+    /**
+     * Clears filter
+     */
+    function clearFilter() {
+      var selector = document.getElementById('rackSelector');
+      selector.value = '';
+
+      var errorDiv = document.getElementById('filterError');
+      errorDiv.style.display = 'none';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          console.log('Filter cleared:', result);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error clearing filter:', error);
+          errorDiv.textContent = 'Error clearing filter: ' + error.message;
+          errorDiv.style.display = 'block';
+        })
+        .clearHistoryFilter();
+    }
+
+    /**
+     * Shows help modal
+     */
+    function showHelp() {
+      document.getElementById('helpModal').style.display = 'block';
+    }
+
+    /**
+     * Hides help modal
+     */
+    function hideHelp(event) {
+      if (!event || event.target === document.getElementById('helpModal')) {
+        document.getElementById('helpModal').style.display = 'none';
+      }
+    }
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', function(event) {
+      if (event.key === 'Escape') {
+        hideHelp();
+      }
+    });
+  </script>
+</body>
+</html>

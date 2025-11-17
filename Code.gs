@@ -40,10 +40,9 @@ function onOpen(e) {
       .addItem('Check All Rack Statuses', 'checkAllRackStatuses')
       .addItem('Mark Current Rack as Synced', 'markCurrentRackAsSynced')
       .addSeparator()
-      .addItem('Migrate Rack Metadata to History', 'migrateRackMetadataToHistory')
-      .addItem('Clear Old Metadata (Advanced)', 'clearOldRackMetadata')
-      .addSeparator()
       .addItem('Repair POD/Row BOMs', 'repairPODAndRowBOMs'))
+    .addSeparator()
+    .addItem('View Rack History', 'viewRackHistory')
     .addSeparator()
     .addItem('Test Connection', 'testArenaConnection')
     .addItem('Clear Credentials', 'clearCredentials')
@@ -53,12 +52,28 @@ function onOpen(e) {
 }
 
 /**
- * Runs when a cell is edited
- * NOTE: Auto-insertion disabled - users must click the "Insert Item" button in the Item Picker
+ * Runs when selection changes (e.g., clicking on a cell)
+ * Auto-opens History Filter sidebar when navigating to Rack History tab
  */
 function onSelectionChange(e) {
-  // Auto-insertion disabled to prevent unwanted insertions
-  // Users should use the "Insert Item in Selected Cell" button in the Item Picker sidebar
+  try {
+    var sheet = SpreadsheetApp.getActiveSheet();
+
+    // Auto-open sidebar when History tab is activated
+    if (sheet && sheet.getName() === HISTORY_TAB_NAME) {
+      // Check if sidebar already shown this session
+      var cache = CacheService.getScriptCache();
+      var shown = cache.get('history_sidebar_shown');
+
+      if (!shown) {
+        showHistoryFilterSidebar();
+        // Set flag for 6 hours (cache expires after that)
+        cache.put('history_sidebar_shown', 'true', 21600);
+      }
+    }
+  } catch (error) {
+    Logger.log('Error in onSelectionChange: ' + error.message);
+  }
 }
 
 /**
@@ -1757,5 +1772,26 @@ function pullBOMForRack(sheet, itemNumber, itemGuid) {
       details: 'Initial BOM synchronization from Arena',
       statusAfter: RACK_STATUS.SYNCED
     });
+  }
+}
+
+/**
+ * Navigates to Rack History tab and opens the filter sidebar
+ * Menu item: Arena Data Center → View Rack History
+ */
+function viewRackHistory() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var historySheet = getOrCreateRackHistoryTab();
+
+    // Navigate to History tab
+    ss.setActiveSheet(historySheet);
+
+    // Open sidebar
+    showHistoryFilterSidebar();
+
+  } catch (error) {
+    Logger.log('Error in viewRackHistory: ' + error.message);
+    SpreadsheetApp.getUi().alert('Error', 'Failed to open Rack History: ' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
 }
