@@ -60,19 +60,27 @@ function onSelectionChange(e) {
     var sheet = SpreadsheetApp.getActiveSheet();
 
     // Auto-open sidebar when History tab is activated
-    if (sheet && sheet.getName() === HISTORY_TAB_NAME) {
+    if (sheet && sheet.getName() === 'Rack History') {
+      Logger.log('Rack History tab detected - opening sidebar');
+
       // Check if sidebar already shown this session
       var cache = CacheService.getScriptCache();
       var shown = cache.get('history_sidebar_shown');
 
+      Logger.log('Cache check - shown: ' + shown);
+
       if (!shown) {
+        Logger.log('Opening sidebar for first time this session');
         showHistoryFilterSidebar();
         // Set flag for 6 hours (cache expires after that)
         cache.put('history_sidebar_shown', 'true', 21600);
+      } else {
+        Logger.log('Sidebar already shown this session - skipping auto-open');
       }
     }
   } catch (error) {
     Logger.log('Error in onSelectionChange: ' + error.message);
+    Logger.log('Error stack: ' + error.stack);
   }
 }
 
@@ -1787,6 +1795,10 @@ function viewRackHistory() {
     // Navigate to History tab
     ss.setActiveSheet(historySheet);
 
+    // Clear cache to allow auto-open next time
+    var cache = CacheService.getScriptCache();
+    cache.remove('history_sidebar_shown');
+
     // Open sidebar
     showHistoryFilterSidebar();
 
@@ -1794,4 +1806,15 @@ function viewRackHistory() {
     Logger.log('Error in viewRackHistory: ' + error.message);
     SpreadsheetApp.getUi().alert('Error', 'Failed to open Rack History: ' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
   }
+}
+
+/**
+ * Clears the sidebar cache (for troubleshooting)
+ * Run this from Apps Script editor if auto-open stops working
+ */
+function clearSidebarCache() {
+  var cache = CacheService.getScriptCache();
+  cache.remove('history_sidebar_shown');
+  Logger.log('Sidebar cache cleared - auto-open will work again');
+  SpreadsheetApp.getUi().alert('Cache Cleared', 'Sidebar will auto-open next time you visit Rack History tab.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
