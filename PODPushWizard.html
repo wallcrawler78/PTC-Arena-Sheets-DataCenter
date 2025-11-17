@@ -724,9 +724,10 @@
         <table>
           <thead>
             <tr>
-              <th style="width: 20%;">Row Number</th>
-              <th style="width: 35%;">Name</th>
-              <th style="width: 35%;">Category</th>
+              <th style="width: 12%;">Status</th>
+              <th style="width: 18%;">Row Number</th>
+              <th style="width: 30%;">Name</th>
+              <th style="width: 30%;">Category</th>
               <th style="width: 10%;">Racks</th>
             </tr>
           </thead>
@@ -745,14 +746,20 @@
       </div>
 
       <div class="summary-card">
-        <div class="summary-card-title">POD Details</div>
+        <div class="summary-card-title">
+          POD Details
+          <span id="podStatusBadge" style="margin-left: 12px;"></span>
+        </div>
         <div style="margin-bottom: 16px;">
-          <label style="display: block; font-size: 13px; font-weight: 500; color: #5f6368; margin-bottom: 8px;">POD Name</label>
+          <label style="display: block; font-size: 13px; font-weight: 500; color: #5f6368; margin-bottom: 8px;">
+            POD Name
+            <span id="podItemNumber" style="color: #5f6368; font-weight: normal; margin-left: 8px;"></span>
+          </label>
           <input type="text" id="podName" class="form-input" placeholder="e.g., Data Center Pod A">
         </div>
         <div>
           <label style="display: block; font-size: 13px; font-weight: 500; color: #5f6368; margin-bottom: 8px;">POD Category</label>
-          <div class="category-cell">
+          <div class="category-cell" id="podCategoryCell">
             <div class="category-display" id="podCategoryDisplay">Click 'Select Category' to choose...</div>
             <button class="btn-select-category" onclick="selectPODCategory()">Select Category</button>
           </div>
@@ -855,8 +862,47 @@
       wizardData = data;
       renderRacksTable();
       renderRowsTable();
+      initializePODData();
       updateSummary();
       loadCategories(); // Load categories for the selector
+    }
+
+    // Initialize POD data fields
+    function initializePODData() {
+      const pod = wizardData.pod;
+
+      // Set POD name
+      document.getElementById('podName').value = pod.name || '';
+
+      // Show POD item number if exists
+      if (pod.itemNumber) {
+        document.getElementById('podItemNumber').textContent = '(' + pod.itemNumber + ')';
+      }
+
+      // Show POD status badge
+      if (pod.exists) {
+        document.getElementById('podStatusBadge').innerHTML = '<span class="status-badge existing">✓ Exists in Arena</span>';
+        // Make fields read-only if POD exists
+        document.getElementById('podName').disabled = true;
+      } else {
+        document.getElementById('podStatusBadge').innerHTML = '<span class="status-badge new">New</span>';
+      }
+
+      // Set POD category
+      if (pod.category) {
+        wizardData.pod.category = pod.category;
+        document.getElementById('podCategoryDisplay').textContent = pod.category.name;
+        document.getElementById('podCategoryDisplay').classList.add('selected');
+
+        // If POD exists, make category read-only
+        if (pod.exists) {
+          const categoryBtn = document.querySelector('#podCategoryCell .btn-select-category');
+          if (categoryBtn) {
+            categoryBtn.disabled = true;
+            categoryBtn.style.display = 'none';
+          }
+        }
+      }
     }
 
     // Load categories from server
@@ -940,21 +986,34 @@
 
       wizardData.rows.forEach((row, index) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><strong>${row.rowNumber}</strong></td>
-          <td>
-            <input type="text"
+        const isExisting = row.exists;
+        const statusBadge = isExisting ?
+          '<span class="status-badge existing">✓ Exists</span>' :
+          '<span class="status-badge new">New</span>';
+        const itemNumberDisplay = row.rowItemNumber ? `(${row.rowItemNumber})` : '';
+        const nameValue = row.name || 'ROW-' + row.rowNumber;
+        const nameField = isExisting ?
+          `<span style="font-weight: 500;">${nameValue}</span> <span style="color: #5f6368; font-size: 12px;">${itemNumberDisplay}</span>` :
+          `<input type="text"
                    class="form-input"
-                   value="${row.name || 'ROW-' + row.rowNumber}"
+                   value="${nameValue}"
                    onchange="updateRowField(${index}, 'name', this.value)"
-                   placeholder="Enter row name">
-          </td>
+                   placeholder="Enter row name">`;
+        const categoryDisplay = row.category ? row.category.name : 'Click \'Select Category\' to choose...';
+        const categoryButton = (!isExisting || !row.category) ?
+          '<button class="btn-select-category" onclick="selectRowCategory(' + index + ')">Select Category</button>' :
+          '';
+
+        tr.innerHTML = `
+          <td>${statusBadge}</td>
+          <td><strong>${row.rowNumber}</strong></td>
+          <td>${nameField}</td>
           <td>
             <div class="category-cell">
               <div class="category-display ${row.category ? 'selected' : ''}" id="rowCategory${index}">
-                ${row.category ? row.category.name : 'Click \'Select Category\' to choose...'}
+                ${categoryDisplay}
               </div>
-              <button class="btn-select-category" onclick="selectRowCategory(${index})">Select Category</button>
+              ${categoryButton}
             </div>
           </td>
           <td style="text-align: center; color: #5f6368;">${row.positions.length}</td>

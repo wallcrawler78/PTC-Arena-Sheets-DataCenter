@@ -1504,6 +1504,9 @@ function scanOverviewByRow(sheet) {
     }
   }
 
+  // Row Item column is right before position columns
+  var rowItemCol = firstPosCol - 1;
+
   // Scan each row after headers
   for (var i = headerRow + 1; i < data.length; i++) {
     var row = data[i];
@@ -1522,6 +1525,7 @@ function scanOverviewByRow(sheet) {
         rowHasData = true;
         positions.push({
           col: j,
+          position: (j - firstPosCol + 1),  // Position number (1, 2, 3...)
           positionName: headers[j],
           itemNumber: cellValue.toString()
         });
@@ -1532,8 +1536,15 @@ function scanOverviewByRow(sheet) {
       // Get row number from first column
       var rowNumber = row[0] || (rowData.length + 1);
 
+      // Get row item number from Row Item column if it exists
+      var rowItemNumber = null;
+      if (rowItemCol >= 0 && row[rowItemCol]) {
+        rowItemNumber = row[rowItemCol].toString();
+      }
+
       rowData.push({
         rowNumber: rowNumber,
+        rowItemNumber: rowItemNumber,
         sheetRow: i + 1, // Sheet row index (1-based)
         positions: positions
       });
@@ -2322,12 +2333,80 @@ function preparePODWizardDataForModal() {
   Logger.log('Placeholder racks: ' + placeholderRacks.length);
   Logger.log('Existing racks: ' + existingRacks.length);
 
-  // Prepare row data
+  // Extract POD item number from overview sheet A1
+  var podItemNumber = null;
+  var podName = '';
+  var podExists = false;
+  var podGuid = null;
+  var podCategory = null;
+
+  var podCell = overviewSheet.getRange('A1').getValue();
+  if (podCell && typeof podCell === 'string') {
+    // Extract item number from format "POD: name (ITEM-NUMBER)"
+    var podMatch = podCell.match(/POD:\s*(.+?)\s*\(([^)]+)\)/);
+    if (podMatch) {
+      podName = podMatch[1].trim();
+      podItemNumber = podMatch[2].trim();
+      Logger.log('Found POD in overview: ' + podName + ' (' + podItemNumber + ')');
+
+      // Check if POD exists in Arena
+      try {
+        var podItem = client.getItemByNumber(podItemNumber);
+        if (podItem && (podItem.guid || podItem.Guid)) {
+          podExists = true;
+          podGuid = podItem.guid || podItem.Guid;
+          if (podItem.category || podItem.Category) {
+            var cat = podItem.category || podItem.Category;
+            podCategory = {
+              guid: cat.guid || cat.Guid,
+              name: cat.name || cat.Name
+            };
+          }
+          Logger.log('✓ POD ' + podItemNumber + ' EXISTS in Arena (GUID: ' + podGuid + ')');
+        }
+      } catch (error) {
+        Logger.log('POD ' + podItemNumber + ' not found in Arena: ' + error.message);
+      }
+    }
+  }
+
+  // Prepare row data - check if each exists in Arena
   var rowsData = overviewData.map(function(row) {
+    var rowItemNumber = row.rowItemNumber;
+    var rowExists = false;
+    var rowGuid = null;
+    var rowCategory = null;
+    var rowName = row.rowItemNumber || ('ROW-' + row.rowNumber);
+
+    if (rowItemNumber) {
+      // Check if row exists in Arena
+      try {
+        var rowItem = client.getItemByNumber(rowItemNumber);
+        if (rowItem && (rowItem.guid || rowItem.Guid)) {
+          rowExists = true;
+          rowGuid = rowItem.guid || rowItem.Guid;
+          rowName = rowItem.name || rowItem.Name || rowName;
+          if (rowItem.category || rowItem.Category) {
+            var cat = rowItem.category || rowItem.Category;
+            rowCategory = {
+              guid: cat.guid || cat.Guid,
+              name: cat.name || cat.Name
+            };
+          }
+          Logger.log('✓ ROW ' + rowItemNumber + ' EXISTS in Arena (GUID: ' + rowGuid + ')');
+        }
+      } catch (error) {
+        Logger.log('ROW ' + rowItemNumber + ' not found in Arena: ' + error.message);
+      }
+    }
+
     return {
       rowNumber: row.rowNumber,
-      name: 'ROW-' + row.rowNumber,
-      category: null,  // User will select
+      rowItemNumber: rowItemNumber,
+      name: rowName,
+      category: rowCategory,  // May be null if new or user will select
+      exists: rowExists,
+      guid: rowGuid,
       positions: row.positions.map(function(pos) {
         return {
           position: pos.position,
@@ -2343,8 +2422,11 @@ function preparePODWizardDataForModal() {
     existingRacks: existingRacks,
     rows: rowsData,
     pod: {
-      name: '',
-      category: null
+      itemNumber: podItemNumber,
+      name: podName,
+      category: podCategory,
+      exists: podExists,
+      guid: podGuid
     }
   };
 }
