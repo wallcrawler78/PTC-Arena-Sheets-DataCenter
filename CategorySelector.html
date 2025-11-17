@@ -376,8 +376,9 @@
         return;
       }
 
+      // Just save and close - parent will retrieve from properties
       google.script.run
-        .withSuccessHandler(function() {
+        .withSuccessHandler(function(category) {
           google.script.host.close();
         })
         .withFailureHandler(function(error) {
@@ -388,8 +389,11 @@
     }
 
     function cancel() {
-      google.script.run.setCategorySelection(null);
-      google.script.host.close();
+      google.script.run
+        .withSuccessHandler(function() {
+          google.script.host.close();
+        })
+        .setCategorySelection(null);
     }
   </script>
 </body>

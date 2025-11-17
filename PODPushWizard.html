@@ -748,7 +748,13 @@
       selectedCategoryRow = { type: 'rack', index: index };
       const rackNumber = wizardData.racks[index].itemNumber;
       google.script.run
-        .withSuccessHandler(onCategorySelected)
+        .withSuccessHandler(function() {
+          // Category selector closed, retrieve selection
+          google.script.run
+            .withSuccessHandler(onCategorySelected)
+            .withFailureHandler(onError)
+            .getCategorySelection();
+        })
         .withFailureHandler(onError)
         .showCategorySelector('Select Category', 'Choose category for rack ' + rackNumber);
     }
@@ -758,7 +764,13 @@
       selectedCategoryRow = { type: 'row', index: index };
       const rowNumber = wizardData.rows[index].rowNumber;
       google.script.run
-        .withSuccessHandler(onCategorySelected)
+        .withSuccessHandler(function() {
+          // Category selector closed, retrieve selection
+          google.script.run
+            .withSuccessHandler(onCategorySelected)
+            .withFailureHandler(onError)
+            .getCategorySelection();
+        })
         .withFailureHandler(onError)
         .showCategorySelector('Select Category', 'Choose category for Row ' + rowNumber);
     }
@@ -767,7 +779,13 @@
     function selectPODCategory() {
       selectedCategoryRow = { type: 'pod', index: null };
       google.script.run
-        .withSuccessHandler(onCategorySelected)
+        .withSuccessHandler(function() {
+          // Category selector closed, retrieve selection
+          google.script.run
+            .withSuccessHandler(onCategorySelected)
+            .withFailureHandler(onError)
+            .getCategorySelection();
+        })
         .withFailureHandler(onError)
         .showCategorySelector('Select Category', 'Choose category for POD');
     }
@@ -777,6 +795,7 @@
       console.log('Category selected:', category);
 
       if (!selectedCategoryRow) return;
+      if (!category) return; // User cancelled
 
       if (selectedCategoryRow.type === 'rack') {
         const idx = selectedCategoryRow.index;

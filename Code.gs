@@ -573,6 +573,26 @@ function setCategorySelection(category) {
     Logger.log('Category selection cleared (user cancelled)');
     PropertiesService.getUserProperties().deleteProperty('category_selection');
   }
+
+  // Return the category so caller can use it
+  return category;
+}
+
+/**
+ * Gets the category selection from user properties
+ * Used by wizard to retrieve selection after category selector closes
+ * @return {Object|null} Selected category {guid, name} or null
+ */
+function getCategorySelection() {
+  var json = PropertiesService.getUserProperties().getProperty('category_selection');
+  if (!json) return null;
+
+  try {
+    return JSON.parse(json);
+  } catch (error) {
+    Logger.log('Error parsing category selection: ' + error.message);
+    return null;
+  }
 }
 
 /**
