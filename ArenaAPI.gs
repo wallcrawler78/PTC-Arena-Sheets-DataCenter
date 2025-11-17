@@ -3,6 +3,10 @@
  * Handles communication with the Arena API using session-based authentication
  */
 
+// Shared cache constants - used by ALL features (Item Picker, BOM Push, POD Create)
+var ITEM_CACHE_KEY = 'arena_items_cache';
+var ITEM_CACHE_TTL = 6 * 60 * 60; // 6 hours in seconds (max recommended)
+
 /**
  * Arena API Client Class
  */
@@ -18,11 +22,6 @@ var ArenaAPIClient = function() {
 
   // Get a valid session ID (will login if necessary)
   this.sessionId = getValidSessionId();
-
-  // Item caching to reduce API calls
-  this.itemCache = null;
-  this.cacheTimestamp = null;
-  this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 };
 
 /**
@@ -239,12 +238,16 @@ ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
     payload: itemData
   });
 
-  // Remove from cache so it gets refreshed on next access
-  if (this.itemCache) {
+  // Remove from shared cache so it gets refreshed on next access
+  var cache = CacheService.getScriptCache();
+  var cachedJson = cache.get(ITEM_CACHE_KEY);
+  if (cachedJson) {
+    var itemCache = JSON.parse(cachedJson);
     var itemNumber = updatedItem.number || updatedItem.Number;
-    if (itemNumber && this.itemCache[itemNumber]) {
-      delete this.itemCache[itemNumber];
-      Logger.log('Removed ' + itemNumber + ' from cache after update');
+    if (itemNumber && itemCache[itemNumber]) {
+      delete itemCache[itemNumber];
+      cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
+      Logger.log('Removed ' + itemNumber + ' from shared cache after update');
     }
   }
 
@@ -328,31 +331,33 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
 };
 
 /**
- * Gets a specific item by item number
- * @param {string} itemNumber - The item number to search for
- * @return {Object|null} Item data or null if not found
- */
-/**
- * Gets an item by its item number (with caching to reduce API calls)
+ * Gets an item by its item number (with shared caching to reduce API calls)
+ * Cache is shared across Item Picker, BOM Push, POD Create - 6 hour TTL
  * @param {string} itemNumber - The item number to search for
  * @return {Object} The item object, or null if not found
  */
 ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
   try {
-    // Check if cache needs refresh
-    if (!this.itemCache || !this.cacheTimestamp ||
-        (Date.now() - this.cacheTimestamp) > this.CACHE_TTL) {
-      this.refreshItemCache();
+    var cache = CacheService.getScriptCache();
+    var cachedJson = cache.get(ITEM_CACHE_KEY);
+
+    var itemCache;
+    if (cachedJson) {
+      itemCache = JSON.parse(cachedJson);
+      Logger.log('Using shared cache (' + Object.keys(itemCache).length + ' items)');
+    } else {
+      // Cache miss - refresh
+      itemCache = this.refreshItemCache();
     }
 
     // Lookup in cache
-    var item = this.itemCache[itemNumber];
+    var item = itemCache[itemNumber];
 
     if (!item) {
       Logger.log('Item not found in cache: ' + itemNumber);
       // Force cache refresh and try again
-      this.refreshItemCache();
-      item = this.itemCache[itemNumber];
+      itemCache = this.refreshItemCache();
+      item = itemCache[itemNumber];
 
       if (!item) {
         Logger.log('Item not found after cache refresh: ' + itemNumber);
@@ -370,54 +375,86 @@ ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
 };
 
 /**
- * Refreshes the item cache by fetching all items from Arena
- * This significantly reduces API calls by caching items for reuse
+ * Refreshes the shared item cache by fetching all items from Arena
+ * Cache is stored in CacheService for 6 hours and shared across all features
+ * @return {Object} The item cache object (keyed by item number)
  */
 ArenaAPIClient.prototype.refreshItemCache = function() {
-  Logger.log('Refreshing item cache...');
+  Logger.log('Refreshing shared item cache...');
   var startTime = Date.now();
 
   var allItems = this.getAllItems();
 
   // Build cache object keyed by item number
-  this.itemCache = {};
+  var itemCache = {};
   for (var i = 0; i < allItems.length; i++) {
     var item = allItems[i];
     var itemNumber = item.number || item.Number;
     if (itemNumber) {
-      this.itemCache[itemNumber] = item;
+      itemCache[itemNumber] = item;
     }
   }
 
-  this.cacheTimestamp = Date.now();
-  var elapsed = Date.now() - startTime;
+  // Store in CacheService (shared across all features, 6 hour TTL)
+  var cache = CacheService.getScriptCache();
+  cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
 
-  Logger.log('✓ Cached ' + allItems.length + ' items in ' + elapsed + 'ms');
+  var elapsed = Date.now() - startTime;
+  Logger.log('✓ Cached ' + allItems.length + ' items in ' + elapsed + 'ms (TTL: 6 hours)');
+
+  return itemCache;
 };
 
 /**
- * Invalidates the item cache
- * Call this after creating or updating items to force a refresh
+ * Invalidates the shared item cache
+ * Call this after bulk operations to force a fresh fetch
  */
 ArenaAPIClient.prototype.invalidateCache = function() {
-  Logger.log('Invalidating item cache');
-  this.itemCache = null;
-  this.cacheTimestamp = null;
+  var cache = CacheService.getScriptCache();
+  cache.remove(ITEM_CACHE_KEY);
+  Logger.log('Shared item cache invalidated');
 };
 
 /**
- * Adds a newly created item to the cache
+ * Adds a newly created item to the shared cache
  * This allows immediate use without waiting for cache refresh
  * @param {Object} item - The item object to add to cache
  */
 ArenaAPIClient.prototype.addItemToCache = function(item) {
-  if (this.itemCache) {
+  var cache = CacheService.getScriptCache();
+  var cachedJson = cache.get(ITEM_CACHE_KEY);
+
+  if (cachedJson) {
+    var itemCache = JSON.parse(cachedJson);
     var itemNumber = item.number || item.Number;
     if (itemNumber) {
-      this.itemCache[itemNumber] = item;
-      Logger.log('Added ' + itemNumber + ' to cache');
+      itemCache[itemNumber] = item;
+      cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
+      Logger.log('Added ' + itemNumber + ' to shared cache');
     }
   }
+};
+
+/**
+ * Gets all items from the shared cache
+ * Used by Item Picker for pagination - returns full list for client-side filtering
+ * @return {Array} Array of all cached item objects
+ */
+ArenaAPIClient.prototype.getAllCachedItems = function() {
+  var cache = CacheService.getScriptCache();
+  var cachedJson = cache.get(ITEM_CACHE_KEY);
+
+  var itemCache;
+  if (cachedJson) {
+    itemCache = JSON.parse(cachedJson);
+    Logger.log('Returning ' + Object.keys(itemCache).length + ' items from shared cache');
+  } else {
+    // Cache miss - refresh
+    itemCache = this.refreshItemCache();
+  }
+
+  // Convert object to array of items
+  return Object.values(itemCache);
 };
 
 /**

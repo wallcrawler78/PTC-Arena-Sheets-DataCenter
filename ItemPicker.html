@@ -145,6 +145,26 @@
       padding-bottom: 70px;  /* Space for fixed button */
     }
 
+    .btn-load-more {
+      width: calc(100% - 20px);
+      margin: 0 10px 10px 10px;
+      padding: 12px;
+      background: #f5f5f5;
+      border: 1px solid #e0e0e0;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: #5f6368;
+      transition: all 0.2s;
+    }
+
+    .btn-load-more:hover {
+      background: #e8e8e8;
+      border-color: #d0d0d0;
+      color: #333;
+    }
+
     .item-card {
       background: white;
       border: 1px solid #e0e0e0;
@@ -485,6 +505,9 @@
       </div>
 
       <div class="item-list" id="itemList"></div>
+      <button id="loadMoreBtn" class="btn-load-more" onclick="loadMoreItems()" style="display: none;">
+        Load More
+      </button>
     </div>
 
     <!-- Filters Tab -->
@@ -588,6 +611,11 @@
     var quantities = {};
     var currentScope = 'current';
     var lifecyclePhases = [];
+
+    // Pagination state
+    var currentPage = 0;
+    var pageSize = 50;
+    var displayedCount = 0;
 
     // Load initial data
     loadItemsData();
@@ -770,6 +798,10 @@
         return true;
       });
 
+      // Reset pagination when filters change
+      currentPage = 0;
+      displayedCount = 0;
+
       renderItems();
       updateItemCount();
       updateActiveFiltersDisplay();
@@ -816,14 +848,24 @@
 
     function renderItems() {
       var list = document.getElementById('itemList');
-      list.innerHTML = '';
+
+      // If first page, clear the list
+      if (displayedCount === 0) {
+        list.innerHTML = '';
+      }
 
       if (filteredItems.length === 0) {
         list.innerHTML = '<div class="empty-state"><p>No items found</p></div>';
+        updateLoadMoreButton();
         return;
       }
 
-      filteredItems.forEach(function(item) {
+      // Get items for current page
+      var startIndex = displayedCount;
+      var endIndex = Math.min(startIndex + pageSize, filteredItems.length);
+      var pageItems = filteredItems.slice(startIndex, endIndex);
+
+      pageItems.forEach(function(item) {
         var card = document.createElement('div');
         card.className = 'item-card';
         card.onclick = function(e) {
@@ -920,6 +962,30 @@
         card.appendChild(meta);
         list.appendChild(card);
       });
+
+      // Update displayed count
+      displayedCount = endIndex;
+
+      // Update Load More button
+      updateLoadMoreButton();
+    }
+
+    function loadMoreItems() {
+      renderItems();
+    }
+
+    function updateLoadMoreButton() {
+      var btn = document.getElementById('loadMoreBtn');
+      if (!btn) return;
+
+      var remaining = filteredItems.length - displayedCount;
+
+      if (remaining > 0) {
+        btn.style.display = 'block';
+        btn.textContent = 'Load More (' + remaining + ' remaining)';
+      } else {
+        btn.style.display = 'none';
+      }
     }
 
     function toggleCategoryFavorite(categoryGuid, starElement) {

@@ -2796,6 +2796,16 @@ function openPODInArena() {
 }
 
 /**
+ * Gets all items from shared cache for Item Picker
+ * Uses CacheService so results are shared across all features (6 hour TTL)
+ * @return {Array} Array of all cached items
+ */
+function getAllCachedItems() {
+  var client = new ArenaAPIClient();
+  return client.getAllCachedItems();
+}
+
+/**
  * Shows category selector from wizard context
  * Called by PODPushWizard.html
  */
