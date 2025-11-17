@@ -145,26 +145,6 @@
       padding-bottom: 70px;  /* Space for fixed button */
     }
 
-    .btn-load-more {
-      width: calc(100% - 20px);
-      margin: 0 10px 10px 10px;
-      padding: 12px;
-      background: #f5f5f5;
-      border: 1px solid #e0e0e0;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      color: #5f6368;
-      transition: all 0.2s;
-    }
-
-    .btn-load-more:hover {
-      background: #e8e8e8;
-      border-color: #d0d0d0;
-      color: #333;
-    }
-
     .item-card {
       background: white;
       border: 1px solid #e0e0e0;
@@ -505,9 +485,6 @@
       </div>
 
       <div class="item-list" id="itemList"></div>
-      <button id="loadMoreBtn" class="btn-load-more" onclick="loadMoreItems()" style="display: none;">
-        Load More
-      </button>
     </div>
 
     <!-- Filters Tab -->
@@ -614,11 +591,30 @@
 
     // Pagination state
     var currentPage = 0;
-    var pageSize = 50;
+    var initialPageSize = 50;  // First load
+    var pageSize = 25;         // Subsequent auto-loads
     var displayedCount = 0;
+    var isLoadingMore = false;
 
     // Load initial data
     loadItemsData();
+
+    // Set up scroll-based auto-loading
+    document.addEventListener('DOMContentLoaded', function() {
+      var itemList = document.getElementById('itemList');
+      if (itemList) {
+        itemList.parentElement.addEventListener('scroll', function() {
+          // Check if scrolled near bottom (within 100px)
+          var scrollTop = this.scrollTop;
+          var scrollHeight = this.scrollHeight;
+          var clientHeight = this.clientHeight;
+
+          if (scrollTop + clientHeight >= scrollHeight - 100) {
+            loadMoreItems();
+          }
+        });
+      }
+    });
 
     function switchTab(tabName) {
       // Update tab buttons
@@ -860,9 +856,10 @@
         return;
       }
 
-      // Get items for current page
+      // Get items for current page (first load gets more items)
       var startIndex = displayedCount;
-      var endIndex = Math.min(startIndex + pageSize, filteredItems.length);
+      var batchSize = (displayedCount === 0) ? initialPageSize : pageSize;
+      var endIndex = Math.min(startIndex + batchSize, filteredItems.length);
       var pageItems = filteredItems.slice(startIndex, endIndex);
 
       pageItems.forEach(function(item) {
@@ -971,21 +968,20 @@
     }
 
     function loadMoreItems() {
+      // Prevent multiple simultaneous loads
+      if (isLoadingMore) return;
+
+      // Check if there are more items to load
+      if (displayedCount >= filteredItems.length) return;
+
+      isLoadingMore = true;
       renderItems();
+      isLoadingMore = false;
     }
 
     function updateLoadMoreButton() {
-      var btn = document.getElementById('loadMoreBtn');
-      if (!btn) return;
-
-      var remaining = filteredItems.length - displayedCount;
-
-      if (remaining > 0) {
-        btn.style.display = 'block';
-        btn.textContent = 'Load More (' + remaining + ' remaining)';
-      } else {
-        btn.style.display = 'none';
-      }
+      // No longer using button - items auto-load on scroll
+      // Keep function for compatibility but do nothing
     }
 
     function toggleCategoryFavorite(categoryGuid, starElement) {
