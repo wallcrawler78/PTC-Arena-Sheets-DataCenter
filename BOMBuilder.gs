@@ -1368,12 +1368,15 @@ function createCustomRackItems(customRacks) {
 
     // Create the item in Arena
     try {
-      Logger.log('Creating rack item: ' + rack.itemNumber + ' with category: ' + selectedCategoryName);
+      Logger.log('Creating rack item: ' + rack.itemNumber + ' with category: ' + selectedCategoryName + ' (GUID: ' + categorySelection.guid + ')');
 
+      // Arena API expects category as an object with guid, not a simple string
       var newItem = client.createItem({
         number: rack.itemNumber,
         name: rackName,
-        category: selectedCategoryName,
+        category: {
+          guid: categorySelection.guid
+        },
         description: description
       });
 
@@ -2808,23 +2811,22 @@ function buildArenaItemURLFromItem(item, itemNumber) {
       return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
     }
 
-    // Extract item_id and version_id from Arena item
+    // Extract item_id from Arena item
     // Arena API may return these with different casing
     var itemId = item.itemId || item.ItemId || item.id || item.Id;
-    var versionId = item.versionId || item.VersionId;
 
     // Log the full item structure to understand what Arena returns
     Logger.log('Item object keys for ' + itemNumber + ': ' + Object.keys(item).join(', '));
 
-    // If we don't have the specific IDs, use search URL as fallback
-    if (!itemId || !versionId) {
-      Logger.log('WARNING: Missing itemId or versionId for ' + itemNumber);
+    // If we don't have the item ID, use search URL as fallback
+    if (!itemId) {
+      Logger.log('WARNING: Missing itemId for ' + itemNumber);
       Logger.log('Available properties: ' + JSON.stringify(Object.keys(item)));
       return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
     }
 
-    // Build the proper Arena web UI URL
-    var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + itemId + '&version_id=' + versionId;
+    // Build the proper Arena web UI URL (item_id only, no version_id)
+    var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + itemId;
 
     Logger.log('Built Arena URL for ' + itemNumber + ': ' + arenaUrl);
     return arenaUrl;
