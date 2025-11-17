@@ -8,10 +8,11 @@ var METADATA_ROW = 1;
 var HEADER_ROW = 2;
 var DATA_START_ROW = 3;
 
-var META_LABEL_COL = 1;  // Column A
-var META_ITEM_NUM_COL = 2;  // Column B
-var META_ITEM_NAME_COL = 3;  // Column C
-var META_ITEM_DESC_COL = 4;  // Column D
+var META_LABEL_COL = 1;  // Column A - "PARENT_ITEM"
+var META_ITEM_NUM_COL = 2;  // Column B - Item Number
+var META_ITEM_NAME_COL = 3;  // Column C - Item Name
+var META_ITEM_DESC_COL = 4;  // Column D - Description
+var META_HISTORY_LINK_COL = 5;  // Column E - History Link
 
 /**
  * Creates a new rack configuration tab
@@ -162,10 +163,11 @@ function createNewRackConfiguration() {
   newSheet.getRange(METADATA_ROW, META_LABEL_COL).setValue('PARENT_ITEM');
   newSheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).setValue(rackItemNumber);
   newSheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).setValue(rackItemName);
-  // NOTE: D1 will be set to History link below
+  newSheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(rackItemDescription || '');
+  // NOTE: E1 will be set to History link below
 
-  // Format metadata row (basic info only, columns A-C)
-  var metaRange = newSheet.getRange(METADATA_ROW, 1, 1, 3);
+  // Format metadata row (basic info only, columns A-D)
+  var metaRange = newSheet.getRange(METADATA_ROW, 1, 1, 4);
   metaRange.setBackground('#e8f0fe');
   metaRange.setFontWeight('bold');
   metaRange.setFontColor('#1967d2');

@@ -448,13 +448,13 @@ function createHistoryLinkInRackSheet(sheet) {
     formula = '=HYPERLINK("#gid=' + historySheet.getSheetId() + '", "📋 History")';
   }
 
-  var cell = sheet.getRange(METADATA_ROW, META_ITEM_DESC_COL);
+  var cell = sheet.getRange(METADATA_ROW, META_HISTORY_LINK_COL);
   cell.setFormula(formula);
   cell.setFontColor('#1a73e8');
   cell.setFontWeight('normal');
   cell.setHorizontalAlignment('left');
 
-  Logger.log('Created history link in ' + sheet.getName() + ' at D1');
+  Logger.log('Created history link in ' + sheet.getName() + ' at E1');
 }
 
 /**
