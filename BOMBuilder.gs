@@ -1371,8 +1371,8 @@ function createCustomRackItems(customRacks) {
       Logger.log('Creating rack item: ' + rack.itemNumber + ' with category: ' + selectedCategoryName + ' (GUID: ' + categorySelection.guid + ')');
 
       // Arena API expects category as an object with guid, not a simple string
+      // NOTE: Don't include 'number' in initial creation - Arena may have auto-numbering enabled
       var newItem = client.createItem({
-        number: rack.itemNumber,
         name: rackName,
         category: {
           guid: categorySelection.guid
@@ -1381,7 +1381,15 @@ function createCustomRackItems(customRacks) {
       });
 
       var newItemGuid = newItem.guid || newItem.Guid;
-      Logger.log('Created rack item in Arena: ' + rack.itemNumber + ' (GUID: ' + newItemGuid + ')');
+      var newItemNumber = newItem.number || newItem.Number;
+
+      Logger.log('Created rack item in Arena (GUID: ' + newItemGuid + ', auto-number: ' + newItemNumber + ')');
+
+      // Always update with our desired rack number (handles both auto-numbering and manual numbering)
+      Logger.log('Updating rack item number to: ' + rack.itemNumber);
+      client.updateItem(newItemGuid, { number: rack.itemNumber });
+      newItemNumber = rack.itemNumber;
+      Logger.log('✓ Rack item number set to: ' + newItemNumber);
 
       // Get rack children and push BOM
       var children = getRackConfigChildren(rack.sheet);
