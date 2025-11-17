@@ -868,10 +868,18 @@ function refreshCurrentRackBOM() {
   // Get Arena GUID from History tab
   var arenaGuid = getRackArenaGuidFromHistory(metadata.itemNumber);
 
+  if (!arenaGuid) {
+    return {
+      success: false,
+      message: 'This rack has no Arena GUID. It may be a placeholder not yet pushed to Arena.'
+    };
+  }
+
   try {
     // Fetch current BOM from Arena
     var arenaClient = new ArenaAPIClient();
-    var arenaBOM = arenaClient.getBOM(metadata.itemNumber);
+    var bomResponse = arenaClient.makeRequest('/items/' + arenaGuid + '/bom', { method: 'GET' });
+    var arenaBOM = bomResponse.results || bomResponse.Results || [];
 
     if (!arenaBOM || !arenaBOM.length) {
       return {
