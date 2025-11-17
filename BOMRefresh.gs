@@ -333,6 +333,12 @@ function writeBOMHistory(entries) {
       .setFontWeight('bold');
 
     historySheet.setFrozenRows(1);
+
+    // Set purple tab color to match other system tabs
+    historySheet.setTabColor('#9c27b0');
+
+    // Move to end of sheet list
+    ss.moveActiveSheet(ss.getNumSheets());
   }
 
   // Append entries

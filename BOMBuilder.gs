@@ -686,6 +686,13 @@ function createConsolidatedBOMSheet() {
     newSheet.getRange(7, 1, rowData.length + 1, headers.length)
       .setBorder(true, true, true, true, true, true);
 
+    // Set purple tab color to match other system tabs
+    newSheet.setTabColor('#9c27b0');
+
+    // Move to end of sheet list
+    spreadsheet.setActiveSheet(newSheet);
+    spreadsheet.moveActiveSheet(spreadsheet.getNumSheets());
+
     // Show success message
     ui.alert('Success!',
       'Consolidated BOM created successfully!\n\n' +
