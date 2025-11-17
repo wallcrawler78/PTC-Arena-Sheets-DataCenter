@@ -352,6 +352,39 @@ function checkAllRackStatuses() {
 
     racks.forEach(function(rack) {
       var status = getRackSheetStatus(rack.sheet);
+
+      // Handle legacy racks (created before status feature)
+      if (!status || status === '') {
+        Logger.log('Legacy rack detected (no status metadata): ' + rack.itemNumber);
+        // Try to look up in Arena by item number
+        try {
+          var item = client.getItemByNumber(rack.itemNumber);
+          if (item && (item.guid || item.Guid)) {
+            var guid = item.guid || item.Guid;
+            Logger.log('  Found in Arena with GUID: ' + guid);
+            // Initialize status metadata for this legacy rack
+            updateRackSheetStatus(rack.sheet, RACK_STATUS.SYNCED, guid);
+            guidsToCheck.push(guid);
+            rackByGuid[guid] = rack;
+          } else {
+            Logger.log('  Not found in Arena - treating as placeholder');
+            updateRackSheetStatus(rack.sheet, RACK_STATUS.PLACEHOLDER, null);
+            results.placeholder++;
+          }
+        } catch (error) {
+          Logger.log('  Error looking up legacy rack: ' + error.message);
+          if (error.message && error.message.indexOf('404') !== -1) {
+            // 404 = not found, it's a placeholder
+            updateRackSheetStatus(rack.sheet, RACK_STATUS.PLACEHOLDER, null);
+            results.placeholder++;
+          } else {
+            // Other error, skip this rack
+            results.error++;
+          }
+        }
+        return;
+      }
+
       if (status === RACK_STATUS.PLACEHOLDER) {
         results.placeholder++;
         return; // Skip placeholders
@@ -361,6 +394,10 @@ function checkAllRackStatuses() {
       if (arenaGuid) {
         guidsToCheck.push(arenaGuid);
         rackByGuid[arenaGuid] = rack;
+      } else {
+        // Has status but no GUID - this is an error state
+        Logger.log('⚠ Rack has status but no GUID: ' + rack.itemNumber);
+        results.error++;
       }
     });
 
