@@ -2234,6 +2234,17 @@ function preparePODWizardDataForModal() {
   var rackConfigNumbers = Object.keys(rackConfigMap);
   Logger.log('Built rack config map with ' + rackConfigNumbers.length + ' racks: ' + rackConfigNumbers.join(', '));
 
+  // Build rack position map (which row and position each rack is in)
+  var rackPositionMap = {};
+  overviewData.forEach(function(row) {
+    row.positions.forEach(function(pos) {
+      rackPositionMap[pos.itemNumber] = {
+        row: row.rowNumber,
+        position: pos.position
+      };
+    });
+  });
+
   // Separate placeholder vs existing racks
   var placeholderRacks = [];
   var existingRacks = [];
@@ -2279,25 +2290,31 @@ function preparePODWizardDataForModal() {
         categoryName = cat.name || cat.Name || '';
       }
 
+      var position = rackPositionMap[itemNumber] || {};
       existingRacks.push({
         itemNumber: itemNumber,
         name: arenaItem.name || arenaItem.Name || rackConfig.metadata.itemName,
         description: arenaItem.description || arenaItem.Description || rackConfig.metadata.description || '',
         category: categoryName,
         childCount: rackConfig.childCount,
-        guid: arenaItem.guid || arenaItem.Guid
+        guid: arenaItem.guid || arenaItem.Guid,
+        row: position.row,
+        position: position.position
       });
       Logger.log('→ Added ' + itemNumber + ' to EXISTING racks list (category: ' + categoryName + ')');
     } else {
       // Doesn't exist in Arena - placeholder
       Logger.log('→ Adding ' + itemNumber + ' to PLACEHOLDER list');
+      var position = rackPositionMap[itemNumber] || {};
       placeholderRacks.push({
         itemNumber: itemNumber,
         name: rackConfig.metadata.itemName || '',
         description: rackConfig.metadata.description || '',
         category: null,  // User will select
         childCount: rackConfig.childCount,
-        sheet: rackConfig.sheet
+        sheetName: rackConfig.sheet.getName(),  // Store name, not object (can't pass through HTML modal)
+        row: position.row,
+        position: position.position
       });
     }
   });
@@ -2425,7 +2442,12 @@ function executePODPush(wizardData) {
       client.updateItem(newItemGuid, { number: rack.itemNumber });
 
       // Get rack children and sync BOM
-      var children = getRackConfigChildren(rack.sheet);
+      var ss = SpreadsheetApp.getActiveSpreadsheet();
+      var rackSheet = ss.getSheetByName(rack.sheetName);
+      if (!rackSheet) {
+        throw new Error('Rack config sheet not found: ' + rack.sheetName);
+      }
+      var children = getRackConfigChildren(rackSheet);
       var bomLines = [];
 
       for (var j = 0; j < children.length; j++) {
