@@ -386,21 +386,51 @@ ArenaAPIClient.prototype.refreshItemCache = function() {
   var allItems = this.getAllItems();
 
   // Build cache object keyed by item number
+  // Only store essential fields to stay under 100KB CacheService limit
   var itemCache = {};
   for (var i = 0; i < allItems.length; i++) {
     var item = allItems[i];
     var itemNumber = item.number || item.Number;
     if (itemNumber) {
-      itemCache[itemNumber] = item;
+      // Trim to essential fields for BOM/POD operations
+      var categoryObj = item.category || item.Category || {};
+      var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
+      var urlObj = item.url || item.Url || {};
+
+      itemCache[itemNumber] = {
+        guid: item.guid || item.Guid,
+        number: itemNumber,
+        name: item.name || item.Name || '',
+        description: item.description || item.Description || '',
+        revisionNumber: item.revisionNumber || item.RevisionNumber || '',
+        assemblyType: item.assemblyType || item.AssemblyType || '',
+        isAssembly: item.isAssembly || item.IsAssembly || false,
+        category: {
+          guid: categoryObj.guid || categoryObj.Guid || '',
+          name: categoryObj.name || categoryObj.Name || ''
+        },
+        lifecyclePhase: {
+          guid: lifecycleObj.guid || lifecycleObj.Guid || '',
+          name: lifecycleObj.name || lifecycleObj.Name || ''
+        },
+        url: {
+          api: urlObj.api || urlObj.Api || '',
+          app: urlObj.app || urlObj.App || ''
+        }
+      };
     }
   }
 
   // Store in CacheService (shared across all features, 6 hour TTL)
   var cache = CacheService.getScriptCache();
-  cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
-
-  var elapsed = Date.now() - startTime;
-  Logger.log('✓ Cached ' + allItems.length + ' items in ' + elapsed + 'ms (TTL: 6 hours)');
+  try {
+    var cacheJson = JSON.stringify(itemCache);
+    cache.put(ITEM_CACHE_KEY, cacheJson, ITEM_CACHE_TTL);
+    var elapsed = Date.now() - startTime;
+    Logger.log('✓ Cached ' + allItems.length + ' items (' + Math.round(cacheJson.length / 1024) + ' KB) in ' + elapsed + 'ms (TTL: 6 hours)');
+  } catch (cacheError) {
+    Logger.log('⚠️ Could not cache items: ' + cacheError.message);
+  }
 
   return itemCache;
 };
@@ -428,7 +458,33 @@ ArenaAPIClient.prototype.addItemToCache = function(item) {
     var itemCache = JSON.parse(cachedJson);
     var itemNumber = item.number || item.Number;
     if (itemNumber) {
-      itemCache[itemNumber] = item;
+      // Store trimmed format consistent with refreshItemCache
+      var categoryObj = item.category || item.Category || {};
+      var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
+      var urlObj = item.url || item.Url || {};
+
+      itemCache[itemNumber] = {
+        guid: item.guid || item.Guid,
+        number: itemNumber,
+        name: item.name || item.Name || '',
+        description: item.description || item.Description || '',
+        revisionNumber: item.revisionNumber || item.RevisionNumber || '',
+        assemblyType: item.assemblyType || item.AssemblyType || '',
+        isAssembly: item.isAssembly || item.IsAssembly || false,
+        category: {
+          guid: categoryObj.guid || categoryObj.Guid || '',
+          name: categoryObj.name || categoryObj.Name || ''
+        },
+        lifecyclePhase: {
+          guid: lifecycleObj.guid || lifecycleObj.Guid || '',
+          name: lifecycleObj.name || lifecycleObj.Name || ''
+        },
+        url: {
+          api: urlObj.api || urlObj.Api || '',
+          app: urlObj.app || urlObj.App || ''
+        }
+      };
+
       cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
       Logger.log('Added ' + itemNumber + ' to shared cache');
     }

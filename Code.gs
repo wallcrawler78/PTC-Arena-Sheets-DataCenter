@@ -668,18 +668,25 @@ function pushBOMToArena() {
  */
 function loadItemPickerData(forceRefresh) {
   try {
-    var cache = CacheService.getUserCache();
-    var cacheKey = 'itemPickerData_v1';
+    var cache = CacheService.getScriptCache();
+    var itemsCacheKey = 'itemPicker_items_v2';
+    var categoriesCacheKey = 'itemPicker_categories_v2';
+    var colorsCacheKey = 'itemPicker_colors_v2';
 
     // Try to get from cache first (unless force refresh)
     if (!forceRefresh) {
-      var cachedData = cache.get(cacheKey);
-      if (cachedData) {
+      var cachedItems = cache.get(itemsCacheKey);
+      var cachedCategories = cache.get(categoriesCacheKey);
+      var cachedColors = cache.get(colorsCacheKey);
+
+      if (cachedItems && cachedCategories) {
         Logger.log('Loading Item Picker data from cache');
         try {
-          var data = JSON.parse(cachedData);
-          Logger.log('✅ Cache hit! Loaded ' + data.items.length + ' items, ' + data.categories.length + ' categories from cache');
-          return data;
+          var items = JSON.parse(cachedItems);
+          var categories = JSON.parse(cachedCategories);
+          var colors = cachedColors ? JSON.parse(cachedColors) : {};
+          Logger.log('✅ Cache hit! Loaded ' + items.length + ' items, ' + categories.length + ' categories from cache');
+          return { items: items, categories: categories, colors: colors };
         } catch (parseError) {
           Logger.log('⚠️ Cache data corrupted, fetching fresh data: ' + parseError.message);
         }
@@ -748,6 +755,7 @@ function loadItemPickerData(forceRefresh) {
         hasPendingChanges = Array.isArray(futureChanges) && futureChanges.length > 0;
       }
 
+      // Only store fields needed for Item Picker display (reduces cache size)
       return {
         guid: item.guid || item.Guid,
         number: itemNumber,
@@ -756,13 +764,8 @@ function loadItemPickerData(forceRefresh) {
         revisionNumber: item.revisionNumber || item.RevisionNumber || item.revision || item.Revision || '',
         categoryGuid: categoryObj.guid || categoryObj.Guid || '',
         categoryName: categoryObj.name || categoryObj.Name || '',
-        categoryPath: categoryObj.path || categoryObj.Path || '',
         lifecyclePhase: lifecycleObj.name || lifecycleObj.Name || '',
-        lifecyclePhaseGuid: lifecycleObj.guid || lifecycleObj.Guid || '',
-        attributes: item.attributes || item.Attributes || [],
-        arenaWebURL: arenaWebURL,
-        hasPendingChanges: hasPendingChanges,
-        hasFiles: hasFiles
+        arenaWebURL: arenaWebURL
       };
     });
 
@@ -792,13 +795,35 @@ function loadItemPickerData(forceRefresh) {
       colors: colors
     };
 
-    // Cache the result for 30 minutes (1800 seconds)
+    // Cache items, categories, and colors separately to stay under 100KB per key limit
+    // Use 6-hour TTL to match ArenaAPIClient cache
+    var cacheTTL = 6 * 60 * 60; // 6 hours in seconds
+
     try {
-      var cacheData = JSON.stringify(result);
-      cache.put(cacheKey, cacheData, 1800);
-      Logger.log('💾 Cached ' + mappedItems.length + ' items and ' + categories.length + ' categories (expires in 30 min)');
-    } catch (cacheError) {
-      Logger.log('⚠️ Could not cache data (data may be too large): ' + cacheError.message);
+      // Cache items (largest data set)
+      var itemsJson = JSON.stringify(mappedItems);
+      cache.put(itemsCacheKey, itemsJson, cacheTTL);
+      Logger.log('💾 Cached ' + mappedItems.length + ' items (' + Math.round(itemsJson.length / 1024) + ' KB)');
+    } catch (itemsError) {
+      Logger.log('⚠️ Could not cache items: ' + itemsError.message);
+    }
+
+    try {
+      // Cache categories
+      var categoriesJson = JSON.stringify(categories);
+      cache.put(categoriesCacheKey, categoriesJson, cacheTTL);
+      Logger.log('💾 Cached ' + categories.length + ' categories (' + Math.round(categoriesJson.length / 1024) + ' KB)');
+    } catch (categoriesError) {
+      Logger.log('⚠️ Could not cache categories: ' + categoriesError.message);
+    }
+
+    try {
+      // Cache colors
+      var colorsJson = JSON.stringify(colors);
+      cache.put(colorsCacheKey, colorsJson, cacheTTL);
+      Logger.log('💾 Cached colors (' + Math.round(colorsJson.length / 1024) + ' KB)');
+    } catch (colorsError) {
+      Logger.log('⚠️ Could not cache colors: ' + colorsError.message);
     }
 
     return result;
