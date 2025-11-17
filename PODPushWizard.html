@@ -1388,6 +1388,18 @@
         return;
       }
 
+      // Disable button immediately to prevent multiple clicks
+      const createBtn = document.getElementById('btnCreate');
+      if (createBtn.disabled) {
+        // Already processing, ignore
+        return;
+      }
+
+      createBtn.disabled = true;
+      createBtn.textContent = 'Creating...';
+      createBtn.style.opacity = '0.6';
+      createBtn.style.cursor = 'not-allowed';
+
       // Show loading
       document.getElementById('loadingIndicator').classList.add('active');
       document.getElementById('loadingText').textContent = 'Creating structure in Arena...';
@@ -1402,15 +1414,34 @@
 
     // Success handler
     function onCreateSuccess(result) {
-      // Completion modal is shown server-side, just close the wizard
+      // Queue up showing completion modal (async, starts immediately)
+      google.script.run.showPODPushCompletionModal();
+
+      // Close wizard (executes immediately)
+      // Modal will appear cleanly after wizard closes
       google.script.host.close();
     }
 
     // Error handlers
     function onCreateError(error) {
+      // Re-enable button on error
+      const createBtn = document.getElementById('btnCreate');
+      createBtn.disabled = false;
+      createBtn.textContent = 'Create in Arena';
+      createBtn.style.opacity = '1';
+      createBtn.style.cursor = 'pointer';
+
+      // Hide loading, show wizard content
       document.getElementById('loadingIndicator').classList.remove('active');
       document.querySelector('.wizard-content').style.display = 'block';
-      showError('Failed to create structure: ' + error.message);
+
+      // Show error with special handling for lock errors
+      const errorMsg = error.message || 'An error occurred';
+      if (errorMsg.includes('already in progress')) {
+        showError('Another POD push is currently running. Please wait for it to complete and try again.');
+      } else {
+        showError('Failed to create structure: ' + errorMsg);
+      }
     }
 
     function onError(error) {

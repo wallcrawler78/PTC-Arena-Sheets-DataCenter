@@ -18,6 +18,11 @@ var ArenaAPIClient = function() {
 
   // Get a valid session ID (will login if necessary)
   this.sessionId = getValidSessionId();
+
+  // Item caching to reduce API calls
+  this.itemCache = null;
+  this.cacheTimestamp = null;
+  this.CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 };
 
 /**
@@ -210,10 +215,15 @@ ArenaAPIClient.prototype.getItem = function(itemId) {
  */
 ArenaAPIClient.prototype.createItem = function(itemData) {
   var endpoint = '/items';
-  return this.makeRequest(endpoint, {
+  var newItem = this.makeRequest(endpoint, {
     method: 'POST',
     payload: itemData
   });
+
+  // Add newly created item to cache for immediate use
+  this.addItemToCache(newItem);
+
+  return newItem;
 };
 
 /**
@@ -224,10 +234,21 @@ ArenaAPIClient.prototype.createItem = function(itemData) {
  */
 ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
   var endpoint = '/items/' + encodeURIComponent(itemId);
-  return this.makeRequest(endpoint, {
+  var updatedItem = this.makeRequest(endpoint, {
     method: 'PUT',
     payload: itemData
   });
+
+  // Remove from cache so it gets refreshed on next access
+  if (this.itemCache) {
+    var itemNumber = updatedItem.number || updatedItem.Number;
+    if (itemNumber && this.itemCache[itemNumber]) {
+      delete this.itemCache[itemNumber];
+      Logger.log('Removed ' + itemNumber + ' from cache after update');
+    }
+  }
+
+  return updatedItem;
 };
 
 /**
@@ -311,34 +332,91 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
  * @param {string} itemNumber - The item number to search for
  * @return {Object|null} Item data or null if not found
  */
+/**
+ * Gets an item by its item number (with caching to reduce API calls)
+ * @param {string} itemNumber - The item number to search for
+ * @return {Object} The item object, or null if not found
+ */
 ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
   try {
-    Logger.log('Searching for item by number: ' + itemNumber);
+    // Check if cache needs refresh
+    if (!this.itemCache || !this.cacheTimestamp ||
+        (Date.now() - this.cacheTimestamp) > this.CACHE_TTL) {
+      this.refreshItemCache();
+    }
 
-    // Fetch all items and filter (searchItems endpoint is broken)
-    // Use getAllItems() for comprehensive search
-    Logger.log('Fetching all items to search for: ' + itemNumber);
-    var allItems = this.getAllItems();
+    // Lookup in cache
+    var item = this.itemCache[itemNumber];
 
-    Logger.log('Fetched ' + allItems.length + ' items, searching for exact match: ' + itemNumber);
+    if (!item) {
+      Logger.log('Item not found in cache: ' + itemNumber);
+      // Force cache refresh and try again
+      this.refreshItemCache();
+      item = this.itemCache[itemNumber];
 
-    // Find exact match by item number
-    for (var i = 0; i < allItems.length; i++) {
-      var item = allItems[i];
-      var number = item.number || item.Number || '';
-
-      if (number === itemNumber) {
-        Logger.log('✓ Found exact match for item: ' + itemNumber);
-        return item;
+      if (!item) {
+        Logger.log('Item not found after cache refresh: ' + itemNumber);
+        return null;
       }
     }
 
-    Logger.log('Item not found: ' + itemNumber);
-    return null;
+    Logger.log('✓ Found item in cache: ' + itemNumber);
+    return item;
 
   } catch (error) {
     Logger.log('Error getting item by number: ' + error.message);
     throw error;
+  }
+};
+
+/**
+ * Refreshes the item cache by fetching all items from Arena
+ * This significantly reduces API calls by caching items for reuse
+ */
+ArenaAPIClient.prototype.refreshItemCache = function() {
+  Logger.log('Refreshing item cache...');
+  var startTime = Date.now();
+
+  var allItems = this.getAllItems();
+
+  // Build cache object keyed by item number
+  this.itemCache = {};
+  for (var i = 0; i < allItems.length; i++) {
+    var item = allItems[i];
+    var itemNumber = item.number || item.Number;
+    if (itemNumber) {
+      this.itemCache[itemNumber] = item;
+    }
+  }
+
+  this.cacheTimestamp = Date.now();
+  var elapsed = Date.now() - startTime;
+
+  Logger.log('✓ Cached ' + allItems.length + ' items in ' + elapsed + 'ms');
+};
+
+/**
+ * Invalidates the item cache
+ * Call this after creating or updating items to force a refresh
+ */
+ArenaAPIClient.prototype.invalidateCache = function() {
+  Logger.log('Invalidating item cache');
+  this.itemCache = null;
+  this.cacheTimestamp = null;
+};
+
+/**
+ * Adds a newly created item to the cache
+ * This allows immediate use without waiting for cache refresh
+ * @param {Object} item - The item object to add to cache
+ */
+ArenaAPIClient.prototype.addItemToCache = function(item) {
+  if (this.itemCache) {
+    var itemNumber = item.number || item.Number;
+    if (itemNumber) {
+      this.itemCache[itemNumber] = item;
+      Logger.log('Added ' + itemNumber + ' to cache');
+    }
   }
 };
 

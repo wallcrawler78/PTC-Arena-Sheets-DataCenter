@@ -2521,6 +2521,16 @@ function executePODPush(wizardData) {
   Logger.log('EXECUTING BATCH POD PUSH');
   Logger.log('==========================================');
 
+  // Check for concurrent execution
+  var lock = PropertiesService.getUserProperties().getProperty('podPush_lock');
+  if (lock === 'true') {
+    throw new Error('Another POD push is already in progress. Please wait for it to complete.');
+  }
+
+  // Set execution lock
+  PropertiesService.getUserProperties().setProperty('podPush_lock', 'true');
+  Logger.log('POD push lock acquired');
+
   var client = new ArenaAPIClient();
   var createdRacks = [];
   var createdRows = [];
@@ -2695,14 +2705,7 @@ function executePODPush(wizardData) {
     Logger.log('✓ POD: ' + podItemNumber);
     Logger.log('==========================================');
 
-    // Show completion modal
-    var ui = SpreadsheetApp.getUi();
-    var completionHtml = HtmlService.createHtmlOutputFromFile('PODPushCompleteModal')
-      .setWidth(500)
-      .setHeight(400);
-
-    ui.showModalDialog(completionHtml, 'POD Structure Complete');
-
+    // Return success data (wizard will show completion modal after closing)
     return {
       success: true,
       racksCreated: createdRacks.length,
@@ -2714,6 +2717,10 @@ function executePODPush(wizardData) {
   } catch (error) {
     Logger.log('ERROR in batch POD push: ' + error.message);
     throw error;
+  } finally {
+    // ALWAYS clear lock, even on error
+    PropertiesService.getUserProperties().deleteProperty('podPush_lock');
+    Logger.log('POD push lock released');
   }
 }
 
@@ -2725,6 +2732,19 @@ function executePODPush(wizardData) {
 function getPODPushResults() {
   var json = PropertiesService.getUserProperties().getProperty('podPush_results');
   return json ? JSON.parse(json) : { racksCreated: 0, rowsCreated: 0, podItemNumber: '', podGuid: '' };
+}
+
+/**
+ * Shows POD push completion modal
+ * Called by wizard AFTER it closes to avoid modal overlap
+ * This prevents the bug where completion modal appears on top of wizard
+ */
+function showPODPushCompletionModal() {
+  var ui = SpreadsheetApp.getUi();
+  var completionHtml = HtmlService.createHtmlOutputFromFile('PODPushCompleteModal')
+    .setWidth(500)
+    .setHeight(400);
+  ui.showModalDialog(completionHtml, 'POD Structure Complete');
 }
 
 /**
