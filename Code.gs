@@ -38,6 +38,7 @@ function onOpen(e) {
       .addItem('Push POD Structure to Arena', 'pushPODStructureToArena')
       .addSeparator()
       .addItem('Check All Rack Statuses', 'checkAllRackStatuses')
+      .addItem('Refresh Rack Tab Indicators', 'refreshAllRackTabNames')
       .addItem('Mark Current Rack as Synced', 'markCurrentRackAsSynced')
       .addSeparator()
       .addItem('Repair POD/Row BOMs', 'repairPODAndRowBOMs'))

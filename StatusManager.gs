@@ -589,3 +589,40 @@ function markCurrentRackAsSynced() {
 
   SpreadsheetApp.getUi().alert('Success', 'Rack marked as synced with Arena.', SpreadsheetApp.getUi().ButtonSet.OK);
 }
+
+/**
+ * Refreshes all rack tab names based on current status in History tab
+ * Useful for fixing missing status indicators after migration or updates
+ */
+function refreshAllRackTabNames() {
+  try {
+    var racks = getAllRackConfigTabs();
+    var updated = 0;
+    var skipped = 0;
+
+    Logger.log('Refreshing tab names for ' + racks.length + ' racks');
+
+    racks.forEach(function(rack) {
+      var success = updateRackTabName(rack.sheet);
+      if (success) {
+        updated++;
+        Logger.log('  ✓ Updated: ' + rack.itemNumber);
+      } else {
+        skipped++;
+        Logger.log('  ○ Skipped: ' + rack.itemNumber + ' (no status)');
+      }
+    });
+
+    var message = 'Rack tab names refreshed!\n\n';
+    message += 'Updated: ' + updated + '\n';
+    message += 'Skipped: ' + skipped + ' (no status set)\n';
+
+    SpreadsheetApp.getUi().alert('Tab Names Refreshed', message, SpreadsheetApp.getUi().ButtonSet.OK);
+
+    Logger.log('Tab name refresh complete: ' + updated + ' updated, ' + skipped + ' skipped');
+
+  } catch (error) {
+    Logger.log('Error refreshing rack tab names: ' + error.message);
+    SpreadsheetApp.getUi().alert('Error', 'Failed to refresh tab names: ' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
+  }
+}
