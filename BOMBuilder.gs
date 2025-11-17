@@ -2166,29 +2166,19 @@ function pushPODStructureToArenaNew() {
   Logger.log('POD PUSH WIZARD - START');
   Logger.log('==========================================');
 
-  try {
-    // Prepare all data with ONE sheet scan
-    var wizardData = preparePODWizardData();
+  // Show loading modal immediately - it will call back to prepare data
+  var html = HtmlService.createHtmlOutputFromFile('PODPushLoadingModal')
+    .setWidth(400)
+    .setHeight(350);
 
-    if (!wizardData.success) {
-      SpreadsheetApp.getUi().alert('Error', wizardData.message, SpreadsheetApp.getUi().ButtonSet.OK);
-      return;
-    }
-
-    // Show the wizard HTML dialog
-    showPODPushWizard(wizardData);
-
-  } catch (error) {
-    Logger.log('Error in POD Push Wizard: ' + error.message);
-    SpreadsheetApp.getUi().alert('Error', 'Failed to start POD push wizard: ' + error.message, SpreadsheetApp.getUi().ButtonSet.OK);
-  }
+  SpreadsheetApp.getUi().showModalDialog(html, 'Preparing POD Structure');
 }
 
 /**
  * Prepares all data for the POD push wizard by scanning sheets ONCE
- * Returns comprehensive data structure for the UI
+ * Called from the loading modal, returns comprehensive data structure for the UI
  */
-function preparePODWizardData() {
+function preparePODWizardDataForModal() {
   Logger.log('Preparing POD wizard data...');
 
   var client = new ArenaAPIClient();
@@ -2321,8 +2311,33 @@ function preparePODWizardData() {
 
 /**
  * Shows the POD Push Wizard HTML dialog
+ * This is the legacy version - kept for backwards compatibility
  */
 function showPODPushWizard(wizardData) {
+  var html = HtmlService.createHtmlOutputFromFile('PODPushWizard')
+    .setWidth(1200)
+    .setHeight(800);
+
+  // Pass data to wizard
+  var scriptlet = '<script>initializeWizard(' + JSON.stringify(wizardData) + ');</script>';
+  var content = html.getContent() + scriptlet;
+  html.setContent(content);
+
+  SpreadsheetApp.getUi().showModalDialog(html, 'POD Structure Push Wizard');
+}
+
+/**
+ * Shows the POD Push Wizard with pre-prepared data
+ * Called from the loading modal after data is ready
+ */
+function showPODPushWizardWithData(wizardData) {
+  Logger.log('Showing wizard with prepared data...');
+
+  if (!wizardData.success) {
+    SpreadsheetApp.getUi().alert('Error', wizardData.message, SpreadsheetApp.getUi().ButtonSet.OK);
+    return;
+  }
+
   var html = HtmlService.createHtmlOutputFromFile('PODPushWizard')
     .setWidth(1200)
     .setHeight(800);
