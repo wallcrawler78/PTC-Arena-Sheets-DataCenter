@@ -428,8 +428,10 @@ function checkAllRackStatuses() {
 
       if (status === RACK_STATUS.PLACEHOLDER) {
         Logger.log('  → Placeholder rack, skipping Arena check');
+        // Still update tab name to show red dot indicator
+        updateRackTabName(rack.sheet);
         results.placeholder++;
-        return; // Skip placeholders
+        return; // Skip Arena API check for placeholders
       }
 
       // REFACTORED: Read GUID from History tab
