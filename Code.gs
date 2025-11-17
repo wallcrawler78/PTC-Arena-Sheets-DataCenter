@@ -875,6 +875,18 @@ function refreshCurrentRackBOM() {
     };
   }
 
+  // Inform user about the refresh process
+  ui.alert(
+    'Refreshing BOM from Arena',
+    'This will:\n' +
+    '• Fetch the latest BOM from Arena for rack ' + metadata.itemNumber + '\n' +
+    '• Compare with your current sheet data\n' +
+    '• Show any differences detected\n\n' +
+    '⏱️ This may take 10-20 seconds depending on BOM size.\n\n' +
+    'Click OK to continue...',
+    ui.ButtonSet.OK
+  );
+
   try {
     // Fetch current BOM from Arena
     var arenaClient = new ArenaAPIClient();
