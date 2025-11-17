@@ -746,19 +746,21 @@
     // Select category for rack
     function selectRackCategory(index) {
       selectedCategoryRow = { type: 'rack', index: index };
+      const rackNumber = wizardData.racks[index].itemNumber;
       google.script.run
         .withSuccessHandler(onCategorySelected)
         .withFailureHandler(onError)
-        .showCategorySelector();
+        .showCategorySelector('Select Category', 'Choose category for rack ' + rackNumber);
     }
 
     // Select category for row
     function selectRowCategory(index) {
       selectedCategoryRow = { type: 'row', index: index };
+      const rowNumber = wizardData.rows[index].rowNumber;
       google.script.run
         .withSuccessHandler(onCategorySelected)
         .withFailureHandler(onError)
-        .showCategorySelector();
+        .showCategorySelector('Select Category', 'Choose category for Row ' + rowNumber);
     }
 
     // Select category for POD
@@ -767,7 +769,7 @@
       google.script.run
         .withSuccessHandler(onCategorySelected)
         .withFailureHandler(onError)
-        .showCategorySelector();
+        .showCategorySelector('Select Category', 'Choose category for POD');
     }
 
     // Category selected callback
