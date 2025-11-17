@@ -380,6 +380,8 @@ function checkAllRackStatuses() {
     racks.forEach(function(rack) {
       var status = getRackSheetStatus(rack.sheet);
 
+      Logger.log('Checking rack: ' + rack.itemNumber + ' with status: "' + status + '"');
+
       // Handle legacy racks (created before status feature)
       if (!status || status === '') {
         Logger.log('Legacy rack detected (no status metadata): ' + rack.itemNumber);
@@ -413,6 +415,7 @@ function checkAllRackStatuses() {
       }
 
       if (status === RACK_STATUS.PLACEHOLDER) {
+        Logger.log('  → Placeholder rack, skipping Arena check');
         results.placeholder++;
         return; // Skip placeholders
       }
@@ -420,11 +423,13 @@ function checkAllRackStatuses() {
       // REFACTORED: Read GUID from History tab
       var arenaGuid = getRackArenaGuidFromHistory(rack.itemNumber);
       if (arenaGuid) {
+        Logger.log('  → Has Arena GUID, will check against Arena');
         guidsToCheck.push(arenaGuid);
         rackByGuid[arenaGuid] = rack;
       } else {
         // Has status but no GUID - this is an error state
-        Logger.log('⚠ Rack has status but no GUID: ' + rack.itemNumber);
+        Logger.log('⚠ Rack has status "' + status + '" but no Arena GUID: ' + rack.itemNumber);
+        Logger.log('  This rack should have status PLACEHOLDER if not yet in Arena');
         results.error++;
       }
     });

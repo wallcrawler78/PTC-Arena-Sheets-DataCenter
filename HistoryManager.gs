@@ -375,8 +375,16 @@ function getRackStatusFromHistory(itemNumber) {
   var historySheet = getOrCreateRackHistoryTab();
   var statusValue = historySheet.getRange(row, HIST_SUMMARY_STATUS_COL).getValue();
 
-  // Remove emoji prefix if present
-  var status = statusValue.toString().replace(/[🔴🟢🟠🟡❌]\s*/, '');
+  if (!statusValue) {
+    return null;
+  }
+
+  // Remove emoji prefix if present and clean up whitespace
+  var status = statusValue.toString()
+    .replace(/[🔴🟢🟠🟡❌]/g, '')  // Remove all emojis
+    .trim();  // Remove leading/trailing whitespace
+
+  Logger.log('getRackStatusFromHistory: ' + itemNumber + ' → raw: "' + statusValue + '" → cleaned: "' + status + '"');
   return status;
 }
 
