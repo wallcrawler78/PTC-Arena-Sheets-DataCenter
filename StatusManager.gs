@@ -547,13 +547,14 @@ function getCurrentRackBOMData(sheet) {
   var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 6).getValues();
   var bomLines = [];
 
-  data.forEach(function(row) {
+  data.forEach(function(row, index) {
     var itemNumber = row[0];
     if (!itemNumber || itemNumber.toString().trim() === '') {
       return; // Skip empty rows
     }
 
     bomLines.push({
+      rowNumber: DATA_START_ROW + index, // Actual sheet row number
       itemNumber: itemNumber,
       name: row[1] || '',
       description: row[2] || '',
