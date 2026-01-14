@@ -277,7 +277,7 @@ function importArenaData() {
 
     // Group items by rack type
     Logger.log('Step 2: Categorizing items by rack type...');
-    var groupedItems = groupItemsByRackType(arenaItems);
+    var groupedItems = groupItemsByEntityType(arenaItems); // REFACTORED: Use generic entity type
 
     // Populate individual rack tabs
     Logger.log('Step 3: Populating rack tabs...');

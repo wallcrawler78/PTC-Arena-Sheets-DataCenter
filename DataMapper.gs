@@ -93,7 +93,8 @@ function extractPartAttributes(arenaItem) {
     description: arenaItem.description || '',
     revision: arenaItem.revisionNumber || arenaItem.revision || '',
     lifecycle: arenaItem.lifecyclePhase || arenaItem.status || '',
-    rackType: determineRackType(arenaItem),
+    entityType: determineEntityType(arenaItem), // REFACTORED: Now uses dynamic entity type
+    rackType: determineEntityType(arenaItem),   // DEPRECATED: Keep for backward compatibility
     rawData: arenaItem // Keep original data for reference
   };
 }
@@ -116,16 +117,17 @@ function mapArenaItemsToRackParts(arenaItems) {
 }
 
 /**
- * Groups Arena items by rack type
+ * Groups Arena items by entity type
+ * REFACTORED: Now uses dynamic entity types from configuration
  * @param {Array<Object>} arenaItems - Array of Arena items
- * @return {Object} Object with rack types as keys, arrays of items as values
+ * @return {Object} Object with entity types as keys, arrays of items as values
  */
-function groupItemsByRackType(arenaItems) {
+function groupItemsByEntityType(arenaItems) {
   var grouped = {};
 
-  // Initialize groups for all rack types
-  getAllRackTabNames().forEach(function(rackName) {
-    grouped[rackName] = [];
+  // Initialize groups for all entity types (from configuration)
+  getAllEntityTabNames().forEach(function(entityName) {
+    grouped[entityName] = [];
   });
 
   // Also track unassigned items
@@ -133,12 +135,12 @@ function groupItemsByRackType(arenaItems) {
 
   // Group items
   arenaItems.forEach(function(arenaItem) {
-    var rackType = determineRackType(arenaItem);
+    var entityType = determineEntityType(arenaItem);
 
-    if (rackType && grouped[rackType]) {
+    if (entityType && grouped[entityType]) {
       var mappedItem = mapArenaItemToRackPart(arenaItem);
       if (mappedItem) {
-        grouped[rackType].push(mappedItem);
+        grouped[entityType].push(mappedItem);
       }
     } else {
       // Add to unassigned
@@ -150,6 +152,15 @@ function groupItemsByRackType(arenaItems) {
   });
 
   return grouped;
+}
+
+/**
+ * @deprecated Use groupItemsByEntityType() instead
+ * Kept for backward compatibility with existing code
+ */
+function groupItemsByRackType(arenaItems) {
+  Logger.log('DEPRECATED: groupItemsByRackType() called. Use groupItemsByEntityType() instead.');
+  return groupItemsByEntityType(arenaItems);
 }
 
 /**
