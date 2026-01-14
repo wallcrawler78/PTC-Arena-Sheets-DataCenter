@@ -35,18 +35,19 @@ function onOpen(e) {
       }
     }
   } else if (firstRunCheck.action === 'show-wizard') {
-    // First run - show setup wizard after menu is created
-    // Use a time-delayed trigger to show wizard after menu loads
+    // TEMPORARY FIX: Skip wizard until SetupWizard.html is created (Phase 4)
+    // For now, just show a toast and continue to create menus
     SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Welcome! Please complete the setup wizard to configure your integration.',
+      'Setup wizard not yet available. Using default configuration for now.\n' +
+      'To configure, use Setup → Quick Setup or manually migrate with Setup → Run Migration.',
       'First Time Setup',
-      -1
+      10
     );
 
-    // Show wizard after a short delay
-    Utilities.sleep(500);
-    showSetupWizard();
-    return; // Exit early - wizard will reload when complete
+    // Use default neutral configuration silently
+    Logger.log('First run detected - using default configuration');
+    // Don't call showSetupWizard() since HTML doesn't exist yet
+    // Continue to create menus below
   }
 
   // Get dynamic terminology for menu labels
@@ -79,7 +80,8 @@ function onOpen(e) {
         .addItem('Clear Credentials', 'clearCredentials')
         .addSeparator()
         .addItem('Configure Type System', 'showConfigureTypeSystem')
-        .addItem('Run Setup Wizard', 'showSetupWizard')
+        .addItem('Quick Setup (Default Config)', 'showQuickSetup')
+        .addItem('Run Auto-Migration (Datacenter)', 'runManualMigration')
         .addSeparator()
         .addItem('Configure Item Columns', 'showConfigureColumns')
         .addItem('Configure Category Colors', 'showConfigureColors')
@@ -2037,5 +2039,71 @@ function resetConfigurationDialog() {
         ui.ButtonSet.OK
       );
     }
+  }
+}
+
+/**
+ * Manually runs datacenter auto-migration
+ * For users with existing datacenter spreadsheets
+ */
+function runManualMigration() {
+  var ui = SpreadsheetApp.getUi();
+
+  // Check if already initialized
+  if (isSystemInitialized()) {
+    ui.alert(
+      'Already Initialized',
+      'System is already configured.\n\n' +
+      'Use Setup → Export Configuration to backup your current settings.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Detect existing configuration
+  var detection = detectExistingConfiguration();
+
+  if (!detection.detected || detection.type !== 'datacenter') {
+    ui.alert(
+      'No Datacenter Configuration Detected',
+      'Could not detect a datacenter configuration.\n\n' +
+      detection.message + '\n\n' +
+      'Use Setup → Quick Setup for default configuration instead.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  // Confirm migration
+  var response = ui.alert(
+    'Run Auto-Migration',
+    'Detected: ' + detection.message + '\n\n' +
+    'This will migrate your datacenter configuration to the new type system.\n' +
+    'All existing sheets and data will continue to work.\n\n' +
+    'Continue?',
+    ui.ButtonSet.YES_NO
+  );
+
+  if (response !== ui.Button.YES) {
+    return;
+  }
+
+  // Run migration
+  var result = migrateFromV1();
+
+  if (result.success) {
+    ui.alert(
+      'Migration Successful',
+      result.message + '\n\n' +
+      'Please reload the spreadsheet to see the updated menus.',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert(
+      'Migration Failed',
+      'Migration failed: ' + result.message + '\n\n' +
+      'Please check the execution log for details.',
+      ui.ButtonSet.OK
+    );
   }
 }
