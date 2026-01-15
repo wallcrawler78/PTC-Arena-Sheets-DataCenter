@@ -270,6 +270,81 @@
       background: #fce8e6;
       color: #c5221f;
     }
+
+    /* About / Creator Section */
+    .creator-card {
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+      border: 2px solid #dadce0;
+      border-radius: 12px;
+      padding: 40px;
+      margin: 40px auto;
+      max-width: 600px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .creator-photo {
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      margin: 0 auto 24px;
+      border: 4px solid #1a73e8;
+      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.2);
+    }
+
+    .creator-name {
+      font-size: 28px;
+      font-weight: 500;
+      color: #202124;
+      margin: 0 0 8px 0;
+    }
+
+    .creator-title {
+      font-size: 18px;
+      color: #5f6368;
+      margin: 0 0 24px 0;
+    }
+
+    .creator-message {
+      font-size: 16px;
+      color: #5f6368;
+      line-height: 1.7;
+      margin: 24px 0;
+    }
+
+    .linkedin-button {
+      display: inline-block;
+      background: #0077b5;
+      color: white;
+      padding: 14px 32px;
+      border-radius: 8px;
+      text-decoration: none;
+      font-size: 16px;
+      font-weight: 500;
+      margin-top: 20px;
+      transition: all 0.2s;
+      box-shadow: 0 2px 8px rgba(0, 119, 181, 0.3);
+    }
+
+    .linkedin-button:hover {
+      background: #006399;
+      box-shadow: 0 4px 12px rgba(0, 119, 181, 0.4);
+      transform: translateY(-2px);
+    }
+
+    .linkedin-button:before {
+      content: "in";
+      display: inline-block;
+      background: white;
+      color: #0077b5;
+      width: 24px;
+      height: 24px;
+      line-height: 24px;
+      border-radius: 3px;
+      font-weight: bold;
+      margin-right: 10px;
+      font-size: 18px;
+    }
   </style>
 </head>
 <body>
@@ -285,6 +360,7 @@
       <button class="tab" onclick="showTab(2)">Creating Content</button>
       <button class="tab" onclick="showTab(3)">Status & History</button>
       <button class="tab" onclick="showTab(4)">Publishing</button>
+      <button class="tab" onclick="showTab(5)">About</button>
     </div>
 
     <!-- Tab 1: Getting Started -->
@@ -713,6 +789,39 @@
         <li>Use "Validate History Integrity" to check for data issues</li>
         <li>Verify all rack configurations have valid Arena items</li>
       </ul>
+    </div>
+
+    <!-- Tab 6: About -->
+    <div class="tab-content">
+      <h2>About This Tool</h2>
+
+      <div class="creator-card">
+        <img class="creator-photo" src="https://media.licdn.com/dms/image/v2/D5603AQFVGXhMJl_YOQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1708455515046?e=1742428800&v=beta&t=xQJxMJKxF7zDxP0FJKxJ0MJKxF7zDxP0FJKxJ0MJKxF"
+             alt="Dan Bacon"
+             onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 200 200%22%3E%3Ccircle cx=%22100%22 cy=%22100%22 r=%22100%22 fill=%22%231a73e8%22/%3E%3Ctext x=%22100%22 y=%22115%22 font-size=%2280%22 text-anchor=%22middle%22 fill=%22white%22 font-family=%22Arial%22%3EDB%3C/text%3E%3C/svg%3E'">
+
+        <h3 class="creator-name">Dan Bacon</h3>
+        <p class="creator-title">PTC Arena PLM</p>
+
+        <div class="creator-message">
+          <p>This tool was built to make Arena PLM integration seamless and powerful. Whether you're managing data center infrastructure, manufacturing assemblies, or any hierarchical product structure, this tool helps you design, track, and sync everything with Arena.</p>
+
+          <p>If you find this tool helpful or have ideas for improvements, I'd love to hear from you!</p>
+        </div>
+
+        <a href="https://www.linkedin.com/in/thedanielbacon" target="_blank" class="linkedin-button">
+          Connect on LinkedIn
+        </a>
+      </div>
+
+      <div class="info-box" style="text-align: center;">
+        <strong>Open Source & Collaboration</strong>
+        <p style="margin-top: 10px;">This project is built with Google Apps Script and integrates with Arena PLM's REST API. Interested in contributing or have questions? Reach out on LinkedIn!</p>
+      </div>
+
+      <div class="tip-box" style="text-align: center;">
+        <strong>Made with</strong> 🔧 Google Apps Script • 🔗 Arena PLM API • ❤️ Passion for great tools
+      </div>
     </div>
   </div>
 
