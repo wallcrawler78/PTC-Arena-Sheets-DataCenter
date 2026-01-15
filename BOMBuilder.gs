@@ -19,6 +19,37 @@ function _getBOMHierarchyName(level) {
 }
 
 /**
+ * Finds overview sheet by checking the title in cell A1
+ * Instead of looking for "overview" in sheet name, checks for "Overview" in the header
+ * This allows users to name sheets anything they want (e.g., "Boston Restaurant")
+ * @return {Sheet} Overview sheet or null if not found
+ */
+function findOverviewSheet() {
+  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+  var allSheets = spreadsheet.getSheets();
+
+  for (var i = 0; i < allSheets.length; i++) {
+    var sheet = allSheets[i];
+    try {
+      // Check if cell A1 contains "Overview" (case-insensitive)
+      var headerValue = sheet.getRange(1, 1).getValue();
+      if (headerValue && typeof headerValue === 'string') {
+        var headerLower = headerValue.toLowerCase();
+        if (headerLower.indexOf('overview') !== -1) {
+          Logger.log('Found overview sheet: ' + sheet.getName() + ' (header: "' + headerValue + '")');
+          return sheet;
+        }
+      }
+    } catch (e) {
+      // Skip sheets that can't be read
+      continue;
+    }
+  }
+
+  return null;
+}
+
+/**
  * Pulls a BOM from Arena and populates the current sheet
  * @param {string} itemNumber - Arena item number to pull BOM for
  * @return {Object} Result object with success status and message
@@ -598,20 +629,11 @@ function buildConsolidatedBOM() {
   var ui = SpreadsheetApp.getUi();
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Find overview sheet (look for sheet with "overview" in name)
-  var allSheets = spreadsheet.getSheets();
-  var overviewSheet = null;
-
-  for (var i = 0; i < allSheets.length; i++) {
-    var sheetName = allSheets[i].getName().toLowerCase();
-    if (sheetName.indexOf('overview') !== -1) {
-      overviewSheet = allSheets[i];
-      break;
-    }
-  }
+  // Find overview sheet by checking header in cell A1 (not sheet name)
+  var overviewSheet = findOverviewSheet();
 
   if (!overviewSheet) {
-    throw new Error('Could not find an Overview sheet. Please create an overview layout sheet first.');
+    throw new Error('Could not find an Overview sheet. Please create an overview layout sheet first.\n\nOverview sheets are identified by having "Overview" in their title header (cell A1).');
   }
 
   Logger.log('Using overview sheet: ' + overviewSheet.getName());
@@ -2235,15 +2257,8 @@ function preparePODWizardDataForModal() {
   var client = new ArenaAPIClient();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Find overview sheet
-  var overviewSheet = null;
-  var sheets = ss.getSheets();
-  for (var i = 0; i < sheets.length; i++) {
-    if (sheets[i].getName().toLowerCase().indexOf('overview') !== -1) {
-      overviewSheet = sheets[i];
-      break;
-    }
-  }
+  // Find overview sheet by checking header in cell A1 (not sheet name)
+  var overviewSheet = findOverviewSheet();
 
   if (!overviewSheet) {
     return { success: false, message: 'Overview sheet not found.' };

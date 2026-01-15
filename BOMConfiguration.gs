@@ -11,14 +11,15 @@ var BOM_CONFIG_KEYS = {
 };
 
 /**
- * Shows the Rack BOM Location Setting configuration dialog
+ * Shows the BOM Location Setting configuration dialog (uses dynamic terminology)
  */
 function showRackBOMLocationSetting() {
+  var entitySingular = getTerminology('entity_singular');
   var html = HtmlService.createHtmlOutputFromFile('ConfigureBOMPositionAttribute')
     .setWidth(600)
     .setHeight(550)
-    .setTitle('Rack BOM Location Setting');
-  SpreadsheetApp.getUi().showModalDialog(html, 'Rack BOM Location Configuration');
+    .setTitle(entitySingular + ' BOM Location Setting');
+  SpreadsheetApp.getUi().showModalDialog(html, entitySingular + ' BOM Location Configuration');
 }
 
 /**

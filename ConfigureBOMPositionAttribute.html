@@ -196,11 +196,11 @@
 </head>
 <body>
   <div class="container">
-    <h2>Rack BOM Location Setting</h2>
+    <h2 id="pageTitle">BOM Location Setting</h2>
 
-    <div class="description">
-      Configure which BOM attribute should be used to track rack positions when pushing to Arena.
-      Each rack will be tagged with its positions on the BOM line (e.g., "Pos 1, Pos 3, Pos 8").
+    <div class="description" id="pageDescription">
+      Configure which BOM attribute should be used to track positions when pushing to Arena.
+      Each item will be tagged with its positions on the BOM line (e.g., "Pos 1, Pos 3, Pos 8").
       <strong>Note:</strong> Only BOM-level attributes can be used here (not item-level attributes).
     </div>
 
@@ -212,9 +212,9 @@
     </div>
 
     <div id="content" class="hidden">
-      <div class="info-box">
+      <div class="info-box" id="howItWorksBox">
         <strong>How it works:</strong><br>
-        When you push a POD structure to Arena, each Rack on a Row's BOM will automatically be tagged with its position names from the Overview sheet.
+        When you push a structure to Arena, each item on the BOM will automatically be tagged with its position names from the Overview sheet.
       </div>
 
       <div class="config-section">
@@ -253,6 +253,43 @@
   <script>
     var availableAttributes = [];
     var currentConfig = {};
+    var terminology = {
+      entity_singular: 'Configuration',
+      entity_singular_lower: 'configuration',
+      hierarchy_level_0: 'Assembly',
+      hierarchy_level_1: 'SubAssembly',
+      hierarchy_level_2: 'Configuration'
+    };
+
+    // Load dynamic terminology
+    google.script.run
+      .withSuccessHandler(function(terms) {
+        terminology = terms;
+        updateUIWithTerminology();
+      })
+      .withFailureHandler(function(error) {
+        console.log('Using default terminology:', error);
+        updateUIWithTerminology();
+      })
+      .getTerminologyForUI();
+
+    // Update UI text with dynamic terminology
+    function updateUIWithTerminology() {
+      var entity = terminology.entity_singular;
+      var entityLower = terminology.entity_singular_lower;
+      var level0 = terminology.hierarchy_level_0;
+      var level1 = terminology.hierarchy_level_1;
+
+      document.getElementById('pageTitle').textContent = entity + ' BOM Location Setting';
+      document.getElementById('pageDescription').innerHTML =
+        'Configure which BOM attribute should be used to track ' + entityLower + ' positions when pushing to Arena. ' +
+        'Each ' + entityLower + ' will be tagged with its positions on the BOM line (e.g., "Pos 1, Pos 3, Pos 8"). ' +
+        '<strong>Note:</strong> Only BOM-level attributes can be used here (not item-level attributes).';
+
+      document.getElementById('howItWorksBox').innerHTML =
+        '<strong>How it works:</strong><br>' +
+        'When you push a ' + level0 + ' structure to Arena, each ' + entity + ' on a ' + level1 + '\'s BOM will automatically be tagged with its position names from the Overview sheet.';
+    }
 
     // Load data on page load
     google.script.run
