@@ -114,8 +114,9 @@ function createOverviewLayout(sheetName, rows, cols) {
   // Create new sheet
   var sheet = spreadsheet.insertSheet(sheetName);
 
-  // Set up title
-  sheet.getRange(1, 1).setValue('Datacenter Overview');
+  // Set up title with dynamic terminology
+  var hierarchyLevel0 = getTerminology('hierarchy_level_0');
+  sheet.getRange(1, 1).setValue(hierarchyLevel0 + ' Overview');
   sheet.getRange(1, 1, 1, cols).merge()
     .setFontSize(16)
     .setFontWeight('bold')
@@ -390,11 +391,13 @@ function createNewOverviewLayout() {
     try {
       var sheet = createOverviewLayout(name, rows, positions);
       if (sheet) {
+        var entitySingular = getTerminology('entity_singular');
+        var entityPlural = getTerminology('entity_plural_lower');
         ui.alert('Success',
           'Overview layout "' + name + '" created!\n\n' +
           'Rows: ' + rows + '\n' +
           'Positions per row: ' + positions + '\n\n' +
-          'Use "Show Rack Picker" to place racks in the grid.',
+          'Use "Show ' + entitySingular + ' Picker" to place ' + entityPlural + ' in the grid.',
           ui.ButtonSet.OK);
         SpreadsheetApp.setActiveSheet(sheet);
       }
