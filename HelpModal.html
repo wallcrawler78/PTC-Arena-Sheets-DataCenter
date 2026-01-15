@@ -346,6 +346,99 @@
       margin-right: 10px;
       font-size: 18px;
     }
+
+    /* Menu Reference Styles */
+    .menu-section {
+      margin: 32px 0;
+      padding: 24px;
+      background: #f8f9fa;
+      border-radius: 8px;
+      border-left: 4px solid #1a73e8;
+    }
+
+    .menu-section h3 {
+      margin-top: 0;
+      color: #1a73e8;
+      font-size: 22px;
+    }
+
+    .menu-item {
+      background: white;
+      padding: 16px 20px;
+      margin: 12px 0;
+      border-radius: 6px;
+      border: 1px solid #dadce0;
+      transition: all 0.2s;
+    }
+
+    .menu-item:hover {
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      border-color: #1a73e8;
+    }
+
+    .menu-item-title {
+      font-weight: 600;
+      color: #202124;
+      font-size: 15px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+    }
+
+    .menu-item-title:before {
+      content: "▸";
+      color: #1a73e8;
+      margin-right: 8px;
+      font-weight: bold;
+    }
+
+    .menu-item-desc {
+      color: #5f6368;
+      font-size: 14px;
+      line-height: 1.6;
+      margin: 0;
+    }
+
+    .workflow-box {
+      background: #e8f0fe;
+      border: 2px solid #1a73e8;
+      border-radius: 8px;
+      padding: 20px;
+      margin: 24px 0;
+    }
+
+    .workflow-box h4 {
+      margin: 0 0 12px 0;
+      color: #1a73e8;
+      font-size: 18px;
+    }
+
+    .workflow-step {
+      display: flex;
+      align-items: flex-start;
+      margin: 12px 0;
+    }
+
+    .workflow-step-num {
+      background: #1a73e8;
+      color: white;
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 600;
+      font-size: 14px;
+      flex-shrink: 0;
+      margin-right: 12px;
+    }
+
+    .workflow-step-text {
+      color: #202124;
+      font-size: 14px;
+      line-height: 1.6;
+    }
   </style>
 </head>
 <body>
@@ -357,11 +450,12 @@
 
     <div class="tabs">
       <button class="tab active" onclick="showTab(0)">Getting Started</button>
-      <button class="tab" onclick="showTab(1)">Configuration</button>
-      <button class="tab" onclick="showTab(2)">Creating Content</button>
-      <button class="tab" onclick="showTab(3)">Status & History</button>
-      <button class="tab" onclick="showTab(4)">Publishing</button>
-      <button class="tab" onclick="showTab(5)">About</button>
+      <button class="tab" onclick="showTab(1)">Menu Reference</button>
+      <button class="tab" onclick="showTab(2)">Configuration</button>
+      <button class="tab" onclick="showTab(3)">Creating Content</button>
+      <button class="tab" onclick="showTab(4)">Status & History</button>
+      <button class="tab" onclick="showTab(5)">Publishing</button>
+      <button class="tab" onclick="showTab(6)">About</button>
     </div>
 
     <!-- Tab 1: Getting Started -->
@@ -428,7 +522,207 @@
       </div>
     </div>
 
-    <!-- Tab 2: Configuration -->
+    <!-- Tab 2: Menu Reference -->
+    <div class="tab-content">
+      <h2>Complete Menu Reference</h2>
+
+      <p>This guide explains every menu item in the Arena menu and how they work together in your workflow.</p>
+
+      <div class="workflow-box">
+        <h4>🔄 Typical Workflow</h4>
+        <div class="workflow-step">
+          <div class="workflow-step-num">1</div>
+          <div class="workflow-step-text"><strong>Setup:</strong> Configure Arena Connection → Configure Type System → Set up columns and colors</div>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-step-num">2</div>
+          <div class="workflow-step-text"><strong>Design:</strong> Create Overview Layout → Create configurations using Item Picker → Build BOMs</div>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-step-num">3</div>
+          <div class="workflow-step-text"><strong>Review:</strong> Check Status → View History → Create Consolidated BOM</div>
+        </div>
+        <div class="workflow-step">
+          <div class="workflow-step-num">4</div>
+          <div class="workflow-step-text"><strong>Publish:</strong> Push Structure to Arena → Verify in Arena PLM</div>
+        </div>
+      </div>
+
+      <!-- Create Layout Section -->
+      <div class="menu-section">
+        <h3>📐 Create Layout</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">New Configuration</div>
+          <p class="menu-item-desc">Creates a new configuration sheet for designing your product structure. Each configuration represents a unique assembly with its own bill of materials (BOM). You can build multiple configurations and then place them in overview layouts.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">New Overview Layout</div>
+          <p class="menu-item-desc">Creates a visual grid layout where you can arrange multiple configurations. Think of this as your master layout plan - it shows how all your configurations are organized spatially. Perfect for data center floor plans, production line layouts, or warehouse shelving arrangements.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Autolink to Overview</div>
+          <p class="menu-item-desc">Automatically links existing configurations to cells in your overview layout. Scans your overview sheet and matches item numbers to configuration sheets, creating clickable links. Saves time when you have many configurations to connect.</p>
+        </div>
+      </div>
+
+      <!-- Item Pickers Section -->
+      <div class="menu-section">
+        <h3>🔍 Item Pickers</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Show Item Picker</div>
+          <p class="menu-item-desc">Opens a searchable dialog to browse ALL items from Arena PLM. Search by item number, name, or description. Use this to find components to add to BOMs. Features infinite scroll, 6-hour caching for performance, and shows item details including category and lifecycle.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Show Configuration Picker</div>
+          <p class="menu-item-desc">Opens a specialized picker showing ONLY your top-level configuration items (filtered by type classification). Perfect for placing configurations in overview layouts or creating hierarchies. Shows item details with color-coded types for easy identification.</p>
+        </div>
+      </div>
+
+      <!-- BOM Operations Section -->
+      <div class="menu-section">
+        <h3>📦 BOM Operations</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Create Consolidated BOM</div>
+          <p class="menu-item-desc">Generates a comprehensive bill of materials by combining all configurations in your overview layout. Automatically calculates total quantities across all positions, groups by component, and creates a master parts list. Essential for procurement and costing.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Push Structure to Arena</div>
+          <p class="menu-item-desc">THE BIG ONE! Publishes your entire hierarchical structure to Arena PLM. Creates top-level assemblies, mid-level groupings, and individual configuration items with full BOMs. Includes pre-flight validation, automatic item creation for placeholders, and rollback protection. This is how you get everything into Arena.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Check All Status</div>
+          <p class="menu-item-desc">Compares all your local configurations against Arena PLM to detect differences. Shows which are synced (green), modified locally (orange), or only exist in Arena (yellow). Helps you understand what needs to be updated before pushing changes.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">View History</div>
+          <p class="menu-item-desc">Opens a filterable history log showing all events: configuration creations, BOM modifications, Arena sync events, and status changes. Perfect for auditing, troubleshooting, and understanding what happened when. Includes date filters and export capabilities.</p>
+        </div>
+      </div>
+
+      <!-- Setup > Configuration Section -->
+      <div class="menu-section">
+        <h3>⚙️ Setup → Configuration</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure Arena Connection</div>
+          <p class="menu-item-desc">Sets up your Arena PLM credentials (URL, email, password). This is REQUIRED before using any Arena features. Credentials are stored securely in Google's PropertiesService.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Test Connection</div>
+          <p class="menu-item-desc">Validates your Arena credentials by making a test API call. Shows success/failure and helps troubleshoot connection issues. Run this after configuring credentials or if you're experiencing sync problems.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Clear Credentials</div>
+          <p class="menu-item-desc">Removes stored Arena credentials from the system. Useful when switching Arena workspaces or troubleshooting authentication issues.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure Type System</div>
+          <p class="menu-item-desc">THE CUSTOMIZATION CENTER! Configure entity terminology (what you call your main items), type classifications with keywords and colors, category classifications, layout grid settings, and hierarchy level names. Makes the tool work for ANY industry - data centers, manufacturing, warehouses, food service, etc.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Quick Setup (Default Config)</div>
+          <p class="menu-item-desc">Applies a sensible default configuration if you don't want to customize everything. Good for getting started quickly or resetting to a known-good state.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Run Auto-Migration (Datacenter)</div>
+          <p class="menu-item-desc">Converts legacy datacenter-specific configurations to the new generic Type System v2.0. Only needed if you were using an older version of this tool. Preserves all your data while upgrading to the flexible system.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure Item Columns</div>
+          <p class="menu-item-desc">Customizes which Arena attributes appear as columns in configuration sheets. Show/hide item number, revision, description, category, lifecycle, and custom attributes. Lets you see exactly the data you need.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure Category Colors</div>
+          <p class="menu-item-desc">Assigns colors to Arena categories for visual identification in your sheets. Makes it easy to spot different component types at a glance (e.g., Electrical = Yellow, Mechanical = Blue).</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure Configuration Colors</div>
+          <p class="menu-item-desc">Assigns colors to your configuration types for visual identification. Works with the type classification system to color-code different configuration types in overview layouts and pickers.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Configure BOM Levels</div>
+          <p class="menu-item-desc">Defines which Arena BOM levels to include when syncing. Some organizations use multi-level BOMs in Arena - this lets you control which levels get pulled into your configurations.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Location Propagation</div>
+          <p class="menu-item-desc">Configures position/location tracking for components within hierarchies. When enabled, tracks which specific positions (e.g., "Pos 1, Pos 3, Pos 8") each component occupies. Essential for spatial tracking and location-aware BOMs.</p>
+        </div>
+      </div>
+
+      <!-- Setup > Advanced Section -->
+      <div class="menu-section">
+        <h3>🔧 Setup → Advanced</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Mark Current as Synced</div>
+          <p class="menu-item-desc">Manually marks the active configuration sheet as synced with Arena. Use with caution! This tells the system "this matches Arena" without actually checking. Useful for fixing status after manual fixes or import/export operations.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Validate History Integrity</div>
+          <p class="menu-item-desc">Checks your history log for data integrity issues: missing required fields, invalid formats, orphaned records. Provides a detailed report of any problems found. Run this if history seems corrupted or you're seeing weird behavior.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Repair History Issues</div>
+          <p class="menu-item-desc">Attempts to automatically fix problems found by validation. Removes invalid entries, fixes formatting issues, and rebuilds indexes. Always run validation first to see what will be fixed.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Export Configuration</div>
+          <p class="menu-item-desc">Exports your complete Type System configuration to JSON format. Perfect for backing up settings, sharing configuration with team members, or migrating to a new spreadsheet. Includes all terminology, type definitions, colors, and settings.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Import Configuration</div>
+          <p class="menu-item-desc">Imports a Type System configuration from JSON. Lets you restore from backup, apply a colleague's configuration, or set up a new spreadsheet to match existing standards. Validates the import before applying.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Reset Configuration</div>
+          <p class="menu-item-desc">Resets Type System configuration back to factory defaults. DESTRUCTIVE! This wipes all custom terminology, type definitions, and colors. Use when you want to start fresh or fix a badly corrupted configuration.</p>
+        </div>
+      </div>
+
+      <!-- Help Section -->
+      <div class="menu-section">
+        <h3>❓ Help</h3>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Help and Documentation</div>
+          <p class="menu-item-desc">Opens this help guide! Comprehensive documentation covering getting started, configuration, workflows, menu reference, and more. Your complete reference for using the tool effectively.</p>
+        </div>
+      </div>
+
+      <div class="tip-box">
+        <strong>Pro Tip:</strong> Most workflows follow this pattern: <strong>Setup → Design → Review → Publish</strong>. The menu is organized to support this natural progression!
+      </div>
+
+      <div class="info-box">
+        <strong>Need Help?</strong> Each menu item is designed to work together. If you're unsure where to start, check the "Getting Started" tab for a step-by-step walkthrough, or use the workflow guide at the top of this page!
+      </div>
+    </div>
+
+    <!-- Tab 3: Configuration -->
     <div class="tab-content">
       <h2>Configuration Setup</h2>
 
