@@ -29,15 +29,22 @@ Start here to get up and running:
    - Data flow diagrams
    - File organization
 
-4. **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)**
+4. **[DEPLOYMENT.md](./DEPLOYMENT.md)**
+   - Complete clasp deployment guide
+   - First-time setup (step-by-step)
+   - Daily development workflow
+   - Multiple environment setup (dev/staging/prod)
+   - Production deployment checklist
+   - Troubleshooting clasp issues
+
+5. **[DEVELOPER_GUIDE.md](./DEVELOPER_GUIDE.md)**
    - Development environment setup
-   - How to install and configure Clasp
-   - Development workflow
    - Common development tasks
    - Code style guidelines
    - Testing and debugging
+   - Performance best practices
 
-5. **[ARENA_API_GUIDE.md](./ARENA_API_GUIDE.md)**
+6. **[ARENA_API_GUIDE.md](./ARENA_API_GUIDE.md)**
    - Complete Arena API reference
    - Authentication and session management
    - All API endpoints used
@@ -47,7 +54,7 @@ Start here to get up and running:
 
 ### For Understanding the Code
 
-6. **[ARCHITECTURE.md](./ARCHITECTURE.md)**
+7. **[ARCHITECTURE.md](./ARCHITECTURE.md)**
    - Detailed system architecture
    - Module breakdown (every `.gs` file explained)
    - Data models and structures
@@ -56,7 +63,7 @@ Start here to get up and running:
    - Extension points
    - Performance considerations
 
-7. **[SECURITY-AUDIT.md](./SECURITY-AUDIT.md)**
+8. **[SECURITY-AUDIT.md](./SECURITY-AUDIT.md)**
    - Security review and best practices
    - Input validation
    - API security
