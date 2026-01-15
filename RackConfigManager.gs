@@ -22,10 +22,14 @@ function createNewRackConfiguration() {
   var ui = SpreadsheetApp.getUi();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
-  // Step 1: Ask for rack name
+  // Get dynamic terminology
+  var entitySingular = getTerminology('entity_singular');
+  var entitySingularLower = getTerminology('entity_singular_lower');
+
+  // Step 1: Ask for entity name
   var nameResponse = ui.prompt(
-    'New Rack Configuration',
-    'Enter a name for this rack configuration (e.g., "Hyperscale Compute Rack"):',
+    'New ' + entitySingular + ' Configuration',
+    'Enter a name for this ' + entitySingularLower + ' configuration (e.g., "Primary ' + entitySingular + '"):',
     ui.ButtonSet.OK_CANCEL
   );
 
@@ -35,14 +39,14 @@ function createNewRackConfiguration() {
 
   var rackName = nameResponse.getResponseText().trim();
   if (!rackName) {
-    ui.alert('Error', 'Rack name cannot be empty.', ui.ButtonSet.OK);
+    ui.alert('Error', entitySingular + ' name cannot be empty.', ui.ButtonSet.OK);
     return;
   }
 
   // Step 2: Ask if linking to existing item or creating placeholder
   var linkResponse = ui.alert(
     'Parent Item',
-    'Do you want to link this rack configuration to an existing Arena item?\n\n' +
+    'Do you want to link this ' + entitySingularLower + ' configuration to an existing Arena item?\n\n' +
     'Yes - Select existing item from Arena\n' +
     'No - Enter placeholder item number (will create in Arena later)',
     ui.ButtonSet.YES_NO_CANCEL
@@ -61,7 +65,7 @@ function createNewRackConfiguration() {
     // For now, use a simple prompt (TODO: enhance with filtered Item Picker)
     var itemResponse = ui.prompt(
       'Select Parent Item',
-      'Enter the Arena item number for this rack:',
+      'Enter the Arena item number for this ' + entitySingularLower + ':',
       ui.ButtonSet.OK_CANCEL
     );
 
@@ -112,7 +116,7 @@ function createNewRackConfiguration() {
     // Option B: Enter placeholder item number
     var placeholderResponse = ui.prompt(
       'Placeholder Item Number',
-      'Enter a placeholder item number for this rack (e.g., "RACK-001"):\n' +
+      'Enter a placeholder item number for this ' + entitySingularLower + ' (e.g., "' + entitySingular.toUpperCase() + '-001"):\n' +
       'This item will be created in Arena when you push the BOM.',
       ui.ButtonSet.OK_CANCEL
     );
@@ -128,7 +132,7 @@ function createNewRackConfiguration() {
     }
 
     rackItemName = rackName;
-    rackItemDescription = 'Rack configuration for ' + rackName;
+    rackItemDescription = entitySingular + ' configuration for ' + rackName;
   }
 
   // Step 3: Check for duplicate parent item number
@@ -137,9 +141,9 @@ function createNewRackConfiguration() {
     if (existingRacks[i].itemNumber === rackItemNumber) {
       ui.alert(
         'Duplicate Item',
-        'A rack configuration for item "' + rackItemNumber + '" already exists:\n' +
+        'A ' + entitySingularLower + ' configuration for item "' + rackItemNumber + '" already exists:\n' +
         'Sheet: "' + existingRacks[i].sheetName + '"\n\n' +
-        'Please use a different item number or delete the existing rack config.',
+        'Please use a different item number or delete the existing ' + entitySingularLower + ' config.',
         ui.ButtonSet.OK
       );
       return;
@@ -147,7 +151,7 @@ function createNewRackConfiguration() {
   }
 
   // Step 4: Create the new sheet
-  var sheetName = 'Rack - ' + rackItemNumber + ' (' + rackName + ')';
+  var sheetName = entitySingular + ' - ' + rackItemNumber + ' (' + rackName + ')';
   var newSheet;
 
   try {
