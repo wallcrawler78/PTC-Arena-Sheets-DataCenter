@@ -352,9 +352,10 @@ function createNewOverviewLayout() {
     }
 
     // Prompt for number of rows
+    var hierarchyLevel1 = getTerminology('hierarchy_level_1');
     var rowsResponse = ui.prompt(
       'Number of Rows',
-      'Enter number of rows in the datacenter (e.g., "10"):',
+      'Enter number of rows in the ' + hierarchyLevel1.toLowerCase() + ' (e.g., "10"):',
       ui.ButtonSet.OK_CANCEL
     );
 
@@ -368,10 +369,11 @@ function createNewOverviewLayout() {
       return;
     }
 
-    // Prompt for number of rack positions per row
+    // Prompt for number of entity positions per row
+    var entitySingular = getTerminology('entity_singular');
     var positionsResponse = ui.prompt(
-      'Rack Positions per Row',
-      'Enter number of rack positions per row (e.g., "12"):',
+      entitySingular + ' Positions per Row',
+      'Enter number of ' + entitySingular.toLowerCase() + ' positions per row (e.g., "12"):',
       ui.ButtonSet.OK_CANCEL
     );
 
