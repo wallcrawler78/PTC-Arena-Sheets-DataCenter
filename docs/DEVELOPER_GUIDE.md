@@ -1,5 +1,42 @@
 # Developer Setup Guide
 
+## Quick Reference - Common Clasp Commands
+
+For developers who are already set up:
+
+```bash
+# Push local code to Apps Script
+clasp push
+
+# Push and watch for changes (auto-push on save)
+clasp push --watch
+
+# Pull code from Apps Script to local
+clasp pull
+
+# Open Apps Script editor in browser
+clasp open
+
+# Check what files will be pushed
+clasp status
+
+# Check login status
+clasp login --status
+
+# View project info
+clasp setting
+
+# Create new version
+clasp version "Description of changes"
+
+# List all versions
+clasp versions
+```
+
+**Full setup instructions below** ⬇️
+
+---
+
 ## Prerequisites
 
 ### Required Software
@@ -24,53 +61,238 @@ cd PTC-Arena-Sheets-DataCenter
 
 ### 2. Install Clasp (Google Apps Script CLI)
 
+Clasp is the command-line tool for managing Apps Script projects locally.
+
 ```bash
 npm install -g @google/clasp
 ```
 
+**Verify installation:**
+```bash
+clasp --version
+```
+
 ### 3. Enable Apps Script API
 
+Before using clasp, you must enable the Apps Script API:
+
 1. Go to https://script.google.com/home/usersettings
-2. Enable "Google Apps Script API"
+2. Toggle "Google Apps Script API" to **ON**
+3. You should see "Google Apps Script API is enabled"
 
 ### 4. Login to Clasp
+
+Authenticate clasp with your Google account:
 
 ```bash
 clasp login
 ```
 
-This will open a browser window for Google authentication.
+**What happens:**
+- Opens browser window for Google OAuth
+- Grants clasp permission to manage your Apps Script projects
+- Stores credentials in `~/.clasprc.json`
 
-### 5. Create a New Apps Script Project (or link existing)
-
-**Option A: Create New Project**
+**Verify login:**
 ```bash
-clasp create --title "Arena Data Center" --type sheets
+clasp login --status
 ```
 
-This creates a new Google Sheets file with an Apps Script project attached.
+Should show: "You are logged in."
 
-**Option B: Link to Existing Spreadsheet**
+### 5. Clone the Project from Existing Spreadsheet
+
+If you already have a Google Sheet with the Arena PLM Integration installed, you can clone it to work locally.
+
+**Step 5.1: Find the Script ID**
+
+1. Open your Google Sheet
+2. Click **Extensions → Apps Script**
+3. In Apps Script editor, click **Project Settings** (gear icon)
+4. Copy the **Script ID** (looks like: `1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0`)
+
+**Step 5.2: Clone the Project**
+
 ```bash
-clasp clone <SCRIPT_ID>
+cd /path/to/your/projects
+git clone https://github.com/wallcrawler78/PTC-Arena-Sheets-DataCenter.git
+cd PTC-Arena-Sheets-DataCenter
+
+# Clone the Apps Script project
+clasp clone YOUR_SCRIPT_ID_HERE
 ```
 
-Find the Script ID in your existing spreadsheet:
-- Extensions → Apps Script
-- Project Settings → Script ID
+**What this does:**
+- Downloads all `.gs` and `.html` files from Apps Script
+- Creates `.clasp.json` file with project configuration
+- Links your local folder to the Apps Script project
 
-### 6. Push Code to Apps Script
+**Important:** The `.clasp.json` file is in `.gitignore` because it contains your specific Script ID.
+
+### 6. Link to a Different Spreadsheet (Alternative Setup)
+
+If you want to deploy this code to a **new** or **different** spreadsheet:
+
+**Step 6.1: Create New Google Sheet**
+
+1. Go to https://sheets.google.com
+2. Create a new blank spreadsheet
+3. Name it (e.g., "Arena PLM Integration - Dev")
+
+**Step 6.2: Get the Script ID**
+
+1. In the new sheet, click **Extensions → Apps Script**
+2. Apps Script editor opens (empty project)
+3. Click **Project Settings** (gear icon)
+4. Copy the **Script ID**
+
+**Step 6.3: Update .clasp.json**
+
+Create or edit `.clasp.json` in your project root:
+
+```json
+{
+  "scriptId": "YOUR_NEW_SCRIPT_ID_HERE",
+  "rootDir": "."
+}
+```
+
+**Or use clasp command:**
+```bash
+# This overwrites .clasp.json
+echo '{"scriptId":"YOUR_SCRIPT_ID_HERE","rootDir":"."}' > .clasp.json
+```
+
+### 7. Push Code to Apps Script
+
+Upload your local code to the Apps Script project:
 
 ```bash
 clasp push
 ```
 
-This uploads all `.gs` and `.html` files to your Apps Script project.
+**What happens:**
+- Uploads all `.gs` files (server-side JavaScript)
+- Uploads all `.html` files (dialogs and sidebars)
+- Uploads `appsscript.json` (project manifest)
+- Overwrites existing code in Apps Script
 
-### 7. Open in Apps Script Editor
+**Check what will be pushed:**
+```bash
+clasp status
+```
 
+**Push specific files only:**
+```bash
+clasp push --watch
+```
+
+This watches for file changes and auto-pushes (useful during development).
+
+### 8. Verify the Deployment
+
+**Step 8.1: Open Apps Script Editor**
 ```bash
 clasp open
+```
+
+This opens the Apps Script editor in your browser.
+
+**Step 8.2: Verify Files**
+
+In the Apps Script editor, you should see all files:
+- Code.gs
+- ArenaAPI.gs
+- Authorization.gs
+- TypeSystemConfig.gs
+- All `.html` files
+- etc.
+
+**Step 8.3: Test in Spreadsheet**
+
+1. Go back to your Google Sheet (refresh if it was already open)
+2. You should see the **"Arena"** menu in the menu bar
+3. If the menu doesn't appear:
+   - Close and reopen the spreadsheet
+   - Or manually run `onOpen()` from Apps Script editor
+
+### 9. Set Up Multiple Environments
+
+It's recommended to have separate environments for development and production.
+
+**Development Setup:**
+
+Create `.clasp.dev.json`:
+```json
+{
+  "scriptId": "YOUR_DEV_SCRIPT_ID",
+  "rootDir": "."
+}
+```
+
+**Production Setup:**
+
+Create `.clasp.prod.json`:
+```json
+{
+  "scriptId": "YOUR_PROD_SCRIPT_ID",
+  "rootDir": "."
+}
+```
+
+**Switch between environments:**
+
+```bash
+# Push to dev
+cp .clasp.dev.json .clasp.json
+clasp push
+
+# Push to prod
+cp .clasp.prod.json .clasp.json
+clasp push
+```
+
+**Or use a helper script** (add to `package.json`):
+
+```json
+{
+  "scripts": {
+    "push:dev": "cp .clasp.dev.json .clasp.json && clasp push",
+    "push:prod": "cp .clasp.prod.json .clasp.json && clasp push"
+  }
+}
+```
+
+Then run:
+```bash
+npm run push:dev
+npm run push:prod
+```
+
+### 10. Pull Code from Apps Script (Optional)
+
+If someone made changes directly in the Apps Script editor, pull them to your local machine:
+
+```bash
+clasp pull
+```
+
+**Warning:** This **overwrites** your local files! Commit your local changes first.
+
+**Safe workflow:**
+```bash
+# Commit local changes first
+git add -A
+git commit -m "Local changes before pull"
+
+# Pull from Apps Script
+clasp pull
+
+# Review changes
+git diff
+
+# If good, commit
+git commit -m "Pulled latest from Apps Script"
 ```
 
 ## Development Workflow
@@ -391,6 +613,7 @@ console.log('Client log'); // Shows in browser console
 **Issue: Function not found**
 - Solution: Run `clasp push` again
 - Make sure function name matches exactly
+- Verify file was uploaded in Apps Script editor
 
 **Issue: Quota exceeded**
 - Solution: Apps Script has daily quotas
@@ -403,7 +626,118 @@ console.log('Client log'); // Shows in browser console
 
 **Issue: Changes not reflecting**
 - Solution: Hard refresh spreadsheet (Ctrl+Shift+R / Cmd+Shift+R)
+- Run `clasp push` again to ensure code was uploaded
 - Clear Apps Script cache (rare)
+
+### Clasp-Specific Issues
+
+**Issue: `clasp: command not found`**
+```bash
+# Solution: Install clasp globally
+npm install -g @google/clasp
+
+# Verify installation
+clasp --version
+```
+
+**Issue: `User has not enabled the Apps Script API`**
+```bash
+# Solution: Enable the API
+# 1. Go to https://script.google.com/home/usersettings
+# 2. Toggle "Google Apps Script API" ON
+# 3. Try clasp command again
+```
+
+**Issue: `No credentials. Run clasp login`**
+```bash
+# Solution: Login to clasp
+clasp login
+
+# If that fails, try logout first
+clasp logout
+clasp login
+```
+
+**Issue: `Script ID not found` or `Permission denied`**
+```bash
+# Solution 1: Verify Script ID is correct
+# Open spreadsheet → Extensions → Apps Script → Project Settings → Script ID
+
+# Solution 2: Check .clasp.json file
+cat .clasp.json
+# Should contain: {"scriptId":"YOUR_SCRIPT_ID","rootDir":"."}
+
+# Solution 3: Make sure you're logged in with correct Google account
+clasp login --status
+```
+
+**Issue: `clasp push` fails with "Invalid project ID"**
+```bash
+# Solution: Script ID changed or .clasp.json is wrong
+# 1. Delete .clasp.json
+rm .clasp.json
+
+# 2. Clone again with correct Script ID
+clasp clone YOUR_CORRECT_SCRIPT_ID
+```
+
+**Issue: `clasp push` pushes wrong files**
+```bash
+# Solution: Check what will be pushed
+clasp status
+
+# Add .claspignore file to exclude files
+echo "node_modules/**" > .claspignore
+echo "docs/**" >> .claspignore
+echo ".git/**" >> .claspignore
+```
+
+**Issue: Multiple clasp installations causing conflicts**
+```bash
+# Solution: Uninstall and reinstall
+npm uninstall -g @google/clasp
+npm cache clean --force
+npm install -g @google/clasp
+```
+
+**Issue: `clasp pull` overwrites my local changes**
+```bash
+# Solution: Always commit before pulling
+git add -A
+git commit -m "Before pull"
+clasp pull
+
+# If you already pulled and lost changes, use git reflog
+git reflog
+git checkout HEAD@{1} -- filename.gs
+```
+
+**Issue: Files not showing in Apps Script editor after push**
+```bash
+# Solution 1: Wait a moment and refresh
+# Apps Script can take 5-10 seconds to process
+
+# Solution 2: Check file names
+# .gs files must end in .gs
+# .html files must end in .html
+# No spaces in filenames
+
+# Solution 3: Check .claspignore
+cat .claspignore
+# Make sure your files aren't being ignored
+```
+
+**Issue: `clasp open` opens wrong project**
+```bash
+# Solution: Check .clasp.json
+cat .clasp.json
+
+# Update if wrong
+echo '{"scriptId":"CORRECT_SCRIPT_ID","rootDir":"."}' > .clasp.json
+
+# Then try again
+clasp open
+```
 
 ## Testing
 
