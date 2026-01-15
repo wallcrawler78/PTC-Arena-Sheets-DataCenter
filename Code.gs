@@ -2005,19 +2005,16 @@ function clearSidebarCache() {
  * Shows the type system configuration UI
  * NEW: Allows users to configure entity types, categories, and terminology
  */
+/**
+ * Shows the Type System Configuration dialog
+ * Allows users to configure all terminology, types, categories, layout, and hierarchy
+ */
 function showConfigureTypeSystem() {
-  // TODO: Create ConfigureTypeSystem.html
-  // For now, show a placeholder message
-  var ui = SpreadsheetApp.getUi();
-  ui.alert(
-    'Type System Configuration',
-    'Type system configuration UI coming soon!\n\n' +
-    'For now, you can:\n' +
-    '• Run the Setup Wizard to reconfigure\n' +
-    '• Export/Import your configuration\n' +
-    '• Use the migration functions',
-    ui.ButtonSet.OK
-  );
+  var html = HtmlService.createHtmlOutputFromFile('ConfigureTypeSystem')
+    .setWidth(900)
+    .setHeight(700)
+    .setTitle('Configure Type System');
+  SpreadsheetApp.getUi().showModalDialog(html, 'Type System Configuration');
 }
 
 /**

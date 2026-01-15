@@ -673,3 +673,118 @@ function resetTypeSystemConfiguration() {
     };
   }
 }
+
+// ============================================================================
+// UI INTEGRATION FUNCTIONS
+// ============================================================================
+
+/**
+ * Loads complete type system configuration for UI
+ * @return {Object} Complete configuration with all sections
+ */
+function loadTypeSystemConfigForUI() {
+  try {
+    return {
+      success: true,
+      primaryEntity: getPrimaryEntityType(),
+      typeDefinitions: getTypeDefinitions(),
+      categoryClassifications: getCategoryClassifications(),
+      layoutConfig: getLayoutConfig(),
+      hierarchyLevels: getHierarchyLevels()
+    };
+  } catch (e) {
+    Logger.log('Error loading configuration for UI: ' + e.message);
+    return {
+      success: false,
+      message: 'Error loading configuration: ' + e.message
+    };
+  }
+}
+
+/**
+ * Saves type system configuration from UI
+ * @param {Object} config - Complete configuration object
+ * @return {Object} Save result
+ */
+function saveTypeSystemConfigFromUI(config) {
+  try {
+    // Validate configuration
+    var validation = validateTypeSystemConfiguration(config);
+    if (!validation.valid) {
+      return {
+        success: false,
+        message: 'Validation errors:\n' + validation.errors.join('\n')
+      };
+    }
+
+    // Save configuration
+    var result = saveTypeSystemConfiguration(config);
+    return result;
+
+  } catch (e) {
+    Logger.log('Error saving configuration from UI: ' + e.message);
+    return {
+      success: false,
+      message: 'Error saving: ' + e.message
+    };
+  }
+}
+
+/**
+ * Returns preset configurations for quick selection
+ * @return {Array} Array of preset configuration objects
+ */
+function getPresetConfigurations() {
+  return [
+    {
+      name: 'Datacenter',
+      description: 'Data center infrastructure (Rack, POD, Row)',
+      icon: '🖥️',
+      config: {
+        primaryEntity: getDatacenterPrimaryEntityType(),
+        typeDefinitions: getDatacenterTypeDefinitions(),
+        categoryClassifications: getDatacenterCategoryClassifications(),
+        layoutConfig: getDatacenterLayoutConfig(),
+        hierarchyLevels: getDatacenterHierarchyLevels()
+      }
+    },
+    {
+      name: 'Manufacturing',
+      description: 'Manufacturing assemblies (Assembly, Production Line, Station)',
+      icon: '🏭',
+      config: {
+        primaryEntity: { singular: 'Assembly', plural: 'Assemblies', verb: 'Assemble' },
+        typeDefinitions: [
+          { id: 'TYPE_1', name: 'Standard Assembly', displayName: 'Standard', keywords: ['standard', 'basic'], color: '#00FFFF', enabled: true },
+          { id: 'TYPE_2', name: 'Custom Assembly', displayName: 'Custom', keywords: ['custom', 'special'], color: '#FFA500', enabled: true }
+        ],
+        categoryClassifications: [],
+        layoutConfig: getDefaultLayoutConfig(),
+        hierarchyLevels: [
+          { level: 0, name: 'Production Line', attribute: null },
+          { level: 1, name: 'Station', attribute: null },
+          { level: 2, name: 'Assembly', attribute: null }
+        ]
+      }
+    },
+    {
+      name: 'Warehouse',
+      description: 'Warehouse shelving (Shelf Unit, Warehouse, Aisle)',
+      icon: '📦',
+      config: {
+        primaryEntity: { singular: 'Shelf Unit', plural: 'Shelf Units', verb: 'Shelf' },
+        typeDefinitions: [
+          { id: 'TYPE_1', name: 'Standard Shelf', displayName: 'Standard', keywords: ['standard', 'basic'], color: '#00FFFF', enabled: true },
+          { id: 'TYPE_2', name: 'Heavy Duty Shelf', displayName: 'Heavy Duty', keywords: ['heavy', 'reinforced'], color: '#FFA500', enabled: true }
+        ],
+        categoryClassifications: [],
+        layoutConfig: getDefaultLayoutConfig(),
+        hierarchyLevels: [
+          { level: 0, name: 'Warehouse', attribute: null },
+          { level: 1, name: 'Aisle', attribute: null },
+          { level: 2, name: 'Shelf Unit', attribute: null }
+        ]
+      }
+    }
+  ];
+}

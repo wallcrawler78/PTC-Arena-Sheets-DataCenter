@@ -1,0 +1,1261 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 0;
+      margin: 0;
+      background: #f5f5f5;
+    }
+
+    .container {
+      max-width: 900px;
+      background: white;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .header {
+      background: #1a73e8;
+      color: white;
+      padding: 20px;
+      border-bottom: 3px solid #1557b0;
+    }
+
+    .header h2 {
+      margin: 0;
+      font-size: 24px;
+    }
+
+    .header p {
+      margin: 5px 0 0 0;
+      font-size: 14px;
+      opacity: 0.9;
+    }
+
+    /* Tab System */
+    .tab-container {
+      border-bottom: 2px solid #ddd;
+      background: white;
+      display: flex;
+      overflow-x: auto;
+    }
+
+    .tab-button {
+      padding: 12px 20px;
+      background: #f1f3f4;
+      border: none;
+      border-bottom: 3px solid transparent;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .tab-button:hover {
+      background: #e8eaed;
+    }
+
+    .tab-button.active {
+      background: white;
+      border-bottom-color: #1a73e8;
+      color: #1a73e8;
+      font-weight: bold;
+    }
+
+    .content-wrapper {
+      flex: 1;
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .tab-content {
+      display: none;
+    }
+
+    .tab-content.active {
+      display: block;
+    }
+
+    /* Info boxes */
+    .info-box {
+      background: #e8f0fe;
+      border-left: 4px solid #1a73e8;
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    .warning-box {
+      background: #fef7e0;
+      border-left: 4px solid #f9ab00;
+      padding: 12px;
+      margin-bottom: 15px;
+      font-size: 13px;
+    }
+
+    /* Config sections */
+    .config-section {
+      margin-bottom: 20px;
+      padding: 15px;
+      background: #f9f9f9;
+      border-radius: 4px;
+      border: 1px solid #e0e0e0;
+    }
+
+    .section-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      font-size: 14px;
+      color: #333;
+    }
+
+    /* Form elements */
+    .field-group {
+      display: flex;
+      flex-direction: column;
+      margin-bottom: 15px;
+    }
+
+    .field-label {
+      font-size: 12px;
+      color: #666;
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+
+    .field-input {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+      box-sizing: border-box;
+    }
+
+    .field-help {
+      font-size: 12px;
+      color: #666;
+      margin-top: 4px;
+      font-style: italic;
+    }
+
+    /* Preview section */
+    .preview-section {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 15px;
+      margin-top: 15px;
+    }
+
+    .preview-title {
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #333;
+      font-size: 14px;
+    }
+
+    .preview-example {
+      font-family: monospace;
+      background: white;
+      padding: 8px;
+      border-radius: 4px;
+      margin-bottom: 6px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+    }
+
+    /* Type/Category List */
+    .type-list {
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 10px;
+      margin-bottom: 15px;
+      background: white;
+    }
+
+    .type-item {
+      background: #f9f9f9;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      padding: 15px;
+      margin-bottom: 10px;
+    }
+
+    .type-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .type-item-title {
+      font-weight: bold;
+      color: #333;
+    }
+
+    .type-item-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .type-item-fields {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .keywords-field {
+      grid-column: 1 / -1;
+    }
+
+    .keywords-input {
+      width: 100%;
+      padding: 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: 'Courier New', monospace;
+      box-sizing: border-box;
+    }
+
+    /* Color picker row */
+    .color-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .color-preview {
+      width: 60px;
+      height: 30px;
+      border: 2px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    .color-input {
+      padding: 4px 8px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: monospace;
+      width: 100px;
+    }
+
+    /* Toggle switch */
+    .toggle-switch {
+      position: relative;
+      display: inline-block;
+      width: 40px;
+      height: 20px;
+    }
+
+    .toggle-switch input {
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+
+    .toggle-slider {
+      position: absolute;
+      cursor: pointer;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background-color: #ccc;
+      transition: 0.4s;
+      border-radius: 20px;
+    }
+
+    .toggle-slider:before {
+      position: absolute;
+      content: "";
+      height: 14px;
+      width: 14px;
+      left: 3px;
+      bottom: 3px;
+      background-color: white;
+      transition: 0.4s;
+      border-radius: 50%;
+    }
+
+    input:checked + .toggle-slider {
+      background-color: #34a853;
+    }
+
+    input:checked + .toggle-slider:before {
+      transform: translateX(20px);
+    }
+
+    /* Buttons */
+    .add-button {
+      width: 100%;
+      padding: 10px;
+      background: #f1f3f4;
+      border: 1px dashed #1a73e8;
+      border-radius: 4px;
+      color: #1a73e8;
+      cursor: pointer;
+      font-size: 14px;
+      transition: all 0.2s;
+      font-weight: 500;
+    }
+
+    .add-button:hover {
+      background: #e8f0fe;
+    }
+
+    .delete-btn {
+      padding: 6px 12px;
+      background: #ea4335;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+    }
+
+    .delete-btn:hover {
+      background: #d33b2c;
+    }
+
+    .footer {
+      border-top: 1px solid #ddd;
+      padding: 15px 20px;
+      background: white;
+      display: flex;
+      gap: 10px;
+      justify-content: space-between;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 10px;
+    }
+
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      font-weight: bold;
+      cursor: pointer;
+      transition: background-color 0.2s;
+    }
+
+    .btn-primary {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .btn-primary:hover {
+      background-color: #1557b0;
+    }
+
+    .btn-primary:disabled {
+      background-color: #ccc;
+      cursor: not-allowed;
+    }
+
+    .btn-secondary {
+      background-color: #f1f3f4;
+      color: #333;
+    }
+
+    .btn-secondary:hover {
+      background-color: #e8eaed;
+    }
+
+    .btn-danger {
+      background-color: #ea4335;
+      color: white;
+    }
+
+    .btn-danger:hover {
+      background-color: #d33b2c;
+    }
+
+    /* Messages */
+    .message {
+      padding: 12px;
+      border-radius: 4px;
+      margin-bottom: 15px;
+      font-size: 14px;
+    }
+
+    .message.success {
+      background-color: #e6f4ea;
+      color: #137333;
+      border: 1px solid #81c995;
+    }
+
+    .message.error {
+      background-color: #fce8e6;
+      color: #c5221f;
+      border: 1px solid #f28b82;
+    }
+
+    .hidden {
+      display: none;
+    }
+
+    /* Loading */
+    .loading {
+      text-align: center;
+      padding: 40px;
+      color: #666;
+    }
+
+    .spinner {
+      border: 3px solid #f3f3f3;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    /* Preset cards */
+    .preset-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      margin-bottom: 20px;
+    }
+
+    .preset-card {
+      background: white;
+      border: 2px solid #ddd;
+      border-radius: 4px;
+      padding: 15px;
+      cursor: pointer;
+      transition: all 0.2s;
+      text-align: center;
+    }
+
+    .preset-card:hover {
+      border-color: #1a73e8;
+      box-shadow: 0 2px 8px rgba(26,115,232,0.2);
+    }
+
+    .preset-icon {
+      font-size: 32px;
+      margin-bottom: 10px;
+    }
+
+    .preset-name {
+      font-weight: bold;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .preset-description {
+      font-size: 12px;
+      color: #666;
+    }
+
+    /* Number inputs */
+    .number-input {
+      width: 100px;
+      padding: 8px 12px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    /* Grid layout for hierarchy */
+    .hierarchy-grid {
+      display: grid;
+      grid-template-columns: 80px 1fr;
+      gap: 15px;
+      align-items: center;
+    }
+
+    .hierarchy-label {
+      font-weight: 500;
+      color: #666;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Configure Type System</h2>
+      <p>Customize terminology, classifications, and layout settings for your application</p>
+    </div>
+
+    <div id="message" class="message hidden"></div>
+
+    <div id="loading" class="loading">
+      <div class="spinner"></div>
+      <p>Loading configuration...</p>
+    </div>
+
+    <div id="mainContent" class="hidden">
+      <div class="tab-container">
+        <button class="tab-button active" data-tab="entity">Entity Settings</button>
+        <button class="tab-button" data-tab="types">Type Classifications</button>
+        <button class="tab-button" data-tab="categories">Category Classifications</button>
+        <button class="tab-button" data-tab="layout">Layout Configuration</button>
+        <button class="tab-button" data-tab="hierarchy">Hierarchy Levels</button>
+      </div>
+
+      <div class="content-wrapper">
+        <!-- Tab 1: Entity Settings -->
+        <div id="entity-tab" class="tab-content active">
+          <div class="info-box">
+            <strong>Configure what you call your primary items</strong><br>
+            These names appear throughout the interface in menus, dialogs, and labels.
+          </div>
+
+          <div class="config-section">
+            <div class="field-group">
+              <label class="field-label">Singular Name</label>
+              <input type="text" id="entitySingular" class="field-input" placeholder="e.g., Rack, Restaurant, Assembly">
+              <div class="field-help">What you call a single item (e.g., "Rack", "Restaurant", "Assembly")</div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Plural Name</label>
+              <input type="text" id="entityPlural" class="field-input" placeholder="e.g., Racks, Restaurants, Assemblies">
+              <div class="field-help">What you call multiple items</div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Verb (Action)</label>
+              <input type="text" id="entityVerb" class="field-input" placeholder="e.g., Rack, Configure, Assemble">
+              <div class="field-help">The action word used in menus (e.g., "Rack" as in "to rack equipment")</div>
+            </div>
+          </div>
+
+          <div class="preview-section">
+            <div class="preview-title">Live Preview - How These Appear:</div>
+            <div class="preview-example" id="preview1">Show <span class="entity-preview-singular">Rack</span> Picker</div>
+            <div class="preview-example" id="preview2">New <span class="entity-preview-singular">Rack</span> Configuration</div>
+            <div class="preview-example" id="preview3"><span class="entity-preview-plural">Racks</span> in overview</div>
+            <div class="preview-example" id="preview4">Place <span class="entity-preview-singular">Rack</span> in Selected Cell</div>
+          </div>
+
+          <div class="warning-box">
+            <strong>Note:</strong> Changing entity names will update all menus and dialogs. You may need to reload the spreadsheet to see changes.
+          </div>
+        </div>
+
+        <!-- Tab 2: Type Classifications -->
+        <div id="types-tab" class="tab-content">
+          <div class="info-box">
+            <strong>Type Classifications</strong> are used to automatically categorize items based on their names.<br>
+            Keywords are matched against item names to assign the appropriate type and color.
+          </div>
+
+          <div class="config-section">
+            <div class="section-title">Current Type Definitions</div>
+            <div id="typesList" class="type-list">
+              <!-- Dynamically populated -->
+            </div>
+            <button class="add-button" onclick="addTypeDefinition()">+ Add New Type</button>
+          </div>
+
+          <div class="preview-section">
+            <div class="preview-title">Keyword Matching Example:</div>
+            <div class="field-group">
+              <label class="field-label">Test Item Name</label>
+              <input type="text" id="keywordTest" class="field-input" placeholder="Enter an item name to test matching">
+            </div>
+            <div id="keywordResult" style="margin-top: 10px; padding: 10px; background: white; border-radius: 4px; border: 1px solid #ddd;">
+              Enter an item name above to see which type would be matched
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 3: Category Classifications -->
+        <div id="categories-tab" class="tab-content">
+          <div class="info-box">
+            <strong>Category Classifications</strong> are optional additional classifications beyond types.<br>
+            Use categories for secondary grouping (e.g., by vendor, by application, by location).
+          </div>
+
+          <div class="config-section">
+            <div class="section-title">Category Definitions</div>
+            <div id="categoriesList" class="type-list">
+              <!-- Dynamically populated -->
+            </div>
+            <button class="add-button" onclick="addCategoryDefinition()">+ Add New Category</button>
+          </div>
+
+          <div class="warning-box">
+            <strong>Note:</strong> Categories are optional. If you don't need secondary classification, you can leave this empty.
+          </div>
+        </div>
+
+        <!-- Tab 4: Layout Configuration -->
+        <div id="layout-tab" class="tab-content">
+          <div class="info-box">
+            <strong>Layout Configuration</strong> controls how the grid layout is structured in overview sheets.<br>
+            Configure the number of rows, positions per row, and position labeling.
+          </div>
+
+          <div class="config-section">
+            <div class="field-group">
+              <label class="field-label">Number of Rows</label>
+              <input type="number" id="layoutRows" class="number-input" min="1" max="20" value="4">
+              <div class="field-help">How many rows in the grid (typically 4-10)</div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Positions Per Row</label>
+              <input type="number" id="layoutPositions" class="number-input" min="1" max="50" value="10">
+              <div class="field-help">How many positions in each row (typically 8-12)</div>
+            </div>
+
+            <div class="field-group">
+              <label class="field-label">Position Label Prefix</label>
+              <input type="text" id="layoutPrefix" class="field-input" placeholder="Pos" value="Pos">
+              <div class="field-help">Prefix for position labels (e.g., "Pos" creates "Pos 1", "Pos 2", etc.)</div>
+            </div>
+          </div>
+
+          <div class="preview-section">
+            <div class="preview-title">Preview:</div>
+            <div id="layoutPreview" class="preview-example">
+              Pos 1, Pos 2, Pos 3, ... Pos 10 (4 rows × 10 positions = 40 total)
+            </div>
+          </div>
+        </div>
+
+        <!-- Tab 5: Hierarchy Levels -->
+        <div id="hierarchy-tab" class="tab-content">
+          <div class="info-box">
+            <strong>Hierarchy Levels</strong> define how your organizational structure is named.<br>
+            This affects BOM operations and POD/Structure push operations.
+          </div>
+
+          <div class="config-section">
+            <div class="hierarchy-grid">
+              <div class="hierarchy-label">Level 0 (Top):</div>
+              <div class="field-group" style="margin-bottom: 0;">
+                <input type="text" id="hierarchyLevel0" class="field-input" placeholder="e.g., POD, Restaurant, Production Line">
+                <div class="field-help">Top-level organizational unit</div>
+              </div>
+
+              <div class="hierarchy-label">Level 1 (Mid):</div>
+              <div class="field-group" style="margin-bottom: 0;">
+                <input type="text" id="hierarchyLevel1" class="field-input" placeholder="e.g., Row, SubAssembly, Station">
+                <div class="field-help">Mid-level organizational unit</div>
+              </div>
+
+              <div class="hierarchy-label">Level 2 (Item):</div>
+              <div class="field-group" style="margin-bottom: 0;">
+                <input type="text" id="hierarchyLevel2" class="field-input" placeholder="Auto-filled from entity name" readonly>
+                <div class="field-help">Individual item level (automatically uses entity singular name)</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-section">
+            <div class="preview-title">Example Hierarchy:</div>
+            <div class="preview-example" id="hierarchyPreview">
+              POD → Row → Rack
+            </div>
+          </div>
+
+          <div class="warning-box">
+            <strong>Examples:</strong><br>
+            • Datacenter: POD → Row → Rack<br>
+            • Restaurant: Restaurant → SubAssembly → Restaurant<br>
+            • Manufacturing: Production Line → Station → Assembly<br>
+            • Warehouse: Warehouse → Aisle → Shelf Unit
+          </div>
+        </div>
+      </div>
+
+      <div class="footer">
+        <div class="button-group">
+          <button type="button" class="btn-secondary" onclick="showPresets()">Load Preset</button>
+          <button type="button" class="btn-secondary" onclick="exportConfig()">Export Config</button>
+          <button type="button" class="btn-secondary" onclick="importConfig()">Import Config</button>
+        </div>
+        <div class="button-group">
+          <button type="button" class="btn-danger" onclick="resetToDefaults()">Reset to Defaults</button>
+          <button type="button" class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+          <button type="button" class="btn-primary" id="saveButton" onclick="saveConfiguration()">Save Configuration</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var config = {};  // Current configuration
+    var messageTimeout = null;
+
+    // Initialize tabs
+    function initTabs() {
+      var tabs = document.querySelectorAll('.tab-button');
+      tabs.forEach(function(tab) {
+        tab.addEventListener('click', function() {
+          switchTab(this.getAttribute('data-tab'));
+        });
+      });
+    }
+
+    function switchTab(tabName) {
+      // Hide all tab contents
+      document.querySelectorAll('.tab-content').forEach(function(content) {
+        content.classList.remove('active');
+      });
+
+      // Remove active from all buttons
+      document.querySelectorAll('.tab-button').forEach(function(btn) {
+        btn.classList.remove('active');
+      });
+
+      // Show selected tab
+      document.getElementById(tabName + '-tab').classList.add('active');
+      document.querySelector('[data-tab="' + tabName + '"]').classList.add('active');
+    }
+
+    // Load configuration on page load
+    google.script.run
+      .withSuccessHandler(function(data) {
+        if (data.success) {
+          config = {
+            primaryEntity: data.primaryEntity || { singular: 'Rack', plural: 'Racks', verb: 'Rack' },
+            typeDefinitions: data.typeDefinitions || [],
+            categoryClassifications: data.categoryClassifications || [],
+            layoutConfig: data.layoutConfig || {
+              gridType: 'OVERHEAD',
+              rows: 4,
+              positionsPerRow: 10,
+              labelPrefix: 'Pos',
+              cellHeight: 25,
+              cellWidth: 120
+            },
+            hierarchyLevels: data.hierarchyLevels || [
+              { level: 0, name: 'POD', attribute: null },
+              { level: 1, name: 'Row', attribute: null },
+              { level: 2, name: 'Rack', attribute: null }
+            ]
+          };
+
+          renderAllTabs();
+          initTabs();
+
+          document.getElementById('loading').classList.add('hidden');
+          document.getElementById('mainContent').classList.remove('hidden');
+        } else {
+          showMessage('Error: ' + data.message, 'error');
+          document.getElementById('loading').classList.add('hidden');
+        }
+      })
+      .withFailureHandler(function(error) {
+        showMessage('Error loading configuration: ' + error.message, 'error');
+        document.getElementById('loading').classList.add('hidden');
+      })
+      .loadTypeSystemConfigForUI();
+
+    // Render all tabs
+    function renderAllTabs() {
+      renderEntityTab();
+      renderTypesTab();
+      renderCategoriesTab();
+      renderLayoutTab();
+      renderHierarchyTab();
+    }
+
+    // Tab 1: Entity Settings
+    function renderEntityTab() {
+      document.getElementById('entitySingular').value = config.primaryEntity.singular || '';
+      document.getElementById('entityPlural').value = config.primaryEntity.plural || '';
+      document.getElementById('entityVerb').value = config.primaryEntity.verb || '';
+
+      // Add event listeners
+      document.getElementById('entitySingular').addEventListener('input', updateEntityPreview);
+      document.getElementById('entityPlural').addEventListener('input', updateEntityPreview);
+
+      updateEntityPreview();
+    }
+
+    function updateEntityPreview() {
+      var singular = document.getElementById('entitySingular').value || 'Item';
+      var plural = document.getElementById('entityPlural').value || 'Items';
+
+      document.querySelectorAll('.entity-preview-singular').forEach(function(el) {
+        el.textContent = singular;
+      });
+      document.querySelectorAll('.entity-preview-plural').forEach(function(el) {
+        el.textContent = plural;
+      });
+
+      // Update hierarchy preview too
+      document.getElementById('hierarchyLevel2').value = singular;
+      updateHierarchyPreview();
+
+      // Update config
+      config.primaryEntity.singular = singular;
+      config.primaryEntity.plural = plural;
+      config.primaryEntity.verb = document.getElementById('entityVerb').value || singular;
+    }
+
+    // Tab 2: Type Classifications
+    function renderTypesTab() {
+      var list = document.getElementById('typesList');
+      list.innerHTML = '';
+
+      if (config.typeDefinitions.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No types defined. Click "Add New Type" to create one.</div>';
+        return;
+      }
+
+      config.typeDefinitions.forEach(function(type, index) {
+        var item = createTypeItem(type, index);
+        list.appendChild(item);
+      });
+
+      // Add keyword test listener
+      document.getElementById('keywordTest').addEventListener('input', testKeywordMatch);
+    }
+
+    function createTypeItem(type, index) {
+      var div = document.createElement('div');
+      div.className = 'type-item';
+
+      div.innerHTML = `
+        <div class="type-item-header">
+          <div class="type-item-title">${type.name || 'Unnamed Type'}</div>
+          <div class="type-item-controls">
+            <label class="toggle-switch">
+              <input type="checkbox" ${type.enabled ? 'checked' : ''} onchange="toggleType(${index})">
+              <span class="toggle-slider"></span>
+            </label>
+            <button class="delete-btn" onclick="deleteType(${index})">Delete</button>
+          </div>
+        </div>
+        <div class="type-item-fields">
+          <div class="field-group">
+            <label class="field-label">Name</label>
+            <input type="text" class="field-input" value="${type.name || ''}" onchange="updateTypeName(${index}, this.value)">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Display Name</label>
+            <input type="text" class="field-input" value="${type.displayName || ''}" onchange="updateTypeDisplayName(${index}, this.value)">
+          </div>
+          <div class="field-group keywords-field">
+            <label class="field-label">Keywords (comma-separated)</label>
+            <input type="text" class="keywords-input" value="${(type.keywords || []).join(', ')}" onchange="updateTypeKeywords(${index}, this.value)">
+            <div class="field-help">Keywords for auto-classification (e.g., "compute, server, blade")</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Color</label>
+            <div class="color-row">
+              <div class="color-preview" style="background-color: ${type.color || '#00FFFF'}" onclick="document.getElementById('typeColor${index}').click()"></div>
+              <input type="color" id="typeColor${index}" value="${type.color || '#00FFFF'}" onchange="updateTypeColor(${index}, this.value)" style="display: none;">
+              <input type="text" class="color-input" value="${type.color || '#00FFFF'}" onchange="updateTypeColor(${index}, this.value)" id="typeColorText${index}">
+            </div>
+          </div>
+        </div>
+      `;
+
+      return div;
+    }
+
+    function addTypeDefinition() {
+      var newType = {
+        id: 'TYPE_' + Date.now(),
+        name: 'New Type',
+        displayName: 'Type',
+        keywords: ['keyword'],
+        color: '#00FFFF',
+        enabled: true
+      };
+      config.typeDefinitions.push(newType);
+      renderTypesTab();
+    }
+
+    function deleteType(index) {
+      if (config.typeDefinitions.length <= 1) {
+        showMessage('Cannot delete the last type definition. You must have at least one type.', 'error');
+        return;
+      }
+      if (confirm('Delete this type definition?')) {
+        config.typeDefinitions.splice(index, 1);
+        renderTypesTab();
+      }
+    }
+
+    function toggleType(index) {
+      config.typeDefinitions[index].enabled = !config.typeDefinitions[index].enabled;
+    }
+
+    function updateTypeName(index, value) {
+      config.typeDefinitions[index].name = value;
+    }
+
+    function updateTypeDisplayName(index, value) {
+      config.typeDefinitions[index].displayName = value;
+    }
+
+    function updateTypeKeywords(index, value) {
+      config.typeDefinitions[index].keywords = value.split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k.length > 0; });
+      testKeywordMatch();
+    }
+
+    function updateTypeColor(index, value) {
+      config.typeDefinitions[index].color = value;
+      document.getElementById('typeColorText' + index).value = value;
+      document.querySelector('#typesList .type-item:nth-child(' + (index + 1) + ') .color-preview').style.backgroundColor = value;
+    }
+
+    function testKeywordMatch() {
+      var testName = document.getElementById('keywordTest').value.toLowerCase();
+      var result = document.getElementById('keywordResult');
+
+      if (!testName) {
+        result.innerHTML = 'Enter an item name above to see which type would be matched';
+        result.style.color = '#666';
+        return;
+      }
+
+      var matched = null;
+      for (var i = 0; i < config.typeDefinitions.length; i++) {
+        var type = config.typeDefinitions[i];
+        if (!type.enabled) continue;
+
+        for (var j = 0; j < type.keywords.length; j++) {
+          if (testName.indexOf(type.keywords[j].toLowerCase()) !== -1) {
+            matched = type;
+            break;
+          }
+        }
+        if (matched) break;
+      }
+
+      if (matched) {
+        result.innerHTML = '<strong>✓ Matched:</strong> ' + matched.name + ' (keyword: "' + matched.keywords.join('", "') + '")';
+        result.style.color = '#137333';
+        result.style.backgroundColor = matched.color + '20';
+      } else {
+        result.innerHTML = '<strong>✗ No match</strong> - Would use default type';
+        result.style.color = '#c5221f';
+        result.style.backgroundColor = '#fce8e6';
+      }
+    }
+
+    // Tab 3: Category Classifications
+    function renderCategoriesTab() {
+      var list = document.getElementById('categoriesList');
+      list.innerHTML = '';
+
+      if (config.categoryClassifications.length === 0) {
+        list.innerHTML = '<div style="text-align: center; padding: 20px; color: #666;">No categories defined. Categories are optional - click "Add New Category" if needed.</div>';
+        return;
+      }
+
+      config.categoryClassifications.forEach(function(category, index) {
+        var item = createCategoryItem(category, index);
+        list.appendChild(item);
+      });
+    }
+
+    function createCategoryItem(category, index) {
+      var div = document.createElement('div');
+      div.className = 'type-item';
+
+      div.innerHTML = `
+        <div class="type-item-header">
+          <div class="type-item-title">${category.name || 'Unnamed Category'}</div>
+          <div class="type-item-controls">
+            <label class="toggle-switch">
+              <input type="checkbox" ${category.enabled ? 'checked' : ''} onchange="toggleCategory(${index})">
+              <span class="toggle-slider"></span>
+            </label>
+            <button class="delete-btn" onclick="deleteCategory(${index})">Delete</button>
+          </div>
+        </div>
+        <div class="type-item-fields">
+          <div class="field-group">
+            <label class="field-label">Name</label>
+            <input type="text" class="field-input" value="${category.name || ''}" onchange="updateCategoryName(${index}, this.value)">
+          </div>
+          <div class="field-group keywords-field">
+            <label class="field-label">Keywords (comma-separated)</label>
+            <input type="text" class="keywords-input" value="${(category.keywords || []).join(', ')}" onchange="updateCategoryKeywords(${index}, this.value)">
+            <div class="field-help">Keywords for category matching</div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Color</label>
+            <div class="color-row">
+              <div class="color-preview" style="background-color: ${category.color || '#CCCCCC'}" onclick="document.getElementById('categoryColor${index}').click()"></div>
+              <input type="color" id="categoryColor${index}" value="${category.color || '#CCCCCC'}" onchange="updateCategoryColor(${index}, this.value)" style="display: none;">
+              <input type="text" class="color-input" value="${category.color || '#CCCCCC'}" onchange="updateCategoryColor(${index}, this.value)" id="categoryColorText${index}">
+            </div>
+          </div>
+        </div>
+      `;
+
+      return div;
+    }
+
+    function addCategoryDefinition() {
+      var newCategory = {
+        id: 'CATEGORY_' + Date.now(),
+        name: 'New Category',
+        keywords: ['keyword'],
+        color: '#CCCCCC',
+        enabled: true
+      };
+      config.categoryClassifications.push(newCategory);
+      renderCategoriesTab();
+    }
+
+    function deleteCategory(index) {
+      if (confirm('Delete this category?')) {
+        config.categoryClassifications.splice(index, 1);
+        renderCategoriesTab();
+      }
+    }
+
+    function toggleCategory(index) {
+      config.categoryClassifications[index].enabled = !config.categoryClassifications[index].enabled;
+    }
+
+    function updateCategoryName(index, value) {
+      config.categoryClassifications[index].name = value;
+    }
+
+    function updateCategoryKeywords(index, value) {
+      config.categoryClassifications[index].keywords = value.split(',').map(function(k) { return k.trim(); }).filter(function(k) { return k.length > 0; });
+    }
+
+    function updateCategoryColor(index, value) {
+      config.categoryClassifications[index].color = value;
+      document.getElementById('categoryColorText' + index).value = value;
+      document.querySelector('#categoriesList .type-item:nth-child(' + (index + 1) + ') .color-preview').style.backgroundColor = value;
+    }
+
+    // Tab 4: Layout Configuration
+    function renderLayoutTab() {
+      document.getElementById('layoutRows').value = config.layoutConfig.rows || 4;
+      document.getElementById('layoutPositions').value = config.layoutConfig.positionsPerRow || 10;
+      // Backend uses labelPrefix, but UI calls it positionPrefix for clarity
+      document.getElementById('layoutPrefix').value = config.layoutConfig.labelPrefix || config.layoutConfig.positionPrefix || 'Pos';
+
+      document.getElementById('layoutRows').addEventListener('input', updateLayoutPreview);
+      document.getElementById('layoutPositions').addEventListener('input', updateLayoutPreview);
+      document.getElementById('layoutPrefix').addEventListener('input', updateLayoutPreview);
+
+      updateLayoutPreview();
+    }
+
+    function updateLayoutPreview() {
+      var rows = parseInt(document.getElementById('layoutRows').value) || 4;
+      var positions = parseInt(document.getElementById('layoutPositions').value) || 10;
+      var prefix = document.getElementById('layoutPrefix').value || 'Pos';
+
+      var preview = prefix + ' 1, ' + prefix + ' 2, ' + prefix + ' 3, ... ' + prefix + ' ' + positions + ' (' + rows + ' rows × ' + positions + ' positions = ' + (rows * positions) + ' total)';
+      document.getElementById('layoutPreview').textContent = preview;
+
+      config.layoutConfig.rows = rows;
+      config.layoutConfig.positionsPerRow = positions;
+      config.layoutConfig.labelPrefix = prefix;  // Use labelPrefix to match backend
+      config.layoutConfig.positionPrefix = prefix;  // Keep for backward compatibility
+    }
+
+    // Tab 5: Hierarchy Levels
+    function renderHierarchyTab() {
+      var level0 = config.hierarchyLevels.find(function(l) { return l.level === 0; });
+      var level1 = config.hierarchyLevels.find(function(l) { return l.level === 1; });
+
+      document.getElementById('hierarchyLevel0').value = level0 ? level0.name : 'POD';
+      document.getElementById('hierarchyLevel1').value = level1 ? level1.name : 'Row';
+      document.getElementById('hierarchyLevel2').value = config.primaryEntity.singular || 'Rack';
+
+      document.getElementById('hierarchyLevel0').addEventListener('input', updateHierarchyPreview);
+      document.getElementById('hierarchyLevel1').addEventListener('input', updateHierarchyPreview);
+
+      updateHierarchyPreview();
+    }
+
+    function updateHierarchyPreview() {
+      var level0 = document.getElementById('hierarchyLevel0').value || 'Level 0';
+      var level1 = document.getElementById('hierarchyLevel1').value || 'Level 1';
+      var level2 = document.getElementById('hierarchyLevel2').value || 'Level 2';
+
+      document.getElementById('hierarchyPreview').textContent = level0 + ' → ' + level1 + ' → ' + level2;
+
+      // Update config
+      config.hierarchyLevels = [
+        { level: 0, name: level0, attribute: null },
+        { level: 1, name: level1, attribute: null },
+        { level: 2, name: level2, attribute: null }
+      ];
+    }
+
+    // Save configuration
+    function saveConfiguration() {
+      var button = document.getElementById('saveButton');
+      button.disabled = true;
+      button.textContent = 'Saving...';
+
+      // Ensure hierarchy level 2 matches entity singular (safely)
+      if (config.hierarchyLevels && config.hierarchyLevels.length >= 3) {
+        config.hierarchyLevels[2].name = config.primaryEntity.singular;
+      }
+
+      // Ensure layoutConfig has all required fields
+      if (!config.layoutConfig.gridType) {
+        config.layoutConfig.gridType = 'OVERHEAD';
+      }
+      if (!config.layoutConfig.labelPrefix) {
+        config.layoutConfig.labelPrefix = config.layoutConfig.positionPrefix || 'Pos';
+      }
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            showMessage('Configuration saved successfully! Please reload the spreadsheet to see changes.', 'success');
+            setTimeout(function() {
+              google.script.host.close();
+            }, 2000);
+          } else {
+            showMessage('Error: ' + result.message, 'error');
+            button.disabled = false;
+            button.textContent = 'Save Configuration';
+          }
+        })
+        .withFailureHandler(function(error) {
+          showMessage('Error saving: ' + error.message, 'error');
+          button.disabled = false;
+          button.textContent = 'Save Configuration';
+        })
+        .saveTypeSystemConfigFromUI(config);
+    }
+
+    // Show presets
+    function showPresets() {
+      google.script.run
+        .withSuccessHandler(function(presets) {
+          var html = '<div class="preset-grid">';
+          presets.forEach(function(preset) {
+            html += '<div class="preset-card" onclick="applyPreset(\'' + preset.name + '\')">';
+            html += '<div class="preset-icon">' + preset.icon + '</div>';
+            html += '<div class="preset-name">' + preset.name + '</div>';
+            html += '<div class="preset-description">' + preset.description + '</div>';
+            html += '</div>';
+          });
+          html += '</div>';
+
+          if (confirm('Load a preset configuration?\n\nChoose from:\n' + presets.map(function(p) { return '• ' + p.name + ': ' + p.description; }).join('\n'))) {
+            // Show preset selector in a simple way
+            var presetName = prompt('Enter preset name (Datacenter, Manufacturing, Warehouse):');
+            if (presetName) {
+              applyPreset(presetName);
+            }
+          }
+        })
+        .getPresetConfigurations();
+    }
+
+    function applyPreset(presetName) {
+      google.script.run
+        .withSuccessHandler(function(presets) {
+          var preset = presets.find(function(p) { return p.name.toLowerCase() === presetName.toLowerCase(); });
+          if (preset) {
+            config = preset.config;
+            renderAllTabs();
+            showMessage('Applied preset: ' + preset.name, 'success');
+          } else {
+            showMessage('Preset not found: ' + presetName, 'error');
+          }
+        })
+        .getPresetConfigurations();
+    }
+
+    // Export configuration
+    function exportConfig() {
+      var json = JSON.stringify(config, null, 2);
+      var textarea = document.createElement('textarea');
+      textarea.value = json;
+      textarea.style.width = '100%';
+      textarea.style.height = '300px';
+      textarea.style.fontFamily = 'monospace';
+      textarea.style.fontSize = '12px';
+
+      var div = document.createElement('div');
+      div.innerHTML = '<h3>Configuration JSON (copy this)</h3>';
+      div.appendChild(textarea);
+
+      alert('Export feature: Copy the JSON from the console log');
+      console.log('Configuration Export:', json);
+    }
+
+    // Import configuration
+    function importConfig() {
+      var json = prompt('Paste configuration JSON:');
+      if (json) {
+        try {
+          config = JSON.parse(json);
+          renderAllTabs();
+          showMessage('Configuration imported successfully', 'success');
+        } catch (e) {
+          showMessage('Invalid JSON: ' + e.message, 'error');
+        }
+      }
+    }
+
+    // Reset to defaults
+    function resetToDefaults() {
+      if (confirm('Reset to default configuration? This will discard all changes.')) {
+        google.script.run
+          .withSuccessHandler(function(data) {
+            if (data.success) {
+              config = {
+                primaryEntity: data.primaryEntity,
+                typeDefinitions: data.typeDefinitions,
+                categoryClassifications: data.categoryClassifications,
+                layoutConfig: data.layoutConfig,
+                hierarchyLevels: data.hierarchyLevels
+              };
+              renderAllTabs();
+              showMessage('Reset to defaults', 'success');
+            }
+          })
+          .loadTypeSystemConfigForUI();
+      }
+    }
+
+    // Show message
+    function showMessage(text, type) {
+      var messageDiv = document.getElementById('message');
+      messageDiv.textContent = text;
+      messageDiv.className = 'message ' + type;
+      messageDiv.classList.remove('hidden');
+
+      if (messageTimeout) {
+        clearTimeout(messageTimeout);
+      }
+
+      messageTimeout = setTimeout(function() {
+        messageDiv.classList.add('hidden');
+      }, 5000);
+    }
+  </script>
+</body>
+</html>

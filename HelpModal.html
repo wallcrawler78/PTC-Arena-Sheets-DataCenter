@@ -275,8 +275,8 @@
 <body>
   <div class="container">
     <div class="header">
-      <h1>Arena Data Center - Help Guide</h1>
-      <p>Your complete guide to managing data center configurations with Arena PLM</p>
+      <h1 id="headerTitle">Arena PLM Integration - Help Guide</h1>
+      <p id="headerSubtitle">Your complete guide to managing configurations with Arena PLM</p>
     </div>
 
     <div class="tabs">
@@ -291,13 +291,13 @@
     <div class="tab-content active">
       <h2>Welcome! Let's Get You Started</h2>
 
-      <p>Welcome to Arena Data Center! This tool helps you design data center layouts, manage rack configurations, and sync everything with Arena PLM. Let's get you up and running!</p>
+      <p>Welcome! This tool helps you design layouts, manage configurations, and sync everything with Arena PLM. Let's get you up and running!</p>
 
       <h3>Step 1: Connect to Arena</h3>
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Open the configuration menu</strong>
-        <div class="menu-path">Arena Data Center → Setup → Configuration → Configure Arena Connection</div>
+        <div class="menu-path">Arena → Setup → Configuration → Configure Arena Connection</div>
       </div>
 
       <div class="step-box">
@@ -314,7 +314,7 @@
       <div class="step-box">
         <span class="step-number">3</span>
         <strong>Test the connection</strong>
-        <div class="menu-path">Arena Data Center → Setup → Configuration → Test Connection</div>
+        <div class="menu-path">Arena → Setup → Configuration → Test Connection</div>
         <p>Verify everything is working correctly before proceeding.</p>
       </div>
 
@@ -325,12 +325,12 @@
       <h3>What This Tool Does</h3>
       <div class="feature-grid">
         <div class="feature-card">
-          <h4>Rack Management</h4>
-          <p>Create and configure rack BOMs with components from Arena</p>
+          <h4>Configuration Management</h4>
+          <p>Create and configure item BOMs with components from Arena</p>
         </div>
         <div class="feature-card">
           <h4>Layout Design</h4>
-          <p>Design data center layouts with visual rack placement</p>
+          <p>Design layouts with visual item placement in grid positions</p>
         </div>
         <div class="feature-card">
           <h4>BOM Automation</h4>
@@ -338,15 +338,15 @@
         </div>
         <div class="feature-card">
           <h4>Arena Sync</h4>
-          <p>Push POD/Row/Rack structures directly to Arena PLM</p>
+          <p>Push hierarchical structures directly to Arena PLM</p>
         </div>
         <div class="feature-card">
           <h4>Status Tracking</h4>
-          <p>Visual indicators show sync status for all racks</p>
+          <p>Visual indicators show sync status for all configurations</p>
         </div>
         <div class="feature-card">
           <h4>History Logging</h4>
-          <p>Complete audit trail of all rack changes and events</p>
+          <p>Complete audit trail of all changes and events</p>
         </div>
       </div>
     </div>
@@ -358,10 +358,10 @@
       <p>Before you start creating racks and layouts, let's configure Arena and customize the tool to match your workflow.</p>
 
       <h3>Menu Structure</h3>
-      <p>The Arena Data Center menu is organized into logical sections:</p>
+      <p>The Arena menu is organized into logical sections:</p>
       <ul>
-        <li><strong>Create Layout</strong> - Create new rack configurations and overview layouts</li>
-        <li><strong>Show Item Picker / Rack Picker</strong> - Browse and select Arena items</li>
+        <li><strong>Create Layout</strong> - Create new configurations and overview layouts</li>
+        <li><strong>Show Item Picker / Configuration Picker</strong> - Browse and select Arena items</li>
         <li><strong>BOM Operations</strong> - Generate BOMs, push to Arena, check status, view history</li>
         <li><strong>Setup</strong> - Configuration settings and advanced tools</li>
         <li><strong>Help and Documentation</strong> - This help system</li>
@@ -369,36 +369,36 @@
 
       <h3>Configure Category Colors</h3>
       <p>Make your sheets more readable by assigning colors to Arena categories.</p>
-      <div class="menu-path">Arena Data Center → Setup → Configuration → Configure Category Colors</div>
+      <div class="menu-path">Arena → Setup → Configuration → Configure Category Colors</div>
       <p>This helps you visually identify different component types at a glance!</p>
 
-      <h3>Configure Rack Colors</h3>
-      <p>Assign colors to different rack types in your overview layouts.</p>
-      <div class="menu-path">Arena Data Center → Setup → Configuration → Configure Rack Colors</div>
-      <p>Makes it easy to see which racks are which in your data center layout.</p>
+      <h3>Configure Item Colors</h3>
+      <p>Assign colors to different item types in your overview layouts.</p>
+      <div class="menu-path">Arena → Setup → Configuration → Configure Item Colors</div>
+      <p>Makes it easy to distinguish different configuration types in your layout.</p>
 
       <h3>Configure BOM Levels</h3>
       <p>Set up which categories appear at which BOM levels (hierarchy).</p>
-      <div class="menu-path">Arena Data Center → Setup → Configuration → Configure BOM Levels</div>
+      <div class="menu-path">Arena → Setup → Configuration → Configure BOM Levels</div>
       <p>This determines how items are organized in consolidated BOMs.</p>
 
       <h3>Configure Item Columns</h3>
       <p>Choose which Arena attributes to display as columns in your rack configurations.</p>
-      <div class="menu-path">Arena Data Center → Setup → Configuration → Configure Item Columns</div>
+      <div class="menu-path">Arena → Setup → Configuration → Configure Item Columns</div>
       <p>Customize what information you see for each component.</p>
 
-      <h3>Rack Location Propagation</h3>
-      <p>Enable automatic position tracking for racks in Row BOMs - similar to reference designators for electrical components.</p>
-      <div class="menu-path">Arena Data Center → Setup → Configuration → Rack Location Propagation</div>
+      <h3>BOM Location Propagation</h3>
+      <p>Enable automatic position tracking for items in BOM hierarchies - similar to reference designators for electrical components.</p>
+      <div class="menu-path">Arena → Setup → Configuration → BOM Location Setting</div>
 
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Create BOM attribute in Arena first</strong>
         <ul>
           <li>In Arena, go to Settings → BOM Attributes (or Item Attributes)</li>
-          <li>Create a new attribute (e.g., "Rack Positions")</li>
+          <li>Create a new attribute (e.g., "Item Positions")</li>
           <li>Type: <code>SINGLE_LINE_TEXT</code></li>
-          <li>Apply to categories that will have BOMs (e.g., Row categories)</li>
+          <li>Apply to categories that will have BOMs</li>
         </ul>
       </div>
 
@@ -413,9 +413,9 @@
         </ul>
       </div>
 
-      <p><strong>What this does:</strong> When you push a POD structure, each rack on a Row's BOM will be automatically tagged with its specific positions.</p>
+      <p><strong>What this does:</strong> When you push a structure to Arena, each item on a parent's BOM will be automatically tagged with its specific positions.</p>
 
-      <p><strong>Example:</strong> If Rack-001 appears in Pos 1, Pos 3, and Pos 8, the BOM line will have the position attribute set to "Pos 1, Pos 3, Pos 8"</p>
+      <p><strong>Example:</strong> If an item appears in Pos 1, Pos 3, and Pos 8, the BOM line will have the position attribute set to "Pos 1, Pos 3, Pos 8"</p>
 
       <div class="tip-box">
         <strong>Pro Tip:</strong> This feature is optional! To disable it, select "No position tracking (disabled)" in the configuration dialog.
@@ -432,7 +432,7 @@
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Open Rack Picker</strong>
-        <div class="menu-path">Arena Data Center → Show Rack Picker</div>
+        <div class="menu-path">Arena → Show Rack Picker</div>
       </div>
 
       <div class="step-box">
@@ -451,7 +451,7 @@
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Create new rack configuration</strong>
-        <div class="menu-path">Arena Data Center → Create Layout → New Rack Configuration</div>
+        <div class="menu-path">Arena → Create Layout → New Rack Configuration</div>
       </div>
 
       <div class="step-box">
@@ -463,7 +463,7 @@
       <div class="step-box">
         <span class="step-number">3</span>
         <strong>Add components using Item Picker</strong>
-        <div class="menu-path">Arena Data Center → Show Item Picker</div>
+        <div class="menu-path">Arena → Show Item Picker</div>
         <p>Browse Arena items, select components, and click rows to add them to your rack BOM.</p>
       </div>
 
@@ -475,7 +475,7 @@
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Create new overview layout</strong>
-        <div class="menu-path">Arena Data Center → Create Layout → New Overview Layout</div>
+        <div class="menu-path">Arena → Create Layout → New Overview Layout</div>
       </div>
 
       <div class="step-box">
@@ -492,12 +492,12 @@
 
       <h3>Auto-Linking Racks to Overview</h3>
       <p>Automatically populate your overview with rack configurations already in your spreadsheet:</p>
-      <div class="menu-path">Arena Data Center → Create Layout → Autolink Racks to Overview</div>
+      <div class="menu-path">Arena → Create Layout → Autolink Racks to Overview</div>
       <p>This saves time when you have multiple rack sheets and want to quickly build a layout!</p>
 
       <h3>Generate Consolidated BOM</h3>
       <p>Once your layout is complete, generate a consolidated BOM to see all materials:</p>
-      <div class="menu-path">Arena Data Center → BOM Operations → Create Consolidated BOM</div>
+      <div class="menu-path">Arena → BOM Operations → Create Consolidated BOM</div>
       <p>This creates a new sheet showing all components with aggregated quantities across all racks!</p>
     </div>
 
@@ -520,7 +520,7 @@
 
       <h3>Checking Rack Status</h3>
       <p>To check the sync status of all racks against Arena:</p>
-      <div class="menu-path">Arena Data Center → BOM Operations → Check all Rack Status (vs. PDM)</div>
+      <div class="menu-path">Arena → BOM Operations → Check all Rack Status (vs. PDM)</div>
 
       <p>This will:</p>
       <ul>
@@ -536,7 +536,7 @@
 
       <h3>Viewing Rack History</h3>
       <p>Access the centralized history tracking system:</p>
-      <div class="menu-path">Arena Data Center → BOM Operations → View Rack History</div>
+      <div class="menu-path">Arena → BOM Operations → View Rack History</div>
 
       <p>The History tab provides:</p>
       <ul>
@@ -585,7 +585,7 @@
 
       <h3>Advanced Status Tools</h3>
       <p>Power users can access advanced tools:</p>
-      <div class="menu-path">Arena Data Center → Setup → Advanced</div>
+      <div class="menu-path">Arena → Setup → Advanced</div>
 
       <ul>
         <li><strong>Mark Current Rack as Synced:</strong> Manually override status (use with caution!)</li>
@@ -616,7 +616,7 @@
       <div class="step-box">
         <span class="step-number">1</span>
         <strong>Start the publish process</strong>
-        <div class="menu-path">Arena Data Center → BOM Operations → Push BOMs to Arena</div>
+        <div class="menu-path">Arena → BOM Operations → Push BOMs to Arena</div>
       </div>
 
       <div class="step-box">
@@ -717,6 +717,81 @@
   </div>
 
   <script>
+    var terminology = {
+      entity_singular: 'Configuration',
+      entity_plural: 'Configurations',
+      entity_singular_lower: 'configuration',
+      entity_plural_lower: 'configurations',
+      hierarchy_level_0: 'Assembly',
+      hierarchy_level_1: 'SubAssembly',
+      hierarchy_level_2: 'Configuration'
+    };
+
+    // Load terminology from backend
+    google.script.run
+      .withSuccessHandler(function(terms) {
+        terminology = terms;
+        updateContentWithTerminology();
+      })
+      .withFailureHandler(function(error) {
+        console.log('Using default terminology:', error);
+        updateContentWithTerminology();
+      })
+      .getTerminologyForUI();
+
+    function updateContentWithTerminology() {
+      var entity = terminology.entity_singular;
+      var entityLower = terminology.entity_singular_lower;
+      var entityPlural = terminology.entity_plural;
+      var entityPluralLower = terminology.entity_plural_lower;
+      var level0 = terminology.hierarchy_level_0;
+      var level1 = terminology.hierarchy_level_1;
+      var level2 = terminology.hierarchy_level_2;
+
+      // Update header
+      document.getElementById('headerTitle').textContent = 'Arena ' + entity + ' Manager - Help Guide';
+      document.getElementById('headerSubtitle').textContent = 'Your complete guide to managing ' + entityPluralLower + ' with Arena PLM';
+
+      // Replace terminology throughout the document
+      replacePlaceholders();
+    }
+
+    function replacePlaceholders() {
+      // Get all text nodes and replace placeholders
+      var walker = document.createTreeWalker(
+        document.body,
+        NodeFilter.SHOW_TEXT,
+        null,
+        false
+      );
+
+      var nodesToReplace = [];
+      var node;
+
+      while (node = walker.nextNode()) {
+        if (node.nodeValue.match(/\b(rack|racks|Rack|Racks|RACK|data center|datacenter|Data Center|POD|Row|point of delivery)\b/i)) {
+          nodesToReplace.push(node);
+        }
+      }
+
+      // Perform replacements
+      nodesToReplace.forEach(function(textNode) {
+        var text = textNode.nodeValue;
+
+        // Replace terminology
+        text = text.replace(/\bdata center\b/gi, terminology.entity_singular_lower + ' infrastructure');
+        text = text.replace(/\bRack\b(?![ -])/g, terminology.entity_singular);
+        text = text.replace(/\bracks\b/g, terminology.entity_plural_lower);
+        text = text.replace(/\bRacks\b/g, terminology.entity_plural);
+        text = text.replace(/\brack\b/gi, terminology.entity_singular_lower);
+        text = text.replace(/\bPOD\b/g, terminology.hierarchy_level_0);
+        text = text.replace(/\bRow\b(?![ ]Location)/g, terminology.hierarchy_level_1);
+        text = text.replace(/\bPoint of Delivery\b/gi, terminology.hierarchy_level_0);
+
+        textNode.nodeValue = text;
+      });
+    }
+
     function showTab(index) {
       // Hide all tabs and content
       var tabs = document.getElementsByClassName('tab');
