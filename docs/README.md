@@ -206,17 +206,6 @@ Complete UI for managing:
 
 Access via: **Arena → Setup → Configuration → Configure Type System**
 
-## Archive
-
-Historical documentation from development sessions can be found in `/docs/archive/`:
-
-- `SESSION_*.md` - Development session summaries
-- `IMPLEMENTATION_STATUS.md` - Historical status tracking
-- Phase documents - Feature implementation notes
-- Feature-specific docs - Now covered in help system
-
-These are kept for reference but superseded by the main documentation.
-
 ## Contributing to Documentation
 
 When adding features or fixing bugs:
