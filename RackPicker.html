@@ -918,13 +918,13 @@
         <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-globe"></use></svg>
         From Arena
       </button>
-      <button class="tab-button" onclick="switchTab('quantities')">
-        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-chart"></use></svg>
-        Quantities
-      </button>
       <button class="tab-button" onclick="switchTab('templates')">
         <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-template"></use></svg>
         Templates
+      </button>
+      <button class="tab-button" onclick="switchTab('quantities')">
+        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-chart"></use></svg>
+        Quantities
       </button>
     </div>
 
@@ -982,55 +982,6 @@
       <button class="insert-button" id="arenaInsertButton" onclick="insertArenaItem()" disabled>
         Place Item (Auto-Create Rack)
       </button>
-    </div>
-
-    <!-- Quantities Tab -->
-    <div class="tab-content" id="quantitiesTab">
-      <div class="quantity-controls">
-        <div class="quantity-scope">
-          <span class="quantity-scope-label">Count Racks From:</span>
-          <div class="scope-buttons">
-            <button class="scope-btn active" data-scope="current" onclick="changeScope('current')">
-              Current Sheet
-            </button>
-            <button class="scope-btn" data-scope="overview" onclick="changeScope('overview')">
-              Overview Only
-            </button>
-            <button class="scope-btn" data-scope="racks" onclick="changeScope('racks')">
-              All Racks
-            </button>
-            <button class="scope-btn" data-scope="all" onclick="changeScope('all')">
-              All Sheets
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <div class="quantity-summary">
-        <div class="summary-stat">
-          <span class="stat-label">Unique Racks:</span>
-          <span class="stat-value" id="uniqueCount">0</span>
-        </div>
-        <div class="summary-stat">
-          <span class="stat-label">Total Placements:</span>
-          <span class="stat-value" id="totalQuantity">0</span>
-        </div>
-        <div class="summary-stat">
-          <span class="stat-label">Scope:</span>
-          <span class="stat-value" id="scopeName">Current Sheet</span>
-        </div>
-      </div>
-
-      <div id="quantitiesLoading" class="loading hidden">
-        <div class="spinner"></div>
-        <p>Calculating rack usage...</p>
-      </div>
-
-      <div class="quantity-list-container" id="quantityListContainer">
-        <div class="empty-state">
-          <p>No racks found</p>
-        </div>
-      </div>
     </div>
 
     <!-- Templates Tab -->
@@ -1107,6 +1058,55 @@
               <div>Loading Arena items...</div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Quantities Tab -->
+    <div class="tab-content" id="quantitiesTab">
+      <div class="quantity-controls">
+        <div class="quantity-scope">
+          <span class="quantity-scope-label">Count Racks From:</span>
+          <div class="scope-buttons">
+            <button class="scope-btn active" data-scope="current" onclick="changeScope('current')">
+              Current Sheet
+            </button>
+            <button class="scope-btn" data-scope="overview" onclick="changeScope('overview')">
+              Overview Only
+            </button>
+            <button class="scope-btn" data-scope="racks" onclick="changeScope('racks')">
+              All Racks
+            </button>
+            <button class="scope-btn" data-scope="all" onclick="changeScope('all')">
+              All Sheets
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="quantity-summary">
+        <div class="summary-stat">
+          <span class="stat-label">Unique Racks:</span>
+          <span class="stat-value" id="uniqueCount">0</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-label">Total Placements:</span>
+          <span class="stat-value" id="totalQuantity">0</span>
+        </div>
+        <div class="summary-stat">
+          <span class="stat-label">Scope:</span>
+          <span class="stat-value" id="scopeName">Current Sheet</span>
+        </div>
+      </div>
+
+      <div id="quantitiesLoading" class="loading hidden">
+        <div class="spinner"></div>
+        <p>Calculating rack usage...</p>
+      </div>
+
+      <div class="quantity-list-container" id="quantityListContainer">
+        <div class="empty-state">
+          <p>No racks found</p>
         </div>
       </div>
     </div>
