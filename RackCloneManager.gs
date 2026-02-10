@@ -775,3 +775,343 @@ function getRacksForCloning() {
     return [];
   }
 }
+
+// ============================================================================
+// MULTI-LEVEL BOM FUNCTIONS
+// ============================================================================
+
+/**
+ * Fetches multi-level BOM from Arena for an item
+ * Returns hierarchical structure with item details (number, description, revision)
+ * @param {string} itemNumber - Arena item number
+ * @return {Object} Result with hierarchical BOM tree
+ */
+function getMultiLevelBOM(itemNumber) {
+  try {
+    Logger.log('=== GET MULTI-LEVEL BOM START ===');
+    Logger.log('Item: ' + itemNumber);
+
+    var arenaClient = new ArenaAPIClient();
+
+    // Step 1: Get the root item
+    var rootItem = arenaClient.getItemByNumber(itemNumber);
+    if (!rootItem) {
+      return {
+        success: false,
+        message: 'Item "' + itemNumber + '" not found in Arena.'
+      };
+    }
+
+    var rootGuid = rootItem.guid || rootItem.Guid;
+    if (!rootGuid) {
+      return {
+        success: false,
+        message: 'Item has no GUID.'
+      };
+    }
+
+    Logger.log('Root item GUID: ' + rootGuid);
+
+    // Step 2: Fetch BOM recursively
+    var bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
+
+    return {
+      success: true,
+      itemNumber: itemNumber,
+      itemName: rootItem.name || rootItem.Name || '',
+      bomTree: bomTree
+    };
+
+  } catch (error) {
+    Logger.log('ERROR in getMultiLevelBOM: ' + error.message);
+    return {
+      success: false,
+      message: 'Error fetching multi-level BOM: ' + error.message
+    };
+  }
+}
+
+/**
+ * Recursively fetches BOM for an item and its children
+ * @param {ArenaAPIClient} arenaClient - Arena API client
+ * @param {string} itemGuid - Item GUID
+ * @param {Object} itemData - Item data object
+ * @param {number} level - Current hierarchy level (0 = root)
+ * @return {Array} Array of BOM nodes with children
+ */
+function fetchBOMRecursive(arenaClient, itemGuid, itemData, level) {
+  var bomTree = [];
+
+  try {
+    // Fetch BOM for this item
+    Logger.log('Fetching BOM for level ' + level + ': ' + itemGuid);
+    var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
+    var bomLines = bomResponse.results || bomResponse.Results || [];
+
+    Logger.log('Found ' + bomLines.length + ' BOM lines at level ' + level);
+
+    // Process each BOM line
+    bomLines.forEach(function(line, index) {
+      var childItem = line.item || line.Item;
+      if (!childItem) {
+        Logger.log('Warning: BOM line has no item data');
+        return;
+      }
+
+      var childNumber = childItem.number || childItem.Number || '';
+      var childName = childItem.name || childItem.Name || '';
+      var childGuid = childItem.guid || childItem.Guid || '';
+      var quantity = line.quantity || line.Quantity || 1;
+
+      // Get item details including revision and description
+      var childDetails = null;
+      try {
+        if (childGuid) {
+          childDetails = arenaClient.makeRequest('/items/' + childGuid, { method: 'GET' });
+        }
+      } catch (detailError) {
+        Logger.log('Warning: Could not fetch details for ' + childNumber + ': ' + detailError.message);
+      }
+
+      var description = '';
+      var revision = '';
+
+      if (childDetails) {
+        description = childDetails.description || childDetails.Description || '';
+
+        // Get revision from effectivity or revisionNumber field
+        if (childDetails.effectivity && childDetails.effectivity.effectiveRevisionNumber) {
+          revision = childDetails.effectivity.effectiveRevisionNumber;
+        } else if (childDetails.revisionNumber) {
+          revision = childDetails.revisionNumber;
+        } else if (childDetails.RevisionNumber) {
+          revision = childDetails.RevisionNumber;
+        }
+      }
+
+      // Build BOM node
+      var bomNode = {
+        id: childGuid + '_' + index,  // Unique ID for UI
+        itemNumber: childNumber,
+        itemName: childName,
+        description: description,
+        revision: revision,
+        quantity: quantity,
+        level: level + 1,
+        guid: childGuid,
+        children: [],
+        hasChildren: false
+      };
+
+      // Recursively fetch children (limit depth to prevent infinite loops)
+      if (childGuid && level < 10) {
+        var childBOM = fetchBOMRecursive(arenaClient, childGuid, childItem, level + 1);
+        if (childBOM.length > 0) {
+          bomNode.children = childBOM;
+          bomNode.hasChildren = true;
+        }
+      }
+
+      bomTree.push(bomNode);
+    });
+
+  } catch (error) {
+    Logger.log('ERROR in fetchBOMRecursive: ' + error.message);
+  }
+
+  return bomTree;
+}
+
+/**
+ * Inserts selected components into the current rack sheet
+ * Appends to existing BOM rows
+ * @param {Array} components - Array of component objects to insert
+ * @return {Object} Result object
+ */
+function insertComponentsIntoCurrentRack(components) {
+  try {
+    Logger.log('=== INSERT COMPONENTS INTO CURRENT RACK START ===');
+    Logger.log('Components to insert: ' + components.length);
+
+    if (!components || components.length === 0) {
+      return {
+        success: false,
+        message: 'No components selected to insert.'
+      };
+    }
+
+    // Step 1: Get active sheet and validate it's a rack sheet
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var activeSheet = ss.getActiveSheet();
+    var sheetName = activeSheet.getName();
+
+    var entitySingular = getTerminology('entity_singular');
+    if (sheetName.indexOf(entitySingular) !== 0) {
+      return {
+        success: false,
+        message: 'Please select a rack configuration sheet before inserting components.\n\nActive sheet: ' + sheetName
+      };
+    }
+
+    Logger.log('Active sheet: ' + sheetName);
+
+    // Step 2: Find the last row with BOM data
+    var lastRow = activeSheet.getLastRow();
+    var insertRow = lastRow + 1;
+
+    // Check if there's existing BOM data or if this is empty
+    var hasExistingData = false;
+    if (lastRow >= DATA_START_ROW) {
+      var checkRange = activeSheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 1);
+      var checkValues = checkRange.getValues();
+
+      for (var i = 0; i < checkValues.length; i++) {
+        var cellValue = checkValues[i][0];
+        if (cellValue && cellValue.toString().trim() !== '' &&
+            cellValue.toString().indexOf('Use Item Picker') === -1 &&
+            cellValue.toString().indexOf('Template loaded') === -1) {
+          hasExistingData = true;
+          break;
+        }
+      }
+    }
+
+    // If no existing data, start at DATA_START_ROW
+    if (!hasExistingData) {
+      insertRow = DATA_START_ROW;
+
+      // Clear any instruction rows
+      if (lastRow >= DATA_START_ROW) {
+        activeSheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 10).clearContent();
+      }
+    }
+
+    Logger.log('Inserting at row: ' + insertRow);
+
+    // Step 3: Prepare component data for insertion
+    var arenaClient = new ArenaAPIClient();
+    var itemColumns = getItemColumns();
+    var numCols = 6 + itemColumns.length;
+
+    var values = [];
+    var backgrounds = [];
+    var fontWeights = [];
+
+    components.forEach(function(comp) {
+      // Fetch full item details from Arena
+      var itemDetails = null;
+      try {
+        itemDetails = arenaClient.getItemByNumber(comp.itemNumber);
+      } catch (error) {
+        Logger.log('Warning: Could not fetch details for ' + comp.itemNumber);
+      }
+
+      var itemNumber = comp.itemNumber || '';
+      var itemName = comp.itemName || '';
+      var description = comp.description || '';
+      var category = '';
+      var lifecycle = '';
+      var quantity = comp.quantity || 1;
+
+      if (itemDetails) {
+        itemName = itemDetails.name || itemDetails.Name || itemName;
+        description = itemDetails.description || itemDetails.Description || description;
+
+        if (itemDetails.category) {
+          category = itemDetails.category.name || itemDetails.category.Name || '';
+        }
+
+        if (itemDetails.lifecyclePhase) {
+          lifecycle = itemDetails.lifecyclePhase.name || itemDetails.lifecyclePhase.Name || '';
+        }
+      }
+
+      // Build row values (match standard BOM format)
+      var rowValues = [itemNumber, itemName, description, category, lifecycle, quantity];
+
+      // Add custom attribute columns (empty for now)
+      for (var i = 0; i < itemColumns.length; i++) {
+        rowValues.push('');
+      }
+
+      values.push(rowValues);
+
+      // Apply category color if available
+      var bgColor = '#ffffff';
+      if (category) {
+        var categoryColors = getCategoryColors();
+        if (categoryColors[category]) {
+          bgColor = categoryColors[category];
+        }
+      }
+
+      var rowBg = [];
+      for (var j = 0; j < numCols; j++) {
+        rowBg.push(bgColor);
+      }
+      backgrounds.push(rowBg);
+
+      // Font weight (normal)
+      var rowWeight = [];
+      for (var k = 0; k < numCols; k++) {
+        rowWeight.push('normal');
+      }
+      fontWeights.push(rowWeight);
+    });
+
+    // Step 4: Write data to sheet
+    var numRows = values.length;
+    var targetRange = activeSheet.getRange(insertRow, 1, numRows, numCols);
+
+    targetRange.setValues(values);
+    targetRange.setBackgrounds(backgrounds);
+    targetRange.setFontWeights(fontWeights);
+
+    Logger.log('Inserted ' + numRows + ' components at row ' + insertRow);
+
+    // Step 5: Update rack status (mark as modified if it was synced)
+    updateRackStatusAfterModification(activeSheet);
+
+    return {
+      success: true,
+      message: 'Successfully inserted ' + numRows + ' component(s) into ' + sheetName,
+      componentsInserted: numRows,
+      startRow: insertRow
+    };
+
+  } catch (error) {
+    Logger.log('ERROR in insertComponentsIntoCurrentRack: ' + error.message);
+    return {
+      success: false,
+      message: 'Error inserting components: ' + error.message
+    };
+  }
+}
+
+/**
+ * Updates rack status after manual modification
+ * If rack was SYNCED, mark as LOCAL_MODIFIED
+ * @param {Sheet} sheet - Rack sheet
+ */
+function updateRackStatusAfterModification(sheet) {
+  try {
+    var metadata = getRackConfigMetadata(sheet);
+    if (!metadata) return;
+
+    var currentStatus = getRackStatus(metadata.itemNumber);
+
+    // If rack was synced, mark as modified
+    if (currentStatus === RACK_STATUS.SYNCED) {
+      updateRackStatus(metadata.itemNumber, RACK_STATUS.LOCAL_MODIFIED);
+
+      // Log history event
+      addRackHistoryEvent(metadata.itemNumber, HISTORY_EVENT.BOM_MODIFIED, {
+        changesSummary: 'Components inserted via BOM Tree Selector',
+        statusAfter: RACK_STATUS.LOCAL_MODIFIED
+      });
+    }
+
+  } catch (error) {
+    Logger.log('Warning: Could not update rack status: ' + error.message);
+  }
+}

@@ -341,6 +341,92 @@
       gap: 2px;
     }
 
+    /* BOM Tree Styles */
+    .bom-tree-item {
+      padding: 6px 8px;
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.2s;
+    }
+
+    .bom-tree-item:hover {
+      background: #f8f9fa;
+    }
+
+    .bom-tree-item:last-child {
+      border-bottom: none;
+    }
+
+    .bom-tree-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .bom-tree-indent {
+      display: inline-block;
+    }
+
+    .bom-tree-expand-icon {
+      width: 16px;
+      height: 16px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #5f6368;
+      font-size: 16px;
+      line-height: 1;
+      user-select: none;
+      transition: transform 0.2s;
+    }
+
+    .bom-tree-expand-icon.expanded {
+      transform: rotate(90deg);
+    }
+
+    .bom-tree-expand-icon.no-children {
+      visibility: hidden;
+    }
+
+    .bom-tree-checkbox {
+      cursor: pointer;
+      margin: 0;
+    }
+
+    .bom-tree-content {
+      flex: 1;
+      font-size: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .bom-tree-number {
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .bom-tree-name {
+      color: #5f6368;
+      font-size: 11px;
+    }
+
+    .bom-tree-details {
+      color: #80868b;
+      font-size: 10px;
+      display: flex;
+      gap: 8px;
+    }
+
+    .bom-tree-children {
+      display: none;
+    }
+
+    .bom-tree-children.expanded {
+      display: block;
+    }
+
     .component-checkbox-label .item-number {
       font-weight: 500;
       color: #202124;
@@ -1151,6 +1237,55 @@
     </div>
   </div>
 
+  <!-- BOM Tree Modal -->
+  <div class="modal-overlay" id="bomTreeModal">
+    <div class="modal-content" style="max-width: 700px; max-height: 80vh;">
+      <div class="modal-header">
+        <h3 id="bomTreeModalTitle">Select Components from BOM</h3>
+      </div>
+      <div class="modal-body" style="max-height: 60vh; overflow-y: auto;">
+        <div class="info-box" style="margin-bottom: 12px; background: #e8f0fe; border-left-color: #1a73e8; color: #174ea6;">
+          <strong>💡 Multi-Level BOM:</strong> Expand/collapse levels to explore the hierarchy. Check the components you want to insert into your current rack.
+        </div>
+
+        <div style="margin-bottom: 12px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
+          <div style="margin-bottom: 6px;"><strong>Item:</strong> <span id="bomTreeItemNumber">-</span></div>
+          <div style="margin-bottom: 6px;"><strong>Name:</strong> <span id="bomTreeItemName">-</span></div>
+          <div style="margin-bottom: 6px;">
+            <strong>Selected:</strong>
+            <span id="bomTreeSelectedCount" style="color: #1a73e8; font-weight: 500;">0</span>
+            <span style="color: #5f6368;"> component(s)</span>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <label style="font-weight: 500; font-size: 13px;">BOM Components:</label>
+          <div style="display: flex; gap: 8px;">
+            <button type="button" onclick="bomTreeSelectAll()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Select All</button>
+            <button type="button" onclick="bomTreeDeselectAll()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Deselect All</button>
+            <button type="button" onclick="bomTreeExpandAll()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Expand All</button>
+            <button type="button" onclick="bomTreeCollapseAll()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Collapse All</button>
+          </div>
+        </div>
+
+        <div id="bomTreeContainer" style="border: 1px solid #dadce0; border-radius: 4px; background: white; padding: 8px; max-height: 400px; overflow-y: auto;">
+          <!-- BOM tree will be inserted here -->
+          <div class="loading" id="bomTreeLoading">
+            <div class="spinner"></div>
+            <div>Loading BOM...</div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeBomTreeModal()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="bomTreeInsertBtn" onclick="insertSelectedComponents()">
+          <svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>
+          Insert Selected Components
+        </button>
+      </div>
+    </div>
+  </div>
+
   <script>
     // DYNAMIC TERMINOLOGY: Loaded from server configuration
     var terminology = {
@@ -1649,7 +1784,7 @@
         var starIcon = isFavorited ? 'icon-star' : 'icon-star-outline';
         var starClass = isFavorited ? 'favorite-star favorited' : 'favorite-star';
 
-        html += '<div class="rack-item" onclick="selectTemplateItem(\'' + escapeHtml(item.number) + '\')">';
+        html += '<div class="rack-item" onclick="openBomTreeModal(\'' + escapeHtml(item.number) + '\')">';
         html += '  <div class="rack-item-header">';
         html += '    <div class="rack-item-content">';
         html += '      <div style="font-weight: 500; margin-bottom: 4px;">' + escapeHtml(item.number) + '</div>';
@@ -1660,7 +1795,7 @@
         html += '      <button class="rack-action-btn ' + starClass + '" onclick="toggleTemplateFavorite(\'' + escapeHtml(item.number) + '\', event)" title="' + (isFavorited ? 'Remove from favorites' : 'Add to favorites') + '">';
         html += '        <svg class="icon icon-sm"><use href="#' + starIcon + '"></use></svg>';
         html += '      </button>';
-        html += '      <button class="rack-action-btn" onclick="event.stopPropagation(); openTemplatePreviewDialog(\'' + escapeHtml(item.number) + '\')" title="Load as template">';
+        html += '      <button class="rack-action-btn" onclick="event.stopPropagation(); openTemplatePreviewDialog(\'' + escapeHtml(item.number) + '\')" title="Load as new rack template">';
         html += '        <svg class="icon icon-sm"><use href="#icon-globe"></use></svg>';
         html += '      </button>';
         html += '    </div>';
@@ -1945,6 +2080,306 @@
     function showTemplateError(message) {
       document.getElementById('templateItemList').innerHTML =
         '<div class="empty-state"><p style="color: #d32f2f;">' + escapeHtml(message) + '</p></div>';
+    }
+
+    // ========================================================================
+    // BOM TREE MODAL FUNCTIONS
+    // ========================================================================
+
+    var bomTreeData = null;
+    var bomTreeSelectedIds = [];
+    var bomTreeExpandedIds = [];
+
+    /**
+     * Opens the BOM tree modal for an item
+     */
+    function openBomTreeModal(itemNumber) {
+      var item = templateItems.find(function(i) { return i.number === itemNumber; });
+      if (!item) return;
+
+      // Update modal title and item info
+      document.getElementById('bomTreeModalTitle').textContent = 'Select Components from ' + item.number;
+      document.getElementById('bomTreeItemNumber').textContent = item.number;
+      document.getElementById('bomTreeItemName').textContent = item.name;
+      document.getElementById('bomTreeSelectedCount').textContent = '0';
+
+      // Show modal
+      document.getElementById('bomTreeModal').classList.add('show');
+
+      // Show loading state
+      document.getElementById('bomTreeLoading').style.display = 'block';
+      document.getElementById('bomTreeContainer').innerHTML = '<div class="loading" id="bomTreeLoading"><div class="spinner"></div><div>Loading BOM...</div></div>';
+
+      // Reset state
+      bomTreeData = null;
+      bomTreeSelectedIds = [];
+      bomTreeExpandedIds = [];
+
+      // Fetch multi-level BOM from backend
+      console.log('Fetching multi-level BOM for:', itemNumber);
+      google.script.run
+        .withSuccessHandler(function(result) {
+          document.getElementById('bomTreeLoading').style.display = 'none';
+
+          if (result.success) {
+            bomTreeData = result.bomTree;
+            renderBomTree(result.bomTree);
+          } else {
+            document.getElementById('bomTreeContainer').innerHTML =
+              '<div class="empty-state"><p style="color: #d32f2f;">' + escapeHtml(result.message) + '</p></div>';
+          }
+        })
+        .withFailureHandler(function(error) {
+          document.getElementById('bomTreeLoading').style.display = 'none';
+          document.getElementById('bomTreeContainer').innerHTML =
+            '<div class="empty-state"><p style="color: #d32f2f;">Error: ' + escapeHtml(error.message) + '</p></div>';
+        })
+        .getMultiLevelBOM(itemNumber);
+    }
+
+    /**
+     * Closes the BOM tree modal
+     */
+    function closeBomTreeModal() {
+      document.getElementById('bomTreeModal').classList.remove('show');
+      bomTreeData = null;
+      bomTreeSelectedIds = [];
+      bomTreeExpandedIds = [];
+    }
+
+    /**
+     * Renders the BOM tree in the container
+     */
+    function renderBomTree(bomTree) {
+      var container = document.getElementById('bomTreeContainer');
+
+      if (!bomTree || bomTree.length === 0) {
+        container.innerHTML = '<div class="empty-state"><p>No BOM components found for this item.</p></div>';
+        return;
+      }
+
+      var html = '';
+      bomTree.forEach(function(node) {
+        html += renderBomTreeNode(node, 0);
+      });
+
+      container.innerHTML = html;
+    }
+
+    /**
+     * Renders a single BOM tree node recursively
+     */
+    function renderBomTreeNode(node, level) {
+      var indentPx = level * 20;
+      var hasChildren = node.hasChildren && node.children && node.children.length > 0;
+      var isExpanded = bomTreeExpandedIds.indexOf(node.id) > -1;
+      var isChecked = bomTreeSelectedIds.indexOf(node.id) > -1;
+
+      var expandIconClass = hasChildren ? (isExpanded ? 'expanded' : '') : 'no-children';
+      var expandIcon = hasChildren ? '▶' : '';
+
+      var html = '';
+
+      // Node row
+      html += '<div class="bom-tree-item" data-id="' + escapeHtml(node.id) + '">';
+      html += '  <div class="bom-tree-row" style="padding-left: ' + indentPx + 'px;">';
+
+      // Expand/collapse icon
+      html += '    <span class="bom-tree-expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')">' + expandIcon + '</span>';
+
+      // Checkbox
+      html += '    <input type="checkbox" class="bom-tree-checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="toggleBomTreeSelection(\'' + escapeHtml(node.id) + '\')">';
+
+      // Content
+      html += '    <div class="bom-tree-content">';
+      html += '      <div class="bom-tree-number">' + escapeHtml(node.itemNumber) + ' (Qty: ' + escapeHtml(node.quantity) + ')</div>';
+      html += '      <div class="bom-tree-name">' + escapeHtml(node.itemName) + '</div>';
+      html += '      <div class="bom-tree-details">';
+      if (node.revision) {
+        html += '        <span>Rev: ' + escapeHtml(node.revision) + '</span>';
+      }
+      if (node.description) {
+        html += '        <span>' + escapeHtml(node.description) + '</span>';
+      }
+      html += '      </div>';
+      html += '    </div>';
+
+      html += '  </div>';
+
+      // Children
+      if (hasChildren) {
+        html += '  <div class="bom-tree-children ' + (isExpanded ? 'expanded' : '') + '" id="children-' + escapeHtml(node.id) + '">';
+        node.children.forEach(function(childNode) {
+          html += renderBomTreeNode(childNode, level + 1);
+        });
+        html += '  </div>';
+      }
+
+      html += '</div>';
+
+      return html;
+    }
+
+    /**
+     * Toggles expand/collapse for a BOM tree node
+     */
+    function toggleBomTreeNode(nodeId) {
+      var index = bomTreeExpandedIds.indexOf(nodeId);
+
+      if (index > -1) {
+        // Collapse
+        bomTreeExpandedIds.splice(index, 1);
+      } else {
+        // Expand
+        bomTreeExpandedIds.push(nodeId);
+      }
+
+      // Re-render tree
+      renderBomTree(bomTreeData);
+    }
+
+    /**
+     * Toggles selection for a BOM tree node
+     */
+    function toggleBomTreeSelection(nodeId) {
+      var index = bomTreeSelectedIds.indexOf(nodeId);
+
+      if (index > -1) {
+        // Uncheck
+        bomTreeSelectedIds.splice(index, 1);
+      } else {
+        // Check
+        bomTreeSelectedIds.push(nodeId);
+      }
+
+      // Update selected count
+      updateBomTreeSelectedCount();
+    }
+
+    /**
+     * Updates the selected count display
+     */
+    function updateBomTreeSelectedCount() {
+      document.getElementById('bomTreeSelectedCount').textContent = bomTreeSelectedIds.length;
+    }
+
+    /**
+     * Select all components in BOM tree
+     */
+    function bomTreeSelectAll() {
+      bomTreeSelectedIds = [];
+      collectAllNodeIds(bomTreeData, bomTreeSelectedIds);
+      renderBomTree(bomTreeData);
+      updateBomTreeSelectedCount();
+    }
+
+    /**
+     * Deselect all components in BOM tree
+     */
+    function bomTreeDeselectAll() {
+      bomTreeSelectedIds = [];
+      renderBomTree(bomTreeData);
+      updateBomTreeSelectedCount();
+    }
+
+    /**
+     * Expand all nodes in BOM tree
+     */
+    function bomTreeExpandAll() {
+      bomTreeExpandedIds = [];
+      collectAllNodeIds(bomTreeData, bomTreeExpandedIds);
+      renderBomTree(bomTreeData);
+    }
+
+    /**
+     * Collapse all nodes in BOM tree
+     */
+    function bomTreeCollapseAll() {
+      bomTreeExpandedIds = [];
+      renderBomTree(bomTreeData);
+    }
+
+    /**
+     * Recursively collects all node IDs from tree
+     */
+    function collectAllNodeIds(nodes, idsArray) {
+      if (!nodes) return;
+
+      nodes.forEach(function(node) {
+        idsArray.push(node.id);
+
+        if (node.children && node.children.length > 0) {
+          collectAllNodeIds(node.children, idsArray);
+        }
+      });
+    }
+
+    /**
+     * Inserts selected components into current rack
+     */
+    function insertSelectedComponents() {
+      if (bomTreeSelectedIds.length === 0) {
+        alert('Please select at least one component to insert.');
+        return;
+      }
+
+      // Collect selected component data
+      var selectedComponents = [];
+      collectSelectedComponents(bomTreeData, selectedComponents);
+
+      console.log('Inserting ' + selectedComponents.length + ' components into current rack');
+
+      // Disable button and show loading
+      var insertBtn = document.getElementById('bomTreeInsertBtn');
+      insertBtn.disabled = true;
+      insertBtn.textContent = 'Inserting...';
+
+      // Call backend to insert components
+      google.script.run
+        .withSuccessHandler(function(result) {
+          insertBtn.disabled = false;
+          insertBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>Insert Selected Components';
+
+          if (result.success) {
+            closeBomTreeModal();
+            alert('✓ Success!\n\n' + result.message);
+
+            // Optionally refresh the sheet
+            google.script.run.refresh();
+          } else {
+            alert('✗ Insert failed:\n\n' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          insertBtn.disabled = false;
+          insertBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>Insert Selected Components';
+          alert('Error: ' + error.message);
+        })
+        .insertComponentsIntoCurrentRack(selectedComponents);
+    }
+
+    /**
+     * Recursively collects selected component data from tree
+     */
+    function collectSelectedComponents(nodes, componentsArray) {
+      if (!nodes) return;
+
+      nodes.forEach(function(node) {
+        if (bomTreeSelectedIds.indexOf(node.id) > -1) {
+          componentsArray.push({
+            itemNumber: node.itemNumber,
+            itemName: node.itemName,
+            description: node.description,
+            revision: node.revision,
+            quantity: node.quantity,
+            guid: node.guid
+          });
+        }
+
+        if (node.children && node.children.length > 0) {
+          collectSelectedComponents(node.children, componentsArray);
+        }
+      });
     }
 
     /**
