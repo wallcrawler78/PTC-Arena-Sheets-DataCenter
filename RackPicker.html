@@ -2,11 +2,58 @@
 <html>
 <head>
   <base target="_top">
+  <!-- SVG Icon Definitions -->
+  <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
+    <defs>
+      <!-- Server/Rack Icon -->
+      <symbol id="icon-server" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M4,1H20A1,1 0 0,1 21,2V6A1,1 0 0,1 20,7H4A1,1 0 0,1 3,6V2A1,1 0 0,1 4,1M4,9H20A1,1 0 0,1 21,10V14A1,1 0 0,1 20,15H4A1,1 0 0,1 3,14V10A1,1 0 0,1 4,9M4,17H20A1,1 0 0,1 21,18V22A1,1 0 0,1 20,23H4A1,1 0 0,1 3,22V18A1,1 0 0,1 4,17M9,5H10V3H9V5M9,13H10V11H9V13M9,21H10V19H9V21M5,3V5H7V3H5M5,11V13H7V11H5M5,19V21H7V19H5Z"/>
+      </symbol>
+
+      <!-- Globe Icon -->
+      <symbol id="icon-globe" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M17.9,17.39C17.64,16.59 16.89,16 16,16H15V13A1,1 0 0,0 14,12H8V10H10A1,1 0 0,0 11,9V7H13A2,2 0 0,0 15,5V4.59C17.93,5.77 20,8.64 20,12C20,14.08 19.2,15.97 17.9,17.39M11,19.93C7.05,19.44 4,16.08 4,12C4,11.38 4.08,10.78 4.21,10.21L9,15V16A2,2 0 0,0 11,18M12,2A10,10 0 0,0 2,12A10,10 0 0,0 12,22A10,10 0 0,0 22,12A10,10 0 0,0 12,2Z"/>
+      </symbol>
+
+      <!-- Chart/Bar Chart Icon -->
+      <symbol id="icon-chart" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M22,21H2V3H4V19H6V10H10V19H12V6H16V19H18V14H22V21Z"/>
+      </symbol>
+
+      <!-- Help/Question Icon -->
+      <symbol id="icon-help" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M10,19H13V22H10V19M12,2C17.35,2.22 19.68,7.62 16.5,11.67C15.67,12.67 14.33,13.33 13.67,14.17C13,15 13,16 13,17H10C10,15.33 10,13.92 10.67,12.92C11.33,11.92 12.67,11.33 13.5,10.67C15.92,8.43 15.32,5.26 12,5A3,3 0 0,0 9,8H6A6,6 0 0,1 12,2Z"/>
+      </symbol>
+    </defs>
+  </svg>
   <style>
     * {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
+    }
+
+    /* SVG Icon Utilities */
+    .icon {
+      display: inline-block;
+      width: 18px;
+      height: 18px;
+      vertical-align: middle;
+    }
+
+    .icon-sm {
+      width: 14px;
+      height: 14px;
+    }
+
+    .icon-md {
+      width: 18px;
+      height: 18px;
+    }
+
+    .icon-lg {
+      width: 24px;
+      height: 24px;
     }
 
     body {
@@ -370,25 +417,27 @@
     }
 
     .help-icon {
-      display: inline-block;
-      width: 20px;
-      height: 20px;
-      line-height: 20px;
-      text-align: center;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 24px;
+      height: 24px;
       background: #1a73e8;
       color: white;
       border-radius: 50%;
-      font-size: 12px;
-      font-weight: bold;
       cursor: pointer;
       transition: all 0.2s;
       margin-left: 8px;
-      vertical-align: middle;
     }
 
     .help-icon:hover {
       background: #174ea6;
       transform: scale(1.1);
+    }
+
+    .help-icon svg {
+      width: 16px;
+      height: 16px;
     }
 
     .tab-header {
@@ -408,21 +457,33 @@
           <h2 style="margin: 0;">Rack Picker</h2>
           <p style="margin: 4px 0 0 0;">Select rack configurations to place in overview</p>
         </div>
-        <span class="help-icon" onclick="showContextualHelp()" title="Click for help" style="margin-top: 4px;">?</span>
+        <span class="help-icon" onclick="showContextualHelp()" title="Click for help" style="margin-top: 4px;">
+          <svg><use href="#icon-help"></use></svg>
+        </span>
       </div>
     </div>
 
     <div class="tab-nav">
-      <button class="tab-button active" onclick="switchTab('racks')">🗄️ Racks</button>
-      <button class="tab-button" onclick="switchTab('arena')">🌐 From Arena</button>
-      <button class="tab-button" onclick="switchTab('quantities')">📊 Quantities</button>
+      <button class="tab-button active" onclick="switchTab('racks')">
+        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-server"></use></svg>
+        Racks
+      </button>
+      <button class="tab-button" onclick="switchTab('arena')">
+        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-globe"></use></svg>
+        From Arena
+      </button>
+      <button class="tab-button" onclick="switchTab('quantities')">
+        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-chart"></use></svg>
+        Quantities
+      </button>
     </div>
 
     <!-- Racks Tab -->
     <div class="tab-content active" id="racksTab">
       <div class="content">
         <div class="tab-header">
-          🗄️ Existing Rack Configurations
+          <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-server"></use></svg>
+          Existing Rack Configurations
         </div>
 
         <div class="search-box">
@@ -449,7 +510,8 @@
     <div class="tab-content" id="arenaTab">
       <div class="content">
         <div class="tab-header">
-          🌐 Browse All Arena Items
+          <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-globe"></use></svg>
+          Browse All Arena Items
         </div>
 
         <div class="search-box">
