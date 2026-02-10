@@ -111,9 +111,13 @@
 
     .search-box {
       position: relative;
+      display: flex;
+      gap: 8px;
+      align-items: center;
     }
 
     .search-box input {
+      flex: 1;
       padding-left: 28px;
     }
 
@@ -124,6 +128,50 @@
       transform: translateY(-50%);
       color: #666;
       font-size: 12px;
+      pointer-events: none;
+    }
+
+    .search-button {
+      padding: 6px 16px;
+      background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      min-width: 80px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .search-button:hover:not(:disabled) {
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .search-button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .search-button:disabled {
+      background: #e0e0e0;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .search-spinner {
+      border: 2px solid #ffffff40;
+      border-top: 2px solid #ffffff;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      animation: spin 0.8s linear infinite;
     }
 
     .item-count {
@@ -470,7 +518,10 @@
           <label class="filter-label">Search Items</label>
           <div class="search-box">
             <span class="search-icon">🔍</span>
-            <input type="text" id="searchInput" placeholder="Search item number or description...">
+            <input type="text" id="searchInput" placeholder="Search item number or description..." onkeydown="handleSearchKeyPress(event)">
+            <button class="search-button" id="searchButton" onclick="performSearch()">
+              Search
+            </button>
           </div>
         </div>
       </div>
@@ -789,7 +840,6 @@
     });
     document.getElementById('lifecycleFilter').addEventListener('change', applyFilters);
     document.getElementById('favoritesFilter').addEventListener('change', applyFilters);
-    document.getElementById('searchInput').addEventListener('input', applyFilters);
     document.getElementById('resetFilters').addEventListener('click', resetFilters);
 
     function applyFilters() {
@@ -842,6 +892,36 @@
       document.getElementById('favoritesFilter').checked = true;  // Default to favorites ON
       document.getElementById('searchInput').value = '';
       applyFilters();
+    }
+
+    /**
+     * Handle Enter key press in search input
+     */
+    function handleSearchKeyPress(event) {
+      if (event.key === 'Enter') {
+        event.preventDefault();
+        performSearch();
+      }
+    }
+
+    /**
+     * Perform search with progress indicator
+     */
+    function performSearch() {
+      var searchButton = document.getElementById('searchButton');
+
+      // Show spinner and disable button
+      searchButton.disabled = true;
+      searchButton.innerHTML = '<div class="search-spinner"></div> Searching...';
+
+      // Small delay to show the spinner (makes it feel more responsive)
+      setTimeout(function() {
+        applyFilters();
+
+        // Reset button state
+        searchButton.disabled = false;
+        searchButton.innerHTML = 'Search';
+      }, 300);
     }
 
     function updateActiveFiltersDisplay() {
