@@ -288,8 +288,15 @@
       <div class="section-title">Custom Attribute Columns:</div>
 
       <div class="fetch-section" id="fetchSection">
+        <div style="margin-bottom: 12px;">
+          <label for="sampleItemNumber" style="font-size: 13px; color: #5f6368; display: block; margin-bottom: 6px;">
+            Sample Item Number (to fetch attributes from):
+          </label>
+          <input type="text" id="sampleItemNumber" placeholder="e.g., POD-0001"
+                 style="width: 200px; padding: 8px 12px; border: 1px solid #dadce0; border-radius: 4px; font-size: 13px;">
+        </div>
         <button class="btn-fetch" id="fetchBtn" onclick="fetchAvailableAttributes()">
-          Load Available Attributes from Arena
+          Load Available Attributes
         </button>
       </div>
 
@@ -339,11 +346,12 @@
       var loadingContainer = document.getElementById('loadingContainer');
       var errorContainer = document.getElementById('errorContainer');
       var attributesContainer = document.getElementById('attributesContainer');
+      var sampleItemNumber = document.getElementById('sampleItemNumber').value.trim();
 
       fetchBtn.disabled = true;
       fetchBtn.textContent = 'Loading...';
 
-      loadingContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching Arena attributes...</div></div>';
+      loadingContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching attributes from ' + (sampleItemNumber || 'sample item') + '...</div></div>';
       errorContainer.innerHTML = '';
       attributesContainer.classList.remove('show');
 
@@ -356,6 +364,18 @@
             renderAttributes(availableAttributes);
             attributesContainer.classList.add('show');
             document.getElementById('saveBtn').disabled = false;
+
+            // Show success message with sample item used
+            if (result.sampleItemNumber) {
+              var successMsg = document.createElement('div');
+              successMsg.className = 'info-box';
+              successMsg.style.background = '#e6f4ea';
+              successMsg.style.borderLeftColor = '#137333';
+              successMsg.style.color = '#137333';
+              successMsg.style.marginBottom = '12px';
+              successMsg.innerHTML = '<strong>✓ Success:</strong> Found ' + availableAttributes.length + ' attributes from item "' + result.sampleItemNumber + '"';
+              errorContainer.appendChild(successMsg);
+            }
           } else {
             errorContainer.innerHTML = '<div class="error-box"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div>';
           }
@@ -367,9 +387,9 @@
           loadingContainer.innerHTML = '';
           errorContainer.innerHTML = '<div class="error-box"><strong>Error:</strong> ' + escapeHtml(error.message) + '</div>';
           fetchBtn.disabled = false;
-          fetchBtn.textContent = 'Load Available Attributes from Arena';
+          fetchBtn.textContent = 'Load Available Attributes';
         })
-        .getAvailableArenaAttributes();
+        .getAvailableArenaAttributes(sampleItemNumber || null);
     }
 
     function renderAttributes(attributes) {

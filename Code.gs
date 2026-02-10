@@ -770,49 +770,81 @@ function showConfigureBOMTreeColumns() {
 }
 
 /**
- * Gets available Arena attributes from the attribute definitions
+ * Gets available Arena attributes from a sample item
+ * @param {string} sampleItemNumber - Optional item number to fetch attributes from
  * @return {Object} Result with attributes array
  */
-function getAvailableArenaAttributes() {
+function getAvailableArenaAttributes(sampleItemNumber) {
   try {
     Logger.log('=== GET AVAILABLE ARENA ATTRIBUTES START ===');
 
     var arenaClient = new ArenaAPIClient();
 
-    // Fetch attribute definitions from Arena
-    // Arena API endpoint: /settings/attributes
-    var attributesResponse = arenaClient.makeRequest('/settings/attributes', { method: 'GET' });
-    var attributes = attributesResponse.results || attributesResponse.Results || [];
+    // If no sample item provided, try to find any item from the sheet
+    if (!sampleItemNumber) {
+      Logger.log('No sample item provided, using POD-0001 as default');
+      sampleItemNumber = 'POD-0001';  // Default fallback
+    }
 
-    Logger.log('Found ' + attributes.length + ' attributes in Arena');
+    Logger.log('Fetching attributes from sample item: ' + sampleItemNumber);
 
-    // Filter and format attributes for display
+    // Fetch the sample item
+    var sampleItem = arenaClient.getItemByNumber(sampleItemNumber);
+    if (!sampleItem) {
+      return {
+        success: false,
+        message: 'Sample item "' + sampleItemNumber + '" not found. Please provide a valid Arena item number.'
+      };
+    }
+
+    var itemGuid = sampleItem.guid || sampleItem.Guid;
+
+    // Fetch full item details to get attributes
+    var itemDetails = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
+
+    // Extract attributes from item
+    var attributes = itemDetails.attributes || itemDetails.Attributes || {};
+
+    Logger.log('Found ' + Object.keys(attributes).length + ' attributes on sample item');
+
+    // Format attributes for display
     var formattedAttributes = [];
 
-    attributes.forEach(function(attr) {
-      var guid = attr.guid || attr.Guid || '';
-      var name = attr.name || attr.Name || '';
-      var apiName = attr.apiName || attr.ApiName || '';
-      var fieldType = attr.fieldType || attr.FieldType || 'TEXT';
+    for (var attrKey in attributes) {
+      var attr = attributes[attrKey];
 
-      // Skip system attributes or empty names
-      if (!name || name.indexOf('(system)') > -1) {
-        return;
+      var guid = attrKey;  // The key itself is often the GUID or API name
+      var name = attr.name || attr.Name || attrKey;
+      var value = attr.value || attr.Value || '';
+      var fieldType = typeof value === 'number' ? 'NUMBER' : 'TEXT';
+
+      // Skip empty or system attributes
+      if (!name || name.indexOf('(system)') > -1 || name.indexOf('guid') > -1) {
+        continue;
       }
 
       formattedAttributes.push({
         guid: guid,
         name: name,
-        apiName: apiName,
-        type: fieldType
+        apiName: attrKey,
+        type: fieldType,
+        sampleValue: value
       });
-    });
+    }
 
-    Logger.log('Formatted ' + formattedAttributes.length + ' user attributes');
+    Logger.log('Formatted ' + formattedAttributes.length + ' attributes');
+
+    if (formattedAttributes.length === 0) {
+      return {
+        success: false,
+        message: 'No custom attributes found on item "' + sampleItemNumber + '". Try a different item that has custom attributes defined.'
+      };
+    }
 
     return {
       success: true,
-      attributes: formattedAttributes
+      attributes: formattedAttributes,
+      sampleItemNumber: sampleItemNumber
     };
 
   } catch (error) {
