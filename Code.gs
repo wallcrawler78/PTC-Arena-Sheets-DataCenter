@@ -774,77 +774,85 @@ function showConfigureBOMTreeColumns() {
  * @param {string} sampleItemNumber - Optional item number to fetch attributes from
  * @return {Object} Result with attributes array
  */
-function getAvailableArenaAttributes(sampleItemNumber) {
+function getAvailableArenaAttributes() {
   try {
     Logger.log('=== GET AVAILABLE ARENA ATTRIBUTES START ===');
 
     var arenaClient = new ArenaAPIClient();
 
-    // If no sample item provided, try to find any item from the sheet
-    if (!sampleItemNumber) {
-      Logger.log('No sample item provided, using POD-0001 as default');
-      sampleItemNumber = 'POD-0001';  // Default fallback
+    // Fetch attribute definitions from Arena settings (not from a specific item)
+    Logger.log('Fetching attribute definitions from /settings/items/attributes');
+
+    var response = arenaClient.makeRequest('/settings/items/attributes', { method: 'GET' });
+
+    // DEBUG: Log the response structure
+    Logger.log('=== ARENA ATTRIBUTES API RESPONSE ===');
+    Logger.log('Response Keys: ' + JSON.stringify(Object.keys(response)));
+
+    var debugJson = JSON.stringify(response, null, 2);
+    if (debugJson.length > 2000) {
+      Logger.log('Response (truncated): ' + debugJson.substring(0, 2000) + '...');
+    } else {
+      Logger.log('Full Response: ' + debugJson);
     }
 
-    Logger.log('Fetching attributes from sample item: ' + sampleItemNumber);
+    var attributesList = response.results || response.Results || [];
 
-    // Fetch the sample item
-    var sampleItem = arenaClient.getItemByNumber(sampleItemNumber);
-    if (!sampleItem) {
-      return {
-        success: false,
-        message: 'Sample item "' + sampleItemNumber + '" not found. Please provide a valid Arena item number.'
-      };
-    }
+    Logger.log('Found ' + attributesList.length + ' attribute definitions');
 
-    var itemGuid = sampleItem.guid || sampleItem.Guid;
-
-    // Fetch full item details to get attributes
-    var itemDetails = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
-
-    // Extract attributes from item
-    var attributes = itemDetails.attributes || itemDetails.Attributes || {};
-
-    Logger.log('Found ' + Object.keys(attributes).length + ' attributes on sample item');
-
-    // Format attributes for display
+    // Format attribute definitions for display
     var formattedAttributes = [];
 
-    for (var attrKey in attributes) {
-      var attr = attributes[attrKey];
+    for (var i = 0; i < attributesList.length; i++) {
+      var attr = attributesList[i];
 
-      var guid = attrKey;  // The key itself is often the GUID or API name
-      var name = attr.name || attr.Name || attrKey;
-      var value = attr.value || attr.Value || '';
-      var fieldType = typeof value === 'number' ? 'NUMBER' : 'TEXT';
+      // Extract attribute definition information
+      var guid = attr.guid || attr.Guid;
+      var name = attr.name || attr.Name;
+      var apiName = attr.apiName || attr.ApiName;
+      var fieldType = attr.type || attr.Type || attr.fieldType || attr.FieldType || 'TEXT';
 
-      // Skip empty or system attributes
-      if (!name || name.indexOf('(system)') > -1 || name.indexOf('guid') > -1) {
+      // Skip if no name or GUID
+      if (!name || !guid) {
+        Logger.log('Skipping attribute without name or guid: ' + JSON.stringify(attr));
+        continue;
+      }
+
+      // Skip system fields (if they have indicators)
+      if (name.indexOf('(system)') > -1 || name.toLowerCase().indexOf('_system') > -1) {
         continue;
       }
 
       formattedAttributes.push({
         guid: guid,
         name: name,
-        apiName: attrKey,
+        apiName: apiName || name,
         type: fieldType,
-        sampleValue: value
+        sampleValue: '' // No sample value since we're getting definitions, not item values
       });
     }
 
-    Logger.log('Formatted ' + formattedAttributes.length + ' attributes');
+    Logger.log('Formatted ' + formattedAttributes.length + ' attribute definitions');
 
     if (formattedAttributes.length === 0) {
+      // Provide helpful debug info
+      var debugInfo = '\n\nDEBUG INFO:\n';
+      debugInfo += 'Endpoint: /settings/items/attributes\n';
+      debugInfo += 'Response type: ' + (Array.isArray(attributesList) ? 'Array' : 'Object') + '\n';
+      debugInfo += 'Attributes found in response: ' + attributesList.length + '\n';
+      debugInfo += 'Response keys: ' + JSON.stringify(Object.keys(response)).substring(0, 200) + '\n';
+      debugInfo += '\nCheck Apps Script logs (Extensions → Apps Script → Executions) for full API response details.';
+
       return {
         success: false,
-        message: 'No custom attributes found on item "' + sampleItemNumber + '". Try a different item that has custom attributes defined.'
+        message: 'No custom attributes are defined in your Arena workspace. You may need to create custom attributes in Arena first.' + debugInfo
       };
     }
 
     return {
       success: true,
       attributes: formattedAttributes,
-      sampleItemNumber: sampleItemNumber
+      totalAttributeCount: formattedAttributes.length
     };
 
   } catch (error) {

@@ -1,0 +1,775 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f8f9fa;
+      overflow: hidden;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 40px);
+    }
+
+    .header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      background: #1a73e8;
+      color: white;
+      border-radius: 8px 8px 0 0;
+      flex-shrink: 0;
+    }
+
+    .header h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .info-box {
+      padding: 12px 16px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 4px;
+      font-size: 13px;
+      margin-top: 12px;
+    }
+
+    .item-info {
+      padding: 16px 24px;
+      background: #f8f9fa;
+      border-bottom: 1px solid #e0e0e0;
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      flex-shrink: 0;
+    }
+
+    .item-info-field {
+      font-size: 13px;
+    }
+
+    .item-info-label {
+      color: #5f6368;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 4px;
+    }
+
+    .item-info-value {
+      color: #202124;
+      font-weight: 500;
+    }
+
+    .selected-count {
+      color: #1a73e8;
+      font-weight: 600;
+      font-size: 16px;
+    }
+
+    .controls {
+      padding: 12px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    .controls-left {
+      font-weight: 500;
+      font-size: 14px;
+      color: #202124;
+    }
+
+    .controls-right {
+      display: flex;
+      gap: 8px;
+    }
+
+    .btn {
+      padding: 6px 12px;
+      font-size: 13px;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s;
+      color: #202124;
+    }
+
+    .btn:hover {
+      background: #f8f9fa;
+      border-color: #c1c4c8;
+    }
+
+    .btn:active {
+      background: #f1f3f4;
+    }
+
+    /* Table Layout */
+    .bom-table-container {
+      flex: 1;
+      overflow: auto;
+      position: relative;
+    }
+
+    .bom-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .bom-table-header {
+      position: sticky;
+      top: 0;
+      background: #f8f9fa;
+      z-index: 10;
+      border-bottom: 2px solid #dadce0;
+    }
+
+    .bom-table-header th {
+      padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #5f6368;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-right: 1px solid #e0e0e0;
+      position: relative;
+      user-select: none;
+    }
+
+    .bom-table-header th:last-child {
+      border-right: none;
+    }
+
+    /* Column Resizer */
+    .column-resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      user-select: none;
+      z-index: 1;
+    }
+
+    .column-resizer:hover,
+    .column-resizer.resizing {
+      background: #1a73e8;
+    }
+
+    /* Column widths */
+    .col-checkbox {
+      width: 40px;
+      min-width: 40px;
+    }
+
+    .col-expand {
+      width: 30px;
+      min-width: 30px;
+    }
+
+    .col-item-number {
+      width: 180px;
+      min-width: 100px;
+    }
+
+    .col-name {
+      width: 250px;
+      min-width: 150px;
+    }
+
+    .col-qty {
+      width: 80px;
+      min-width: 60px;
+    }
+
+    .col-revision {
+      width: 100px;
+      min-width: 80px;
+    }
+
+    .col-description {
+      width: auto;
+      min-width: 200px;
+    }
+
+    .bom-table tbody tr {
+      border-bottom: 1px solid #f0f0f0;
+      transition: background 0.2s;
+    }
+
+    .bom-table tbody tr:hover {
+      background: #f8f9fa;
+    }
+
+    .bom-table td {
+      padding: 10px 12px;
+      vertical-align: top;
+      border-right: 1px solid #f5f5f5;
+    }
+
+    .bom-table td:last-child {
+      border-right: none;
+    }
+
+    .expand-icon {
+      display: inline-flex;
+      width: 16px;
+      height: 16px;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: #5f6368;
+      font-size: 12px;
+      user-select: none;
+      transition: transform 0.2s;
+    }
+
+    .expand-icon.expanded {
+      transform: rotate(90deg);
+    }
+
+    .expand-icon.no-children {
+      visibility: hidden;
+    }
+
+    .item-number {
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .item-name {
+      color: #5f6368;
+    }
+
+    .item-qty {
+      color: #202124;
+      font-weight: 500;
+    }
+
+    .item-revision {
+      color: #5f6368;
+      font-size: 12px;
+    }
+
+    .item-description {
+      color: #80868b;
+      font-size: 12px;
+      line-height: 1.4;
+    }
+
+    /* Nested rows */
+    .nested-row {
+      display: none;
+    }
+
+    .nested-row.expanded {
+      display: table-row;
+    }
+
+    .indent-1 { padding-left: 40px !important; }
+    .indent-2 { padding-left: 70px !important; }
+    .indent-3 { padding-left: 100px !important; }
+    .indent-4 { padding-left: 130px !important; }
+    .indent-5 { padding-left: 160px !important; }
+
+    .footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8f9fa;
+      border-radius: 0 0 8px 8px;
+      flex-shrink: 0;
+    }
+
+    .btn-cancel {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #202124;
+    }
+
+    .btn-cancel:hover {
+      background: #f8f9fa;
+    }
+
+    .btn-primary {
+      padding: 8px 20px;
+      background: #1a73e8;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: white;
+      font-weight: 500;
+    }
+
+    .btn-primary:hover {
+      background: #1765cc;
+    }
+
+    .btn-primary:disabled {
+      background: #dadce0;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 20px;
+      color: #5f6368;
+    }
+
+    .spinner {
+      border: 3px solid #f0f0f0;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .empty-state {
+      padding: 60px 20px;
+      text-align: center;
+      color: #5f6368;
+    }
+
+    .error-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #d32f2f;
+      background: #fce8e6;
+      border-radius: 4px;
+      margin: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2 id="modalTitle">Select Components from BOM</h2>
+      <div class="info-box">
+        <strong>💡 Multi-Level BOM:</strong> Expand/collapse levels to explore the hierarchy. Check the components you want to insert into your current rack. Drag column dividers to resize.
+      </div>
+    </div>
+
+    <div class="item-info">
+      <div class="item-info-field">
+        <div class="item-info-label">Item Number</div>
+        <div class="item-info-value" id="itemNumber">-</div>
+      </div>
+      <div class="item-info-field">
+        <div class="item-info-label">Item Name</div>
+        <div class="item-info-value" id="itemName">-</div>
+      </div>
+      <div class="item-info-field">
+        <div class="item-info-label">Selected Components</div>
+        <div class="item-info-value">
+          <span class="selected-count" id="selectedCount">0</span>
+          <span style="color: #5f6368; font-weight: normal; font-size: 13px;"> component(s)</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <div class="controls-left">BOM Components:</div>
+      <div class="controls-right">
+        <button class="btn" onclick="bomTreeSelectAll()">Select All</button>
+        <button class="btn" onclick="bomTreeDeselectAll()">Deselect All</button>
+        <button class="btn" onclick="bomTreeExpandAll()">Expand All</button>
+        <button class="btn" onclick="bomTreeCollapseAll()">Collapse All</button>
+      </div>
+    </div>
+
+    <div class="bom-table-container" id="tableContainer">
+      <table class="bom-table" id="bomTable">
+        <thead class="bom-table-header">
+          <tr>
+            <th class="col-checkbox">
+              <input type="checkbox" id="headerCheckbox" onchange="toggleAllCheckboxes()">
+            </th>
+            <th class="col-expand"></th>
+            <th class="col-item-number">
+              Item Number
+              <div class="column-resizer" data-column="item-number"></div>
+            </th>
+            <th class="col-name">
+              Name
+              <div class="column-resizer" data-column="name"></div>
+            </th>
+            <th class="col-qty">
+              Qty
+              <div class="column-resizer" data-column="qty"></div>
+            </th>
+            <th class="col-revision">
+              Revision
+              <div class="column-resizer" data-column="revision"></div>
+            </th>
+            <th class="col-description">Description</th>
+          </tr>
+        </thead>
+        <tbody id="bomTableBody">
+          <tr>
+            <td colspan="7">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading BOM...</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="footer">
+      <button class="btn-cancel" onclick="google.script.host.close()">Cancel</button>
+      <button class="btn-primary" id="insertBtn" onclick="insertSelectedComponents()">Insert Selected Components</button>
+    </div>
+  </div>
+
+  <script>
+    var bomTreeData = null;
+    var bomTreeSelectedIds = [];
+    var bomTreeExpandedIds = [];
+    var currentItemNumber = '';
+
+    // Column resizing
+    var isResizing = false;
+    var currentResizer = null;
+    var startX = 0;
+    var startWidth = 0;
+
+    window.addEventListener('load', function() {
+      var urlParams = new URLSearchParams(window.location.search);
+      currentItemNumber = urlParams.get('itemNumber') || '';
+
+      if (currentItemNumber) {
+        loadBOMTree(currentItemNumber);
+      }
+
+      // Setup column resizers
+      setupColumnResizers();
+    });
+
+    function setupColumnResizers() {
+      var resizers = document.querySelectorAll('.column-resizer');
+
+      resizers.forEach(function(resizer) {
+        resizer.addEventListener('mousedown', function(e) {
+          isResizing = true;
+          currentResizer = resizer;
+          startX = e.pageX;
+
+          var th = resizer.parentElement;
+          startWidth = th.offsetWidth;
+
+          currentResizer.classList.add('resizing');
+          e.preventDefault();
+        });
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+
+        var diff = e.pageX - startX;
+        var newWidth = startWidth + diff;
+
+        if (newWidth > 60) {
+          var th = currentResizer.parentElement;
+          th.style.width = newWidth + 'px';
+        }
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (isResizing) {
+          isResizing = false;
+          if (currentResizer) {
+            currentResizer.classList.remove('resizing');
+            currentResizer = null;
+          }
+        }
+      });
+    }
+
+    function loadBOMTree(itemNumber) {
+      document.getElementById('modalTitle').textContent = 'Select Components from ' + itemNumber;
+      document.getElementById('itemNumber').textContent = itemNumber;
+
+      console.log('Fetching multi-level BOM for:', itemNumber);
+
+      var startTime = Date.now();
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          var endTime = Date.now();
+          console.log('BOM loaded in ' + (endTime - startTime) + 'ms');
+
+          if (result.success) {
+            document.getElementById('itemName').textContent = result.itemName || '-';
+            bomTreeData = result.bomTree;
+            renderBomTable(result.bomTree);
+          } else {
+            document.getElementById('bomTableBody').innerHTML =
+              '<tr><td colspan="7"><div class="error-state"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div></td></tr>';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('BOM fetch error:', error);
+          document.getElementById('bomTableBody').innerHTML =
+            '<tr><td colspan="7"><div class="error-state"><strong>Error:</strong> ' + escapeHtml(error.message) + '</div></td></tr>';
+        })
+        .getMultiLevelBOM(itemNumber);
+    }
+
+    function renderBomTable(bomTree) {
+      var tbody = document.getElementById('bomTableBody');
+
+      if (!bomTree || bomTree.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No BOM components found for this item.</div></td></tr>';
+        return;
+      }
+
+      var html = '';
+      bomTree.forEach(function(node) {
+        html += renderBomTableRow(node, 0);
+      });
+
+      tbody.innerHTML = html;
+    }
+
+    function renderBomTableRow(node, level) {
+      var hasChildren = node.hasChildren && node.children && node.children.length > 0;
+      var isExpanded = bomTreeExpandedIds.indexOf(node.id) > -1;
+      var isChecked = bomTreeSelectedIds.indexOf(node.id) > -1;
+      var expandIconClass = hasChildren ? (isExpanded ? 'expanded' : '') : 'no-children';
+      var expandIcon = hasChildren ? '▶' : '';
+      var indentClass = 'indent-' + Math.min(level, 5);
+
+      var html = '';
+
+      html += '<tr data-id="' + escapeHtml(node.id) + '" data-level="' + level + '">';
+
+      // Checkbox
+      html += '  <td class="col-checkbox">';
+      html += '    <input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="toggleBomTreeSelection(\'' + escapeHtml(node.id) + '\')">';
+      html += '  </td>';
+
+      // Expand icon
+      html += '  <td class="col-expand">';
+      html += '    <span class="expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')">' + expandIcon + '</span>';
+      html += '  </td>';
+
+      // Item Number (with indent)
+      html += '  <td class="col-item-number ' + indentClass + '">';
+      html += '    <span class="item-number">' + escapeHtml(node.itemNumber) + '</span>';
+      html += '  </td>';
+
+      // Name
+      html += '  <td class="col-name">';
+      html += '    <span class="item-name">' + escapeHtml(node.itemName) + '</span>';
+      html += '  </td>';
+
+      // Qty
+      html += '  <td class="col-qty">';
+      html += '    <span class="item-qty">' + escapeHtml(node.quantity) + '</span>';
+      html += '  </td>';
+
+      // Revision
+      html += '  <td class="col-revision">';
+      html += '    <span class="item-revision">' + escapeHtml(node.revision || '-') + '</span>';
+      html += '  </td>';
+
+      // Description
+      html += '  <td class="col-description">';
+      html += '    <span class="item-description">' + escapeHtml(node.description || '') + '</span>';
+      html += '  </td>';
+
+      html += '</tr>';
+
+      // Children rows
+      if (hasChildren) {
+        node.children.forEach(function(childNode) {
+          var childHtml = renderBomTableRow(childNode, level + 1);
+          var childClass = isExpanded ? 'nested-row expanded' : 'nested-row';
+          html += childHtml.replace('<tr ', '<tr class="' + childClass + '" ');
+        });
+      }
+
+      return html;
+    }
+
+    function toggleBomTreeNode(nodeId) {
+      var index = bomTreeExpandedIds.indexOf(nodeId);
+
+      if (index > -1) {
+        bomTreeExpandedIds.splice(index, 1);
+      } else {
+        bomTreeExpandedIds.push(nodeId);
+      }
+
+      renderBomTable(bomTreeData);
+    }
+
+    function toggleBomTreeSelection(nodeId) {
+      var index = bomTreeSelectedIds.indexOf(nodeId);
+
+      if (index > -1) {
+        bomTreeSelectedIds.splice(index, 1);
+      } else {
+        bomTreeSelectedIds.push(nodeId);
+      }
+
+      updateSelectedCount();
+    }
+
+    function toggleAllCheckboxes() {
+      var headerCheckbox = document.getElementById('headerCheckbox');
+      if (headerCheckbox.checked) {
+        bomTreeSelectAll();
+      } else {
+        bomTreeDeselectAll();
+      }
+    }
+
+    function updateSelectedCount() {
+      document.getElementById('selectedCount').textContent = bomTreeSelectedIds.length;
+    }
+
+    function bomTreeSelectAll() {
+      bomTreeSelectedIds = [];
+      collectAllNodeIds(bomTreeData, bomTreeSelectedIds);
+      renderBomTable(bomTreeData);
+      updateSelectedCount();
+      document.getElementById('headerCheckbox').checked = true;
+    }
+
+    function bomTreeDeselectAll() {
+      bomTreeSelectedIds = [];
+      renderBomTable(bomTreeData);
+      updateSelectedCount();
+      document.getElementById('headerCheckbox').checked = false;
+    }
+
+    function bomTreeExpandAll() {
+      bomTreeExpandedIds = [];
+      collectAllNodeIds(bomTreeData, bomTreeExpandedIds);
+      renderBomTable(bomTreeData);
+    }
+
+    function bomTreeCollapseAll() {
+      bomTreeExpandedIds = [];
+      renderBomTable(bomTreeData);
+    }
+
+    function collectAllNodeIds(nodes, idsArray) {
+      if (!nodes) return;
+
+      nodes.forEach(function(node) {
+        idsArray.push(node.id);
+
+        if (node.children && node.children.length > 0) {
+          collectAllNodeIds(node.children, idsArray);
+        }
+      });
+    }
+
+    function insertSelectedComponents() {
+      if (bomTreeSelectedIds.length === 0) {
+        alert('Please select at least one component to insert.');
+        return;
+      }
+
+      var selectedComponents = [];
+      collectSelectedComponents(bomTreeData, selectedComponents);
+
+      console.log('Inserting ' + selectedComponents.length + ' components');
+
+      var insertBtn = document.getElementById('insertBtn');
+      insertBtn.disabled = true;
+      insertBtn.textContent = 'Inserting...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          insertBtn.disabled = false;
+          insertBtn.textContent = 'Insert Selected Components';
+
+          if (result.success) {
+            alert('✓ Success!\n\n' + result.message);
+            google.script.host.close();
+          } else {
+            alert('✗ Insert failed:\n\n' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          insertBtn.disabled = false;
+          insertBtn.textContent = 'Insert Selected Components';
+          alert('Error: ' + error.message);
+        })
+        .insertComponentsIntoCurrentRack(selectedComponents);
+    }
+
+    function collectSelectedComponents(nodes, componentsArray) {
+      if (!nodes) return;
+
+      nodes.forEach(function(node) {
+        if (bomTreeSelectedIds.indexOf(node.id) > -1) {
+          componentsArray.push({
+            itemNumber: node.itemNumber,
+            itemName: node.itemName,
+            description: node.description,
+            revision: node.revision,
+            quantity: node.quantity,
+            guid: node.guid
+          });
+        }
+
+        if (node.children && node.children.length > 0) {
+          collectSelectedComponents(node.children, componentsArray);
+        }
+      });
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

@@ -133,6 +133,32 @@
       100% { transform: rotate(360deg); }
     }
 
+    .search-box {
+      margin-bottom: 12px;
+      display: none;
+    }
+
+    .search-box.show {
+      display: block;
+    }
+
+    .search-input {
+      width: 100%;
+      padding: 10px 12px 10px 36px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="%235f6368" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>');
+      background-repeat: no-repeat;
+      background-position: 10px center;
+      background-size: 16px;
+    }
+
+    .search-input:focus {
+      outline: none;
+      border-color: #1a73e8;
+    }
+
     .attributes-container {
       display: none;
       max-height: 400px;
@@ -144,6 +170,10 @@
 
     .attributes-container.show {
       display: block;
+    }
+
+    .attribute-item.hidden {
+      display: none;
     }
 
     .attribute-item {
@@ -288,13 +318,9 @@
       <div class="section-title">Custom Attribute Columns:</div>
 
       <div class="fetch-section" id="fetchSection">
-        <div style="margin-bottom: 12px;">
-          <label for="sampleItemNumber" style="font-size: 13px; color: #5f6368; display: block; margin-bottom: 6px;">
-            Sample Item Number (to fetch attributes from):
-          </label>
-          <input type="text" id="sampleItemNumber" placeholder="e.g., POD-0001"
-                 style="width: 200px; padding: 8px 12px; border: 1px solid #dadce0; border-radius: 4px; font-size: 13px;">
-        </div>
+        <p style="font-size: 13px; color: #5f6368; margin-bottom: 12px;">
+          Click below to load all custom attributes defined in your Arena workspace
+        </p>
         <button class="btn-fetch" id="fetchBtn" onclick="fetchAvailableAttributes()">
           Load Available Attributes
         </button>
@@ -302,6 +328,14 @@
 
       <div id="loadingContainer"></div>
       <div id="errorContainer"></div>
+
+      <div class="search-box" id="searchBox">
+        <input type="text"
+               class="search-input"
+               id="searchInput"
+               placeholder="Search attributes..."
+               oninput="filterAttributes()">
+      </div>
 
       <div class="attributes-container" id="attributesContainer">
         <!-- Attributes will be inserted here -->
@@ -346,14 +380,14 @@
       var loadingContainer = document.getElementById('loadingContainer');
       var errorContainer = document.getElementById('errorContainer');
       var attributesContainer = document.getElementById('attributesContainer');
-      var sampleItemNumber = document.getElementById('sampleItemNumber').value.trim();
 
       fetchBtn.disabled = true;
       fetchBtn.textContent = 'Loading...';
 
-      loadingContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching attributes from ' + (sampleItemNumber || 'sample item') + '...</div></div>';
+      loadingContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching custom attributes from Arena workspace...</div></div>';
       errorContainer.innerHTML = '';
       attributesContainer.classList.remove('show');
+      document.getElementById('searchBox').classList.remove('show');
 
       google.script.run
         .withSuccessHandler(function(result) {
@@ -365,17 +399,18 @@
             attributesContainer.classList.add('show');
             document.getElementById('saveBtn').disabled = false;
 
-            // Show success message with sample item used
-            if (result.sampleItemNumber) {
-              var successMsg = document.createElement('div');
-              successMsg.className = 'info-box';
-              successMsg.style.background = '#e6f4ea';
-              successMsg.style.borderLeftColor = '#137333';
-              successMsg.style.color = '#137333';
-              successMsg.style.marginBottom = '12px';
-              successMsg.innerHTML = '<strong>✓ Success:</strong> Found ' + availableAttributes.length + ' attributes from item "' + result.sampleItemNumber + '"';
-              errorContainer.appendChild(successMsg);
-            }
+            // Show search box
+            document.getElementById('searchBox').classList.add('show');
+
+            // Show success message
+            var successMsg = document.createElement('div');
+            successMsg.className = 'info-box';
+            successMsg.style.background = '#e6f4ea';
+            successMsg.style.borderLeftColor = '#137333';
+            successMsg.style.color = '#137333';
+            successMsg.style.marginBottom = '12px';
+            successMsg.innerHTML = '<strong>✓ Success:</strong> Found ' + availableAttributes.length + ' custom attribute(s) in your Arena workspace';
+            errorContainer.appendChild(successMsg);
           } else {
             errorContainer.innerHTML = '<div class="error-box"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div>';
           }
@@ -389,7 +424,7 @@
           fetchBtn.disabled = false;
           fetchBtn.textContent = 'Load Available Attributes';
         })
-        .getAvailableArenaAttributes(sampleItemNumber || null);
+        .getAvailableArenaAttributes();
     }
 
     function renderAttributes(attributes) {
@@ -398,6 +433,12 @@
       if (!attributes || attributes.length === 0) {
         container.innerHTML = '<div class="empty-state">No attributes found. Check your Arena connection.</div>';
         return;
+      }
+
+      // Clear search input for fresh start
+      var searchInput = document.getElementById('searchInput');
+      if (searchInput) {
+        searchInput.value = '';
       }
 
       var html = '';
@@ -444,6 +485,33 @@
 
       count.textContent = selectedAttributes.length;
       summary.style.display = selectedAttributes.length > 0 ? 'block' : 'none';
+    }
+
+    function filterAttributes() {
+      var searchInput = document.getElementById('searchInput');
+      var searchTerm = searchInput.value.toLowerCase().trim();
+      var attributeItems = document.querySelectorAll('.attribute-item');
+
+      var visibleCount = 0;
+
+      attributeItems.forEach(function(item) {
+        var attributeName = item.querySelector('.attribute-name');
+        if (attributeName) {
+          var name = attributeName.textContent.toLowerCase();
+          if (name.indexOf(searchTerm) > -1) {
+            item.classList.remove('hidden');
+            visibleCount++;
+          } else {
+            item.classList.add('hidden');
+          }
+        }
+      });
+
+      // Show count of filtered results if search is active
+      if (searchTerm && visibleCount === 0) {
+        // Could add a "no results" message here if desired
+        console.log('No attributes match search: ' + searchTerm);
+      }
     }
 
     function saveConfiguration() {
