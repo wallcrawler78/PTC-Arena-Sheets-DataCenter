@@ -53,12 +53,29 @@ function onOpen(e) {
   var entityPlural = getTerminology('entity_plural');
   var level0Name = getTerminology('hierarchy_level_0');
 
+  // Get active sheet to detect if we're on a rack sheet
+  var activeSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var isOnRackSheet = isRackConfigSheet(activeSheet);
+
   // Create menu with dynamic terminology
+  var createLayoutMenu = ui.createMenu('Create Layout')
+    .addItem('New ' + entitySingular + ' Configuration', 'createNewRackConfiguration')
+    .addItem('New Overview Layout', 'createNewOverviewLayout')
+    .addSeparator()
+    .addItem('Clone Existing ' + entitySingular, 'showRackPickerInCloneMode')
+    .addItem('Load Arena Item as Template', 'showRackPickerInTemplateMode');
+
+  // Add context-sensitive "Clone This Rack" if viewing a rack sheet
+  if (isOnRackSheet) {
+    createLayoutMenu.addSeparator()
+      .addItem('Clone This ' + entitySingular, 'cloneCurrentRackPrompt');
+  }
+
+  createLayoutMenu.addSeparator()
+    .addItem('Autolink ' + entityPlural + ' to Overview', 'autoLinkRacksToOverviewAction');
+
   ui.createMenu('Arena ' + level0Name)
-    .addSubMenu(ui.createMenu('Create Layout')
-      .addItem('New ' + entitySingular + ' Configuration', 'createNewRackConfiguration')
-      .addItem('New Overview Layout', 'createNewOverviewLayout')
-      .addItem('Autolink ' + entityPlural + ' to Overview', 'autoLinkRacksToOverviewAction'))
+    .addSubMenu(createLayoutMenu)
     .addSeparator()
     .addItem('Show Item Picker', 'showItemPicker')
     .addItem('Show ' + entitySingular + ' Picker', 'showRackPicker')
@@ -516,6 +533,115 @@ function showRackPicker() {
 }
 
 /**
+ * Opens Rack Picker in clone mode (Templates tab, Clone Existing mode)
+ */
+function showRackPickerInCloneMode() {
+  var entitySingular = getTerminology('entity_singular');
+
+  // Store mode in user properties so RackPicker knows to open Templates tab in clone mode
+  PropertiesService.getUserProperties().setProperty('rack_picker_mode', 'clone');
+
+  var html = HtmlService.createHtmlOutputFromFile('RackPicker')
+    .setTitle('Clone ' + entitySingular);
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Opens Rack Picker in Arena template mode (Templates tab, Arena Template mode)
+ */
+function showRackPickerInTemplateMode() {
+  var entitySingular = getTerminology('entity_singular');
+
+  // Store mode in user properties so RackPicker knows to open Templates tab in template mode
+  PropertiesService.getUserProperties().setProperty('rack_picker_mode', 'template');
+
+  var html = HtmlService.createHtmlOutputFromFile('RackPicker')
+    .setTitle('Load Arena Template');
+  SpreadsheetApp.getUi().showSidebar(html);
+}
+
+/**
+ * Quick clone from current rack sheet (menu shortcut)
+ * Prompts for new rack name and item number, then clones
+ */
+function cloneCurrentRackPrompt() {
+  var ui = SpreadsheetApp.getUi();
+  var activeSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
+  var entitySingular = getTerminology('entity_singular');
+  var entitySingularLower = getTerminology('entity_singular_lower');
+
+  // Verify we're on a rack sheet
+  if (!isRackConfigSheet(activeSheet)) {
+    ui.alert(
+      'Not a ' + entitySingular + ' Sheet',
+      'Please open a ' + entitySingularLower + ' configuration sheet first.',
+      ui.ButtonSet.OK
+    );
+    return;
+  }
+
+  var metadata = getRackConfigMetadata(activeSheet);
+  if (!metadata) {
+    ui.alert('Error', 'Could not read ' + entitySingularLower + ' metadata.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Prompt for new rack item number
+  var numberResponse = ui.prompt(
+    'Clone ' + entitySingular,
+    'Enter new item number for cloned ' + entitySingularLower + ':',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (numberResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  var newNumber = numberResponse.getResponseText().trim();
+  if (!newNumber) {
+    ui.alert('Error', 'Item number cannot be empty.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Prompt for new rack name
+  var nameResponse = ui.prompt(
+    'Clone ' + entitySingular,
+    'Enter name for cloned ' + entitySingularLower + ':',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (nameResponse.getSelectedButton() !== ui.Button.OK) {
+    return;
+  }
+
+  var newName = nameResponse.getResponseText().trim();
+  if (!newName) {
+    ui.alert('Error', entitySingular + ' name cannot be empty.', ui.ButtonSet.OK);
+    return;
+  }
+
+  // Clone the rack
+  var result = cloneCurrentRackConfiguration(newNumber, newName, 'Cloned from ' + metadata.itemNumber);
+
+  if (result.success) {
+    ui.alert(
+      'Clone Successful',
+      entitySingular + ' cloned successfully!\n\n' +
+      'New ' + entitySingularLower + ': ' + newNumber + ' (' + newName + ')\n' +
+      'Components: ' + result.componentCount + '\n\n' +
+      'The new ' + entitySingularLower + ' is now active and ready for editing.',
+      ui.ButtonSet.OK
+    );
+  } else {
+    ui.alert(
+      'Clone Failed',
+      'Failed to clone ' + entitySingularLower + ':\n\n' + result.message,
+      ui.ButtonSet.OK
+    );
+  }
+}
+
+/**
  * Gets terminology for client-side UI
  * Called from HTML files to get dynamic terminology
  * @return {Object} Terminology object with all keys
@@ -531,6 +657,27 @@ function getTerminologyForUI() {
     hierarchy_level_1: getTerminology('hierarchy_level_1'),
     hierarchy_level_2: getTerminology('hierarchy_level_2')
   };
+}
+
+/**
+ * Gets a user property value (helper for client-side access)
+ * @param {string} key - Property key to retrieve
+ * @return {string|null} Property value or null if not found
+ */
+function getProperty(key) {
+  try {
+    var value = PropertiesService.getUserProperties().getProperty(key);
+
+    // Clear the property after reading (one-time use)
+    if (value) {
+      PropertiesService.getUserProperties().deleteProperty(key);
+    }
+
+    return value;
+  } catch (error) {
+    Logger.log('Error getting property ' + key + ': ' + error.message);
+    return null;
+  }
 }
 
 /**

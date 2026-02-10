@@ -33,6 +33,8 @@ var HIST_DETAIL_LINK_COL = 9;           // I: Link
 // Event type constants
 var HISTORY_EVENT = {
   RACK_CREATED: 'RACK_CREATED',
+  RACK_CLONED: 'RACK_CLONED',         // Rack cloned from existing rack
+  TEMPLATE_LOADED: 'TEMPLATE_LOADED', // Rack created from Arena template
   STATUS_CHANGE: 'STATUS_CHANGE',
   LOCAL_EDIT: 'LOCAL_EDIT',
   REFRESH_ACCEPTED: 'REFRESH_ACCEPTED',

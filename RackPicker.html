@@ -44,6 +44,16 @@
       <symbol id="icon-pencil" viewBox="0 0 24 24">
         <path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
       </symbol>
+
+      <!-- Clone/Copy Icon -->
+      <symbol id="icon-clone" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M19,21H8V7H19M19,5H8A2,2 0 0,0 6,7V21A2,2 0 0,0 8,23H19A2,2 0 0,0 21,21V7A2,2 0 0,0 19,5M16,1H4A2,2 0 0,0 2,3V17H4V3H16V1Z"/>
+      </symbol>
+
+      <!-- Template Icon -->
+      <symbol id="icon-template" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M18,6H20V9H18V6M11,6H13V9H11V6M4,6H6V9H4V6M18,11H20V14H18V11M11,11H13V14H11V11M4,11H6V14H4V11M18,16H20V19H18V16M11,16H13V19H11V16M4,16H6V19H4V16M3,22H21V2H3V22M5,4H19V20H5V4Z"/>
+      </symbol>
     </defs>
   </svg>
   <style>
@@ -667,6 +677,10 @@
         <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-chart"></use></svg>
         Quantities
       </button>
+      <button class="tab-button" onclick="switchTab('templates')">
+        <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-template"></use></svg>
+        Templates
+      </button>
     </div>
 
     <!-- Racks Tab -->
@@ -773,6 +787,68 @@
         </div>
       </div>
     </div>
+
+    <!-- Templates Tab -->
+    <div class="tab-content" id="templatesTab">
+      <div class="content">
+        <div class="tab-header">
+          <svg class="icon icon-md" style="margin-right: 6px;"><use href="#icon-template"></use></svg>
+          Clone & Templates
+        </div>
+
+        <div class="info-box" style="margin-top: 0;">
+          <strong>Clone existing racks</strong> to create variants, or <strong>load Arena BOMs</strong> as templates to customize.
+        </div>
+
+        <!-- Mode Switcher -->
+        <div class="quantity-controls" style="margin-bottom: 12px;">
+          <div class="scope-buttons" style="margin: 0 15px;">
+            <button class="scope-btn active" id="cloneExistingModeBtn" onclick="switchTemplateMode('clone')">
+              <svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-clone"></use></svg>
+              Clone Existing
+            </button>
+            <button class="scope-btn" id="arenaTemplateModeBtn" onclick="switchTemplateMode('template')">
+              <svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>
+              Arena Template
+            </button>
+          </div>
+        </div>
+
+        <!-- Clone Existing Mode -->
+        <div id="cloneExistingMode" class="template-mode">
+          <div class="search-box">
+            <input type="text"
+                   id="cloneSearchBox"
+                   placeholder="Search existing racks to clone..."
+                   onkeyup="filterCloneRacks()">
+          </div>
+
+          <div id="cloneRackList" class="rack-list">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>Loading rack configurations...</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Arena Template Mode -->
+        <div id="arenaTemplateMode" class="template-mode" style="display: none;">
+          <div class="search-box">
+            <input type="text"
+                   id="templateSearchBox"
+                   placeholder="Search Arena items for templates..."
+                   onkeyup="filterTemplateItems()">
+          </div>
+
+          <div id="templateItemList" class="rack-list">
+            <div class="loading">
+              <div class="spinner"></div>
+              <div>Loading Arena items...</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
 
   <!-- Rename Modal -->
@@ -801,6 +877,87 @@
       <div class="modal-footer">
         <button class="modal-btn modal-btn-cancel" onclick="closeRenameDialog()">Cancel</button>
         <button class="modal-btn modal-btn-primary" id="renameSubmitBtn" onclick="submitRename()">Rename</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Clone Modal -->
+  <div class="modal-overlay" id="cloneModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="cloneModalTitle">Clone Rack Configuration</h3>
+      </div>
+      <div class="modal-body">
+        <div class="info-box" style="margin-bottom: 12px;">
+          <strong>Source:</strong> <span id="cloneSourceInfo">-</span><br>
+          <strong>Components:</strong> <span id="cloneComponentCount">-</span>
+        </div>
+        <div class="modal-field">
+          <label for="cloneItemNumber">New Item Number</label>
+          <input type="text" id="cloneItemNumber" placeholder="e.g., SERVER-002">
+          <div class="modal-field-hint">Unique identifier for the new rack</div>
+        </div>
+        <div class="modal-field">
+          <label for="cloneItemName">New Rack Name</label>
+          <input type="text" id="cloneItemName" placeholder="e.g., Server Type B">
+          <div class="modal-field-hint">Descriptive name for the rack</div>
+        </div>
+        <div class="modal-field">
+          <label for="cloneDescription">Description (Optional)</label>
+          <textarea id="cloneDescription" placeholder="e.g., Cloned from Server Type A"></textarea>
+          <div class="modal-field-hint">Optional description</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeCloneDialog()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="cloneSubmitBtn" onclick="submitClone()">
+          <svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-clone"></use></svg>
+          Clone Rack
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Template Preview Modal -->
+  <div class="modal-overlay" id="templatePreviewModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Load Arena Template</h3>
+      </div>
+      <div class="modal-body">
+        <div class="info-box" style="margin-bottom: 12px; background: #fff3cd; border-left-color: #ff9800; color: #856404;">
+          <strong>⚠ Template Mode:</strong> This will load the full BOM from Arena as a starting point. You can then trim/customize before pushing to Arena.
+        </div>
+        <div style="margin-bottom: 12px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
+          <div style="margin-bottom: 6px;"><strong>Template Item:</strong> <span id="previewItemNumber">-</span></div>
+          <div style="margin-bottom: 6px;"><strong>Name:</strong> <span id="previewItemName">-</span></div>
+          <div style="margin-bottom: 6px;"><strong>Components:</strong> <span id="previewComponentCount">-</span></div>
+          <div style="margin-top: 8px;">
+            <strong>First Components:</strong>
+            <div id="previewComponentsList" style="margin-top: 4px; font-size: 11px; max-height: 120px; overflow-y: auto;"></div>
+          </div>
+        </div>
+        <div class="modal-field">
+          <label for="templateItemNumber">New Item Number</label>
+          <input type="text" id="templateItemNumber" placeholder="e.g., MY-CUSTOM-001">
+          <div class="modal-field-hint">Item number for your customized rack</div>
+        </div>
+        <div class="modal-field">
+          <label for="templateItemName">New Rack Name</label>
+          <input type="text" id="templateItemName" placeholder="e.g., My Custom Server Build">
+          <div class="modal-field-hint">Descriptive name for the rack</div>
+        </div>
+        <div class="modal-field">
+          <label for="templateDescription">Description (Optional)</label>
+          <textarea id="templateDescription" placeholder="e.g., Template loaded from SERVER-ALL-OPTIONS"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeTemplatePreviewDialog()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="templateSubmitBtn" onclick="submitTemplateLoad()">
+          <svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>
+          Load Template
+        </button>
       </div>
     </div>
   </div>
@@ -902,8 +1059,465 @@
       } else if (tabName === 'quantities') {
         document.getElementById('quantitiesTab').classList.add('active');
         loadQuantities(); // Load quantities when tab is opened
+      } else if (tabName === 'templates') {
+        document.getElementById('templatesTab').classList.add('active');
+        loadTemplatesTab(); // Load templates tab content
       }
     }
+
+    // ============================================================================
+    // TEMPLATES TAB FUNCTIONS
+    // ============================================================================
+
+    var currentTemplateMode = 'clone'; // 'clone' or 'template'
+    var cloneRacks = [];
+    var selectedCloneRack = null;
+    var templateItems = [];
+    var selectedTemplateItem = null;
+    var cloneRacksLoaded = false;
+    var templateItemsLoaded = false;
+
+    /**
+     * Loads the Templates tab content
+     */
+    function loadTemplatesTab() {
+      console.log('📋 Loading Templates tab...');
+
+      // Check if we should open in a specific mode (set by menu action)
+      google.script.run
+        .withSuccessHandler(function(mode) {
+          if (mode === 'clone' || mode === 'template') {
+            switchTemplateMode(mode);
+          } else {
+            // Default to clone mode
+            if (!cloneRacksLoaded) {
+              loadCloneRacks();
+            }
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.log('Error getting mode preference:', error);
+          if (!cloneRacksLoaded) {
+            loadCloneRacks();
+          }
+        })
+        .getProperty('rack_picker_mode');
+    }
+
+    /**
+     * Switches between Clone Existing and Arena Template modes
+     */
+    function switchTemplateMode(mode) {
+      currentTemplateMode = mode;
+
+      // Update mode buttons
+      document.getElementById('cloneExistingModeBtn').classList.toggle('active', mode === 'clone');
+      document.getElementById('arenaTemplateModeBtn').classList.toggle('active', mode === 'template');
+
+      // Show/hide mode sections
+      document.getElementById('cloneExistingMode').style.display = mode === 'clone' ? 'block' : 'none';
+      document.getElementById('arenaTemplateMode').style.display = mode === 'template' ? 'block' : 'none';
+
+      // Load data if needed
+      if (mode === 'clone' && !cloneRacksLoaded) {
+        loadCloneRacks();
+      } else if (mode === 'template' && !templateItemsLoaded) {
+        loadTemplateItems();
+      }
+    }
+
+    /**
+     * Loads racks for cloning
+     */
+    function loadCloneRacks() {
+      console.log('🔄 Loading racks for cloning...');
+      cloneRacksLoaded = true;
+
+      google.script.run
+        .withSuccessHandler(function(racks) {
+          cloneRacks = racks;
+          displayCloneRacks(racks);
+        })
+        .withFailureHandler(function(error) {
+          showCloneError('Failed to load racks: ' + error.message);
+        })
+        .getRacksForCloning();
+    }
+
+    /**
+     * Displays clone racks in the list
+     */
+    function displayCloneRacks(racks) {
+      var listDiv = document.getElementById('cloneRackList');
+
+      if (racks.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state"><p>No racks available to clone</p></div>';
+        return;
+      }
+
+      var html = '';
+      racks.forEach(function(rack) {
+        html += '<div class="rack-item" onclick="selectCloneRack(\'' + escapeHtml(rack.itemNumber) + '\')">';
+        html += '  <div class="rack-item-header">';
+        html += '    <div class="rack-item-content">';
+        html += '      <div style="font-weight: 500; margin-bottom: 4px;">' + escapeHtml(rack.itemNumber) + '</div>';
+        html += '      <div style="color: #5f6368; font-size: 12px; margin-bottom: 2px;">' + escapeHtml(rack.itemName) + '</div>';
+        html += '      <div style="color: #80868b; font-size: 11px;">' + rack.childItemCount + ' components</div>';
+        html += '    </div>';
+        html += '    <div class="rack-item-actions">';
+        html += '      <button class="rack-action-btn" onclick="event.stopPropagation(); openCloneDialog(\'' + escapeHtml(rack.itemNumber) + '\')" title="Clone this rack">';
+        html += '        <svg class="icon icon-sm"><use href="#icon-clone"></use></svg>';
+        html += '      </button>';
+        html += '    </div>';
+        html += '  </div>';
+        html += '</div>';
+      });
+
+      listDiv.innerHTML = html;
+    }
+
+    /**
+     * Filters clone racks based on search
+     */
+    function filterCloneRacks() {
+      var searchTerm = document.getElementById('cloneSearchBox').value.toLowerCase();
+
+      if (searchTerm === '') {
+        displayCloneRacks(cloneRacks);
+        return;
+      }
+
+      var filtered = cloneRacks.filter(function(rack) {
+        return rack.itemNumber.toLowerCase().includes(searchTerm) ||
+               rack.itemName.toLowerCase().includes(searchTerm) ||
+               (rack.description && rack.description.toLowerCase().includes(searchTerm));
+      });
+
+      displayCloneRacks(filtered);
+    }
+
+    /**
+     * Selects a rack for cloning
+     */
+    function selectCloneRack(itemNumber) {
+      selectedCloneRack = cloneRacks.find(function(r) { return r.itemNumber === itemNumber; });
+      console.log('Selected rack for cloning:', selectedCloneRack);
+    }
+
+    /**
+     * Opens the clone dialog
+     * Can be called from either Racks tab or Templates tab
+     */
+    function openCloneDialog(itemNumber) {
+      // Try to find rack in cloneRacks first (Templates tab), then allRacks (Racks tab)
+      var rack = cloneRacks.find(function(r) { return r.itemNumber === itemNumber; });
+      if (!rack) {
+        rack = allRacks.find(function(r) { return r.itemNumber === itemNumber; });
+      }
+      if (!rack) return;
+
+      selectedCloneRack = rack;
+
+      // Populate modal
+      document.getElementById('cloneModalTitle').textContent = 'Clone ' + terminology.entity_singular;
+      document.getElementById('cloneSourceInfo').textContent = rack.itemNumber + ' (' + rack.itemName + ')';
+      document.getElementById('cloneComponentCount').textContent = rack.childItemCount + ' components';
+      document.getElementById('cloneItemNumber').value = '';
+      document.getElementById('cloneItemName').value = '';
+      document.getElementById('cloneDescription').value = 'Cloned from ' + rack.itemNumber;
+
+      // Show modal
+      document.getElementById('cloneModal').classList.add('show');
+    }
+
+    /**
+     * Closes the clone dialog
+     */
+    function closeCloneDialog() {
+      document.getElementById('cloneModal').classList.remove('show');
+      selectedCloneRack = null;
+    }
+
+    /**
+     * Submits the clone request
+     */
+    function submitClone() {
+      if (!selectedCloneRack) return;
+
+      var newNumber = document.getElementById('cloneItemNumber').value.trim();
+      var newName = document.getElementById('cloneItemName').value.trim();
+      var newDesc = document.getElementById('cloneDescription').value.trim();
+
+      if (!newNumber || !newName) {
+        alert('Please enter both item number and name.');
+        return;
+      }
+
+      // Disable button and show loading
+      var submitBtn = document.getElementById('cloneSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Cloning...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-clone"></use></svg>Clone Rack';
+
+          if (result.success) {
+            closeCloneDialog();
+            alert('✓ ' + terminology.entity_singular + ' cloned successfully!\n\n' +
+                  'New: ' + result.newRackNumber + ' (' + result.newRackName + ')\n' +
+                  'Components: ' + result.componentCount);
+          } else {
+            alert('✗ Clone failed:\n\n' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-clone"></use></svg>Clone Rack';
+          alert('Error: ' + error.message);
+        })
+        .handleCloneRackRequest({
+          sourceRackNumber: selectedCloneRack.itemNumber,
+          newRackNumber: newNumber,
+          newRackName: newName,
+          newDescription: newDesc
+        });
+    }
+
+    /**
+     * Loads Arena items for templates
+     */
+    function loadTemplateItems() {
+      console.log('🌐 Loading Arena items for templates...');
+      templateItemsLoaded = true;
+
+      // Reuse Arena items if already loaded
+      if (allArenaItems.length > 0) {
+        templateItems = allArenaItems;
+        displayTemplateItems(templateItems);
+        return;
+      }
+
+      google.script.run
+        .withSuccessHandler(function(items) {
+          templateItems = items;
+          displayTemplateItems(items);
+        })
+        .withFailureHandler(function(error) {
+          showTemplateError('Failed to load Arena items: ' + error.message);
+        })
+        .getAllItemsWithCache();
+    }
+
+    /**
+     * Displays template items in the list
+     */
+    function displayTemplateItems(items) {
+      var listDiv = document.getElementById('templateItemList');
+
+      if (items.length === 0) {
+        listDiv.innerHTML = '<div class="empty-state"><p>No Arena items found</p></div>';
+        return;
+      }
+
+      var html = '';
+      items.forEach(function(item) {
+        var category = item.category || 'Uncategorized';
+        html += '<div class="rack-item" onclick="selectTemplateItem(\'' + escapeHtml(item.number) + '\')">';
+        html += '  <div class="rack-item-header">';
+        html += '    <div class="rack-item-content">';
+        html += '      <div style="font-weight: 500; margin-bottom: 4px;">' + escapeHtml(item.number) + '</div>';
+        html += '      <div style="color: #5f6368; font-size: 12px; margin-bottom: 2px;">' + escapeHtml(item.name) + '</div>';
+        html += '      <div style="color: #80868b; font-size: 11px;">' + escapeHtml(category) + '</div>';
+        html += '    </div>';
+        html += '    <div class="rack-item-actions">';
+        html += '      <button class="rack-action-btn" onclick="event.stopPropagation(); openTemplatePreviewDialog(\'' + escapeHtml(item.number) + '\')" title="Load as template">';
+        html += '        <svg class="icon icon-sm"><use href="#icon-globe"></use></svg>';
+        html += '      </button>';
+        html += '    </div>';
+        html += '  </div>';
+        html += '</div>';
+      });
+
+      listDiv.innerHTML = html;
+    }
+
+    /**
+     * Filters template items based on search
+     */
+    function filterTemplateItems() {
+      var searchTerm = document.getElementById('templateSearchBox').value.toLowerCase();
+
+      if (searchTerm === '') {
+        displayTemplateItems(templateItems);
+        return;
+      }
+
+      var filtered = templateItems.filter(function(item) {
+        return item.number.toLowerCase().includes(searchTerm) ||
+               item.name.toLowerCase().includes(searchTerm) ||
+               (item.category && item.category.toLowerCase().includes(searchTerm));
+      });
+
+      displayTemplateItems(filtered);
+    }
+
+    /**
+     * Selects an Arena item for template
+     */
+    function selectTemplateItem(itemNumber) {
+      selectedTemplateItem = templateItems.find(function(i) { return i.number === itemNumber; });
+      console.log('Selected Arena item for template:', selectedTemplateItem);
+    }
+
+    /**
+     * Opens the template preview dialog
+     */
+    function openTemplatePreviewDialog(itemNumber) {
+      var item = templateItems.find(function(i) { return i.number === itemNumber; });
+      if (!item) return;
+
+      selectedTemplateItem = item;
+
+      // Show loading in modal
+      var submitBtn = document.getElementById('templateSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Loading preview...';
+
+      document.getElementById('templatePreviewModal').classList.add('show');
+
+      // Fetch preview
+      google.script.run
+        .withSuccessHandler(function(preview) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>Load Template';
+
+          if (!preview.success) {
+            alert('✗ Cannot load template:\n\n' + preview.message);
+            closeTemplatePreviewDialog();
+            return;
+          }
+
+          // Populate preview
+          document.getElementById('previewItemNumber').textContent = preview.itemNumber;
+          document.getElementById('previewItemName').textContent = preview.itemName;
+          document.getElementById('previewComponentCount').textContent = preview.componentCount + (preview.hasMore ? '+' : '');
+
+          var componentsList = document.getElementById('previewComponentsList');
+          var componentsHtml = '';
+          preview.firstComponents.forEach(function(comp) {
+            componentsHtml += '<div>• ' + escapeHtml(comp.itemNumber) + ' - ' + escapeHtml(comp.itemName) + ' (Qty: ' + comp.quantity + ')</div>';
+          });
+          if (preview.hasMore) {
+            componentsHtml += '<div style="margin-top: 4px; font-style: italic;">...and ' + (preview.componentCount - preview.firstComponents.length) + ' more</div>';
+          }
+          componentsList.innerHTML = componentsHtml;
+
+          // Prefill form
+          document.getElementById('templateItemNumber').value = '';
+          document.getElementById('templateItemName').value = '';
+          document.getElementById('templateDescription').value = 'Template loaded from ' + preview.itemNumber;
+        })
+        .withFailureHandler(function(error) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>Load Template';
+          alert('Error fetching preview: ' + error.message);
+          closeTemplatePreviewDialog();
+        })
+        .getArenaTemplateBOMPreview(itemNumber);
+    }
+
+    /**
+     * Closes the template preview dialog
+     */
+    function closeTemplatePreviewDialog() {
+      document.getElementById('templatePreviewModal').classList.remove('show');
+      selectedTemplateItem = null;
+    }
+
+    /**
+     * Submits the template load request
+     */
+    function submitTemplateLoad() {
+      if (!selectedTemplateItem) return;
+
+      var newNumber = document.getElementById('templateItemNumber').value.trim();
+      var newName = document.getElementById('templateItemName').value.trim();
+      var newDesc = document.getElementById('templateDescription').value.trim();
+
+      if (!newNumber || !newName) {
+        alert('Please enter both item number and name.');
+        return;
+      }
+
+      // Disable button and show loading
+      var submitBtn = document.getElementById('templateSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Loading template...';
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>Load Template';
+
+          if (result.success) {
+            closeTemplatePreviewDialog();
+            alert('✓ Template loaded successfully!\n\n' +
+                  'New: ' + result.newRackNumber + ' (' + result.newRackName + ')\n' +
+                  'Components: ' + result.componentCount + '\n\n' +
+                  '⚠ Trim to desired components before pushing to Arena.');
+          } else {
+            alert('✗ Template load failed:\n\n' + result.message);
+          }
+        })
+        .withFailureHandler(function(error) {
+          submitBtn.disabled = false;
+          submitBtn.innerHTML = '<svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-globe"></use></svg>Load Template';
+          alert('Error: ' + error.message);
+        })
+        .handleTemplateLoadRequest({
+          arenaItemNumber: selectedTemplateItem.number,
+          newRackNumber: newNumber,
+          newRackName: newName,
+          newDescription: newDesc
+        });
+    }
+
+    /**
+     * Shows error in clone list
+     */
+    function showCloneError(message) {
+      document.getElementById('cloneRackList').innerHTML =
+        '<div class="empty-state"><p style="color: #d32f2f;">' + escapeHtml(message) + '</p></div>';
+    }
+
+    /**
+     * Shows error in template list
+     */
+    function showTemplateError(message) {
+      document.getElementById('templateItemList').innerHTML =
+        '<div class="empty-state"><p style="color: #d32f2f;">' + escapeHtml(message) + '</p></div>';
+    }
+
+    /**
+     * HTML escape utility
+     */
+    function escapeHtml(text) {
+      if (!text) return '';
+      var map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      };
+      return text.toString().replace(/[&<>"']/g, function(m) { return map[m]; });
+    }
+
+    // ============================================================================
+    // END TEMPLATES TAB FUNCTIONS
+    // ============================================================================
 
     /**
      * Refresh the rack list (reload from server)
@@ -980,6 +1594,9 @@
                 </div>
               </div>
               <div class="rack-item-actions">
+                <button class="rack-action-btn" onclick="openCloneDialog('${escapedItemNumber}'); event.stopPropagation();" title="Clone this rack">
+                  <svg><use href="#icon-clone"></use></svg>
+                </button>
                 <button class="rack-action-btn" onclick="showRenameDialog('${escapedItemNumber}', '${escapedItemName}', '${escapedDescription}'); event.stopPropagation();" title="Rename rack configuration">
                   <svg><use href="#icon-pencil"></use></svg>
                 </button>
@@ -1323,9 +1940,9 @@
       // Update button states
       var buttons = document.querySelectorAll('.scope-btn');
       buttons.forEach(function(btn) {
-        btn.classList.remove('active');
+        btn.classList.remove('show');
         if (btn.dataset.scope === scope) {
-          btn.classList.add('active');
+          btn.classList.add('show');
         }
       });
 
