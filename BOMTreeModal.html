@@ -13,14 +13,18 @@
       font-family: Arial, sans-serif;
       padding: 20px;
       background: #f8f9fa;
+      overflow: hidden;
     }
 
     .container {
-      max-width: 1200px;
+      max-width: 1400px;
       margin: 0 auto;
       background: white;
       border-radius: 8px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      height: calc(100vh - 40px);
     }
 
     .header {
@@ -29,6 +33,7 @@
       background: #1a73e8;
       color: white;
       border-radius: 8px 8px 0 0;
+      flex-shrink: 0;
     }
 
     .header h2 {
@@ -52,6 +57,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: 16px;
+      flex-shrink: 0;
     }
 
     .item-info-field {
@@ -78,11 +84,12 @@
     }
 
     .controls {
-      padding: 16px 24px;
+      padding: 12px 24px;
       border-bottom: 1px solid #e0e0e0;
       display: flex;
       justify-content: space-between;
       align-items: center;
+      flex-shrink: 0;
     }
 
     .controls-left {
@@ -116,112 +123,176 @@
       background: #f1f3f4;
     }
 
-    .bom-container {
-      padding: 24px;
-      max-height: calc(100vh - 400px);
-      min-height: 400px;
-      overflow-y: auto;
+    /* Table Layout */
+    .bom-table-container {
+      flex: 1;
+      overflow: auto;
+      position: relative;
     }
 
-    .bom-tree-item {
+    .bom-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .bom-table-header {
+      position: sticky;
+      top: 0;
+      background: #f8f9fa;
+      z-index: 10;
+      border-bottom: 2px solid #dadce0;
+    }
+
+    .bom-table-header th {
       padding: 10px 12px;
+      text-align: left;
+      font-weight: 600;
+      color: #5f6368;
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      border-right: 1px solid #e0e0e0;
+      position: relative;
+      user-select: none;
+    }
+
+    .bom-table-header th:last-child {
+      border-right: none;
+    }
+
+    /* Column Resizer */
+    .column-resizer {
+      position: absolute;
+      right: 0;
+      top: 0;
+      bottom: 0;
+      width: 6px;
+      cursor: col-resize;
+      user-select: none;
+      z-index: 1;
+    }
+
+    .column-resizer:hover,
+    .column-resizer.resizing {
+      background: #1a73e8;
+    }
+
+    /* Column widths */
+    .col-checkbox {
+      width: 40px;
+      min-width: 40px;
+    }
+
+    .col-expand {
+      width: 30px;
+      min-width: 30px;
+    }
+
+    .col-item-number {
+      width: 180px;
+      min-width: 100px;
+    }
+
+    .col-name {
+      width: 250px;
+      min-width: 150px;
+    }
+
+    .col-qty {
+      width: 80px;
+      min-width: 60px;
+    }
+
+    .col-revision {
+      width: 100px;
+      min-width: 80px;
+    }
+
+    .col-description {
+      width: auto;
+      min-width: 200px;
+    }
+
+    .bom-table tbody tr {
       border-bottom: 1px solid #f0f0f0;
       transition: background 0.2s;
     }
 
-    .bom-tree-item:hover {
+    .bom-table tbody tr:hover {
       background: #f8f9fa;
     }
 
-    .bom-tree-item:last-child {
-      border-bottom: none;
+    .bom-table td {
+      padding: 10px 12px;
+      vertical-align: top;
+      border-right: 1px solid #f5f5f5;
     }
 
-    .bom-tree-row {
-      display: flex;
-      align-items: flex-start;
-      gap: 10px;
-      cursor: pointer;
+    .bom-table td:last-child {
+      border-right: none;
     }
 
-    .bom-tree-expand-icon {
-      width: 20px;
-      height: 20px;
+    .expand-icon {
       display: inline-flex;
+      width: 16px;
+      height: 16px;
       align-items: center;
       justify-content: center;
       cursor: pointer;
       color: #5f6368;
-      font-size: 14px;
-      line-height: 1;
+      font-size: 12px;
       user-select: none;
       transition: transform 0.2s;
-      flex-shrink: 0;
-      margin-top: 2px;
     }
 
-    .bom-tree-expand-icon.expanded {
+    .expand-icon.expanded {
       transform: rotate(90deg);
     }
 
-    .bom-tree-expand-icon.no-children {
+    .expand-icon.no-children {
       visibility: hidden;
     }
 
-    .bom-tree-checkbox {
-      cursor: pointer;
-      margin: 4px 0 0 0;
-      flex-shrink: 0;
-      width: 16px;
-      height: 16px;
-    }
-
-    .bom-tree-content {
-      flex: 1;
-      font-size: 13px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .bom-tree-number {
+    .item-number {
       font-weight: 500;
       color: #202124;
-      font-size: 14px;
     }
 
-    .bom-tree-qty {
+    .item-name {
       color: #5f6368;
-      font-size: 13px;
-      margin-left: 8px;
     }
 
-    .bom-tree-name {
+    .item-qty {
+      color: #202124;
+      font-weight: 500;
+    }
+
+    .item-revision {
       color: #5f6368;
       font-size: 12px;
     }
 
-    .bom-tree-details {
+    .item-description {
       color: #80868b;
-      font-size: 11px;
-      display: flex;
-      gap: 12px;
-      flex-wrap: wrap;
+      font-size: 12px;
+      line-height: 1.4;
     }
 
-    .bom-tree-details span {
-      display: inline-flex;
-      align-items: center;
-    }
-
-    .bom-tree-children {
+    /* Nested rows */
+    .nested-row {
       display: none;
-      margin-left: 30px;
     }
 
-    .bom-tree-children.expanded {
-      display: block;
+    .nested-row.expanded {
+      display: table-row;
     }
+
+    .indent-1 { padding-left: 40px !important; }
+    .indent-2 { padding-left: 70px !important; }
+    .indent-3 { padding-left: 100px !important; }
+    .indent-4 { padding-left: 130px !important; }
+    .indent-5 { padding-left: 160px !important; }
 
     .footer {
       padding: 16px 24px;
@@ -231,6 +302,7 @@
       gap: 12px;
       background: #f8f9fa;
       border-radius: 0 0 8px 8px;
+      flex-shrink: 0;
     }
 
     .btn-cancel {
@@ -312,7 +384,7 @@
     <div class="header">
       <h2 id="modalTitle">Select Components from BOM</h2>
       <div class="info-box">
-        <strong>💡 Multi-Level BOM:</strong> Expand/collapse levels to explore the hierarchy. Check the components you want to insert into your current rack.
+        <strong>💡 Multi-Level BOM:</strong> Expand/collapse levels to explore the hierarchy. Check the components you want to insert into your current rack. Drag column dividers to resize.
       </div>
     </div>
 
@@ -344,11 +416,44 @@
       </div>
     </div>
 
-    <div class="bom-container" id="bomContainer">
-      <div class="loading">
-        <div class="spinner"></div>
-        <div>Loading BOM...</div>
-      </div>
+    <div class="bom-table-container" id="tableContainer">
+      <table class="bom-table" id="bomTable">
+        <thead class="bom-table-header">
+          <tr>
+            <th class="col-checkbox">
+              <input type="checkbox" id="headerCheckbox" onchange="toggleAllCheckboxes()">
+            </th>
+            <th class="col-expand"></th>
+            <th class="col-item-number">
+              Item Number
+              <div class="column-resizer" data-column="item-number"></div>
+            </th>
+            <th class="col-name">
+              Name
+              <div class="column-resizer" data-column="name"></div>
+            </th>
+            <th class="col-qty">
+              Qty
+              <div class="column-resizer" data-column="qty"></div>
+            </th>
+            <th class="col-revision">
+              Revision
+              <div class="column-resizer" data-column="revision"></div>
+            </th>
+            <th class="col-description">Description</th>
+          </tr>
+        </thead>
+        <tbody id="bomTableBody">
+          <tr>
+            <td colspan="7">
+              <div class="loading">
+                <div class="spinner"></div>
+                <div>Loading BOM...</div>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
     </div>
 
     <div class="footer">
@@ -363,7 +468,12 @@
     var bomTreeExpandedIds = [];
     var currentItemNumber = '';
 
-    // Get item number from URL parameter
+    // Column resizing
+    var isResizing = false;
+    var currentResizer = null;
+    var startX = 0;
+    var startWidth = 0;
+
     window.addEventListener('load', function() {
       var urlParams = new URLSearchParams(window.location.search);
       currentItemNumber = urlParams.get('itemNumber') || '';
@@ -371,7 +481,50 @@
       if (currentItemNumber) {
         loadBOMTree(currentItemNumber);
       }
+
+      // Setup column resizers
+      setupColumnResizers();
     });
+
+    function setupColumnResizers() {
+      var resizers = document.querySelectorAll('.column-resizer');
+
+      resizers.forEach(function(resizer) {
+        resizer.addEventListener('mousedown', function(e) {
+          isResizing = true;
+          currentResizer = resizer;
+          startX = e.pageX;
+
+          var th = resizer.parentElement;
+          startWidth = th.offsetWidth;
+
+          currentResizer.classList.add('resizing');
+          e.preventDefault();
+        });
+      });
+
+      document.addEventListener('mousemove', function(e) {
+        if (!isResizing) return;
+
+        var diff = e.pageX - startX;
+        var newWidth = startWidth + diff;
+
+        if (newWidth > 60) {
+          var th = currentResizer.parentElement;
+          th.style.width = newWidth + 'px';
+        }
+      });
+
+      document.addEventListener('mouseup', function() {
+        if (isResizing) {
+          isResizing = false;
+          if (currentResizer) {
+            currentResizer.classList.remove('resizing');
+            currentResizer = null;
+          }
+        }
+      });
+    }
 
     function loadBOMTree(itemNumber) {
       document.getElementById('modalTitle').textContent = 'Select Components from ' + itemNumber;
@@ -379,91 +532,103 @@
 
       console.log('Fetching multi-level BOM for:', itemNumber);
 
+      var startTime = Date.now();
+
       google.script.run
         .withSuccessHandler(function(result) {
-          console.log('BOM result:', result);
+          var endTime = Date.now();
+          console.log('BOM loaded in ' + (endTime - startTime) + 'ms');
 
           if (result.success) {
             document.getElementById('itemName').textContent = result.itemName || '-';
             bomTreeData = result.bomTree;
-            renderBomTree(result.bomTree);
+            renderBomTable(result.bomTree);
           } else {
-            document.getElementById('bomContainer').innerHTML =
-              '<div class="error-state"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div>';
+            document.getElementById('bomTableBody').innerHTML =
+              '<tr><td colspan="7"><div class="error-state"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div></td></tr>';
           }
         })
         .withFailureHandler(function(error) {
           console.error('BOM fetch error:', error);
-          document.getElementById('bomContainer').innerHTML =
-            '<div class="error-state"><strong>Error:</strong> ' + escapeHtml(error.message) + '</div>';
+          document.getElementById('bomTableBody').innerHTML =
+            '<tr><td colspan="7"><div class="error-state"><strong>Error:</strong> ' + escapeHtml(error.message) + '</div></td></tr>';
         })
         .getMultiLevelBOM(itemNumber);
     }
 
-    function renderBomTree(bomTree) {
-      var container = document.getElementById('bomContainer');
+    function renderBomTable(bomTree) {
+      var tbody = document.getElementById('bomTableBody');
 
       if (!bomTree || bomTree.length === 0) {
-        container.innerHTML = '<div class="empty-state">No BOM components found for this item.</div>';
+        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No BOM components found for this item.</div></td></tr>';
         return;
       }
 
       var html = '';
       bomTree.forEach(function(node) {
-        html += renderBomTreeNode(node, 0);
+        html += renderBomTableRow(node, 0);
       });
 
-      container.innerHTML = html;
+      tbody.innerHTML = html;
     }
 
-    function renderBomTreeNode(node, level) {
-      var indentPx = level * 30;
+    function renderBomTableRow(node, level) {
       var hasChildren = node.hasChildren && node.children && node.children.length > 0;
       var isExpanded = bomTreeExpandedIds.indexOf(node.id) > -1;
       var isChecked = bomTreeSelectedIds.indexOf(node.id) > -1;
-
       var expandIconClass = hasChildren ? (isExpanded ? 'expanded' : '') : 'no-children';
       var expandIcon = hasChildren ? '▶' : '';
+      var indentClass = 'indent-' + Math.min(level, 5);
 
       var html = '';
 
-      html += '<div class="bom-tree-item" data-id="' + escapeHtml(node.id) + '">';
-      html += '  <div class="bom-tree-row" style="padding-left: ' + indentPx + 'px;">';
+      html += '<tr data-id="' + escapeHtml(node.id) + '" data-level="' + level + '">';
 
-      html += '    <span class="bom-tree-expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')">' + expandIcon + '</span>';
+      // Checkbox
+      html += '  <td class="col-checkbox">';
+      html += '    <input type="checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="toggleBomTreeSelection(\'' + escapeHtml(node.id) + '\')">';
+      html += '  </td>';
 
-      html += '    <input type="checkbox" class="bom-tree-checkbox" ' + (isChecked ? 'checked' : '') + ' onchange="toggleBomTreeSelection(\'' + escapeHtml(node.id) + '\')">';
+      // Expand icon
+      html += '  <td class="col-expand">';
+      html += '    <span class="expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')">' + expandIcon + '</span>';
+      html += '  </td>';
 
-      html += '    <div class="bom-tree-content">';
-      html += '      <div>';
-      html += '        <span class="bom-tree-number">' + escapeHtml(node.itemNumber) + '</span>';
-      html += '        <span class="bom-tree-qty">Qty: ' + escapeHtml(node.quantity) + '</span>';
-      html += '      </div>';
-      html += '      <div class="bom-tree-name">' + escapeHtml(node.itemName) + '</div>';
+      // Item Number (with indent)
+      html += '  <td class="col-item-number ' + indentClass + '">';
+      html += '    <span class="item-number">' + escapeHtml(node.itemNumber) + '</span>';
+      html += '  </td>';
 
-      if (node.revision || node.description) {
-        html += '      <div class="bom-tree-details">';
-        if (node.revision) {
-          html += '        <span>Rev: ' + escapeHtml(node.revision) + '</span>';
-        }
-        if (node.description) {
-          html += '        <span>' + escapeHtml(node.description) + '</span>';
-        }
-        html += '      </div>';
-      }
+      // Name
+      html += '  <td class="col-name">';
+      html += '    <span class="item-name">' + escapeHtml(node.itemName) + '</span>';
+      html += '  </td>';
 
-      html += '    </div>';
-      html += '  </div>';
+      // Qty
+      html += '  <td class="col-qty">';
+      html += '    <span class="item-qty">' + escapeHtml(node.quantity) + '</span>';
+      html += '  </td>';
 
+      // Revision
+      html += '  <td class="col-revision">';
+      html += '    <span class="item-revision">' + escapeHtml(node.revision || '-') + '</span>';
+      html += '  </td>';
+
+      // Description
+      html += '  <td class="col-description">';
+      html += '    <span class="item-description">' + escapeHtml(node.description || '') + '</span>';
+      html += '  </td>';
+
+      html += '</tr>';
+
+      // Children rows
       if (hasChildren) {
-        html += '  <div class="bom-tree-children ' + (isExpanded ? 'expanded' : '') + '" id="children-' + escapeHtml(node.id) + '">';
         node.children.forEach(function(childNode) {
-          html += renderBomTreeNode(childNode, level + 1);
+          var childHtml = renderBomTableRow(childNode, level + 1);
+          var childClass = isExpanded ? 'nested-row expanded' : 'nested-row';
+          html += childHtml.replace('<tr ', '<tr class="' + childClass + '" ');
         });
-        html += '  </div>';
       }
-
-      html += '</div>';
 
       return html;
     }
@@ -477,7 +642,7 @@
         bomTreeExpandedIds.push(nodeId);
       }
 
-      renderBomTree(bomTreeData);
+      renderBomTable(bomTreeData);
     }
 
     function toggleBomTreeSelection(nodeId) {
@@ -492,6 +657,15 @@
       updateSelectedCount();
     }
 
+    function toggleAllCheckboxes() {
+      var headerCheckbox = document.getElementById('headerCheckbox');
+      if (headerCheckbox.checked) {
+        bomTreeSelectAll();
+      } else {
+        bomTreeDeselectAll();
+      }
+    }
+
     function updateSelectedCount() {
       document.getElementById('selectedCount').textContent = bomTreeSelectedIds.length;
     }
@@ -499,25 +673,27 @@
     function bomTreeSelectAll() {
       bomTreeSelectedIds = [];
       collectAllNodeIds(bomTreeData, bomTreeSelectedIds);
-      renderBomTree(bomTreeData);
+      renderBomTable(bomTreeData);
       updateSelectedCount();
+      document.getElementById('headerCheckbox').checked = true;
     }
 
     function bomTreeDeselectAll() {
       bomTreeSelectedIds = [];
-      renderBomTree(bomTreeData);
+      renderBomTable(bomTreeData);
       updateSelectedCount();
+      document.getElementById('headerCheckbox').checked = false;
     }
 
     function bomTreeExpandAll() {
       bomTreeExpandedIds = [];
       collectAllNodeIds(bomTreeData, bomTreeExpandedIds);
-      renderBomTree(bomTreeData);
+      renderBomTable(bomTreeData);
     }
 
     function bomTreeCollapseAll() {
       bomTreeExpandedIds = [];
-      renderBomTree(bomTreeData);
+      renderBomTable(bomTreeData);
     }
 
     function collectAllNodeIds(nodes, idsArray) {
