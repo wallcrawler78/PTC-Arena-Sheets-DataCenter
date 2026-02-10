@@ -941,11 +941,19 @@ function insertComponentsIntoCurrentRack(components) {
     var sheetName = activeSheet.getName();
 
     var entitySingular = getTerminology('entity_singular');
-    if (sheetName.indexOf(entitySingular) !== 0) {
-      return {
-        success: false,
-        message: 'Please select a rack configuration sheet before inserting components.\n\nActive sheet: ' + sheetName
-      };
+
+    // More robust validation - check if entitySingular appears anywhere in the sheet name
+    // This handles cases with emoji prefixes or other decorations
+    if (sheetName.indexOf(entitySingular) === -1) {
+      // Also check for common rack sheet patterns as fallback
+      var isRackSheet = sheetName.match(/\b(Rack|Pod|Row)\b/i);
+
+      if (!isRackSheet) {
+        return {
+          success: false,
+          message: 'Please select a rack configuration sheet before inserting components.\n\nActive sheet: ' + sheetName
+        };
+      }
     }
 
     Logger.log('Active sheet: ' + sheetName);
