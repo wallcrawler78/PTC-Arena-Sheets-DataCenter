@@ -996,36 +996,55 @@ function insertComponentsIntoCurrentRack(components) {
     var itemColumns = getItemColumns();
     var numCols = 6 + itemColumns.length;
 
+    // OPTIMIZATION: Load item cache once for all lookups
+    Logger.log('Loading item cache for batch lookup...');
+    var cache = CacheService.getScriptCache();
+    var cachedJson = cache.get('arena_item_cache');
+    var cachedItems = {};
+
+    try {
+      if (cachedJson) {
+        cachedItems = JSON.parse(cachedJson);
+        Logger.log('Using cached data for ' + Object.keys(cachedItems).length + ' items');
+      } else {
+        Logger.log('Cache miss - will use component data only');
+      }
+    } catch (e) {
+      Logger.log('Note: Could not load item cache, using component data only: ' + e.message);
+    }
+
     var values = [];
     var backgrounds = [];
     var fontWeights = [];
+    var categoryColors = getCategoryColors();
 
     components.forEach(function(comp) {
-      // Fetch full item details from Arena
-      var itemDetails = null;
-      try {
-        itemDetails = arenaClient.getItemByNumber(comp.itemNumber);
-      } catch (error) {
-        Logger.log('Warning: Could not fetch details for ' + comp.itemNumber);
-      }
-
+      // Use data already in component (from BOM tree fetch)
       var itemNumber = comp.itemNumber || '';
       var itemName = comp.itemName || '';
       var description = comp.description || '';
-      var category = '';
-      var lifecycle = '';
+      var category = comp.category || '';
+      var lifecycle = comp.lifecycle || '';
       var quantity = comp.quantity || 1;
 
-      if (itemDetails) {
-        itemName = itemDetails.name || itemDetails.Name || itemName;
-        description = itemDetails.description || itemDetails.Description || description;
+      // OPTIMIZATION: Only look up cached item if we're missing critical data
+      if ((!category || !lifecycle) && cachedItems[itemNumber]) {
+        var cached = cachedItems[itemNumber];
 
-        if (itemDetails.category) {
-          category = itemDetails.category.name || itemDetails.category.Name || '';
+        if (!category && cached.category) {
+          category = cached.category.name || cached.category.Name || '';
         }
 
-        if (itemDetails.lifecyclePhase) {
-          lifecycle = itemDetails.lifecyclePhase.name || itemDetails.lifecyclePhase.Name || '';
+        if (!lifecycle && cached.lifecyclePhase) {
+          lifecycle = cached.lifecyclePhase.name || cached.lifecyclePhase.Name || '';
+        }
+
+        // Also update name/description if not already set
+        if (!itemName && cached.name) {
+          itemName = cached.name || cached.Name;
+        }
+        if (!description && cached.description) {
+          description = cached.description || cached.Description;
         }
       }
 
@@ -1041,11 +1060,8 @@ function insertComponentsIntoCurrentRack(components) {
 
       // Apply category color if available
       var bgColor = '#ffffff';
-      if (category) {
-        var categoryColors = getCategoryColors();
-        if (categoryColors[category]) {
-          bgColor = categoryColors[category];
-        }
+      if (category && categoryColors[category]) {
+        bgColor = categoryColors[category];
       }
 
       var rowBg = [];
