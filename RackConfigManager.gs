@@ -366,6 +366,98 @@ function isRackConfigSheet(sheet) {
 }
 
 /**
+ * Renames a rack configuration
+ * Updates sheet name, metadata cells (B1, C1, D1), and history tab
+ * @param {string} oldItemNumber - Current item number (identifier)
+ * @param {string} newItemNumber - New item number
+ * @param {string} newItemName - New item name
+ * @param {string} newDescription - New description (optional)
+ * @return {Object} Result object with success status and message
+ */
+function renameRackConfiguration(oldItemNumber, newItemNumber, newItemName, newDescription) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+
+    // Find the rack configuration sheet
+    var rackSheet = findRackConfigTab(oldItemNumber);
+    if (!rackSheet) {
+      return {
+        success: false,
+        message: 'Rack configuration not found for item number: ' + oldItemNumber
+      };
+    }
+
+    // Get current metadata
+    var currentItemNumber = rackSheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).getValue();
+    var currentItemName = rackSheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).getValue();
+
+    // Validate new item number doesn't already exist (unless it's the same)
+    if (newItemNumber !== oldItemNumber) {
+      var existingSheet = findRackConfigTab(newItemNumber);
+      if (existingSheet) {
+        return {
+          success: false,
+          message: 'A rack configuration with item number "' + newItemNumber + '" already exists'
+        };
+      }
+    }
+
+    // Update metadata cells
+    rackSheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).setValue(newItemNumber);
+    rackSheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).setValue(newItemName);
+
+    if (newDescription !== undefined && newDescription !== null) {
+      rackSheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(newDescription);
+    } else {
+      // Auto-generate description if not provided
+      var entitySingular = getTerminology('entity_singular');
+      newDescription = entitySingular + ' configuration for ' + newItemName;
+      rackSheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(newDescription);
+    }
+
+    // Update sheet name
+    var entitySingular = getTerminology('entity_singular');
+    var newSheetName = entitySingular + ' - ' + newItemNumber + ' (' + newItemName + ')';
+
+    // Check if new sheet name is unique
+    var existingSheetWithName = ss.getSheetByName(newSheetName);
+    if (existingSheetWithName && existingSheetWithName.getSheetId() !== rackSheet.getSheetId()) {
+      return {
+        success: false,
+        message: 'A sheet with name "' + newSheetName + '" already exists'
+      };
+    }
+
+    rackSheet.setName(newSheetName);
+
+    // Update History tab if item number changed
+    if (newItemNumber !== oldItemNumber) {
+      updateRackHistoryItemNumber(oldItemNumber, newItemNumber, newItemName);
+    } else {
+      // Just update the name in history
+      updateRackHistoryName(newItemNumber, newItemName);
+    }
+
+    Logger.log('Successfully renamed rack: ' + oldItemNumber + ' -> ' + newItemNumber + ' (' + newItemName + ')');
+
+    return {
+      success: true,
+      message: 'Rack configuration renamed successfully',
+      newSheetName: newSheetName,
+      newItemNumber: newItemNumber,
+      newItemName: newItemName
+    };
+
+  } catch (error) {
+    Logger.log('Error renaming rack configuration: ' + error.message);
+    return {
+      success: false,
+      message: 'Error: ' + error.message
+    };
+  }
+}
+
+/**
  * Gets all rack configuration tabs in the spreadsheet
  * @return {Array<Object>} Array of rack config metadata objects
  */

@@ -39,6 +39,11 @@
       <symbol id="icon-refresh" viewBox="0 0 24 24">
         <path fill="currentColor" d="M17.65,6.35C16.2,4.9 14.21,4 12,4A8,8 0 0,0 4,12A8,8 0 0,0 12,20C15.73,20 18.84,17.45 19.73,14H17.65C16.83,16.33 14.61,18 12,18A6,6 0 0,1 6,12A6,6 0 0,1 12,6C13.66,6 15.14,6.69 16.22,7.78L13,11H20V4L17.65,6.35Z"/>
       </symbol>
+
+      <!-- Pencil/Edit Icon -->
+      <symbol id="icon-pencil" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M20.71,7.04C21.1,6.65 21.1,6 20.71,5.63L18.37,3.29C18,2.9 17.35,2.9 16.96,3.29L15.12,5.12L18.87,8.87M3,17.25V21H6.75L17.81,9.93L14.06,6.18L3,17.25Z"/>
+      </symbol>
     </defs>
   </svg>
   <style>
@@ -197,6 +202,46 @@
       cursor: pointer;
       transition: all 0.2s;
       background: white;
+      position: relative;
+    }
+
+    .rack-item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+    }
+
+    .rack-item-content {
+      flex: 1;
+    }
+
+    .rack-item-actions {
+      display: flex;
+      gap: 4px;
+      margin-left: 8px;
+    }
+
+    .rack-action-btn {
+      padding: 4px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: #5f6368;
+      transition: all 0.2s;
+      border-radius: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .rack-action-btn:hover {
+      background: #f1f3f4;
+      color: #1a73e8;
+    }
+
+    .rack-action-btn svg {
+      width: 16px;
+      height: 16px;
     }
 
     .rack-item:hover {
@@ -462,6 +507,131 @@
       font-size: 14px;
       color: #5f6368;
     }
+
+    /* Rename Modal */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+    }
+
+    .modal-overlay.show {
+      display: flex;
+    }
+
+    .modal-content {
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+      max-width: 500px;
+      width: 90%;
+      max-height: 90vh;
+      overflow-y: auto;
+    }
+
+    .modal-header {
+      background: linear-gradient(135deg, #1a73e8 0%, #1557b0 100%);
+      color: white;
+      padding: 20px 24px;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .modal-header h3 {
+      margin: 0;
+      font-size: 18px;
+      font-weight: 500;
+    }
+
+    .modal-body {
+      padding: 24px;
+    }
+
+    .modal-field {
+      margin-bottom: 16px;
+    }
+
+    .modal-field label {
+      display: block;
+      font-size: 13px;
+      font-weight: 500;
+      color: #333;
+      margin-bottom: 6px;
+    }
+
+    .modal-field input, .modal-field textarea {
+      width: 100%;
+      padding: 8px 12px;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      font-family: Arial, sans-serif;
+    }
+
+    .modal-field input:focus, .modal-field textarea:focus {
+      outline: none;
+      border-color: #1a73e8;
+      box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    .modal-field textarea {
+      min-height: 60px;
+      resize: vertical;
+    }
+
+    .modal-field-hint {
+      font-size: 11px;
+      color: #666;
+      margin-top: 4px;
+    }
+
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+    }
+
+    .modal-btn {
+      padding: 8px 16px;
+      border: none;
+      border-radius: 4px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .modal-btn-cancel {
+      background: #f1f3f4;
+      color: #333;
+    }
+
+    .modal-btn-cancel:hover {
+      background: #e8eaed;
+    }
+
+    .modal-btn-primary {
+      background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+      color: white;
+    }
+
+    .modal-btn-primary:hover {
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
+    }
+
+    .modal-btn-primary:disabled {
+      background: #e0e0e0;
+      color: #999;
+      cursor: not-allowed;
+    }
   </style>
 </head>
 <body>
@@ -601,6 +771,36 @@
         <div class="empty-state">
           <p>No racks found</p>
         </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Rename Modal -->
+  <div class="modal-overlay" id="renameModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Rename Rack Configuration</h3>
+      </div>
+      <div class="modal-body">
+        <div class="modal-field">
+          <label for="renameItemNumber">Item Number</label>
+          <input type="text" id="renameItemNumber" placeholder="e.g., Type A">
+          <div class="modal-field-hint">Updates column B and the sheet tab name</div>
+        </div>
+        <div class="modal-field">
+          <label for="renameItemName">Item Name</label>
+          <input type="text" id="renameItemName" placeholder="e.g., Type A">
+          <div class="modal-field-hint">Updates column C</div>
+        </div>
+        <div class="modal-field">
+          <label for="renameDescription">Description (Optional)</label>
+          <textarea id="renameDescription" placeholder="e.g., component configuration for Type A"></textarea>
+          <div class="modal-field-hint">Updates column D</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-btn modal-btn-cancel" onclick="closeRenameDialog()">Cancel</button>
+        <button class="modal-btn modal-btn-primary" id="renameSubmitBtn" onclick="submitRename()">Rename</button>
       </div>
     </div>
   </div>
@@ -762,14 +962,28 @@
         var childCount = rack.childItemCount || 0;
         var childText = childCount === 1 ? '1 item' : childCount + ' items';
 
+        // Escape quotes for attributes
+        var escapedItemNumber = rack.itemNumber.replace(/'/g, "\\'");
+        var escapedItemName = (rack.itemName || 'Unnamed Rack').replace(/'/g, "\\'");
+        var escapedDescription = (rack.description || '').replace(/'/g, "\\'");
+
         html += `
-          <div class="rack-item" onclick="selectRack('${rack.itemNumber}')">
-            <div class="rack-number">${rack.itemNumber}</div>
-            <div class="rack-name">${rack.itemName || 'Unnamed Rack'}</div>
-            ${rack.description ? '<div class="rack-description">' + rack.description + '</div>' : ''}
-            <div class="rack-stats">
-              <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>${childText}</span>
-              <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-document"></use></svg>${rack.sheetName}</span>
+          <div class="rack-item" onclick="selectRack('${escapedItemNumber}')">
+            <div class="rack-item-header">
+              <div class="rack-item-content">
+                <div class="rack-number">${rack.itemNumber}</div>
+                <div class="rack-name">${rack.itemName || 'Unnamed Rack'}</div>
+                ${rack.description ? '<div class="rack-description">' + rack.description + '</div>' : ''}
+                <div class="rack-stats">
+                  <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>${childText}</span>
+                  <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-document"></use></svg>${rack.sheetName}</span>
+                </div>
+              </div>
+              <div class="rack-item-actions">
+                <button class="rack-action-btn" onclick="showRenameDialog('${escapedItemNumber}', '${escapedItemName}', '${escapedDescription}'); event.stopPropagation();" title="Rename rack configuration">
+                  <svg><use href="#icon-pencil"></use></svg>
+                </button>
+              </div>
             </div>
           </div>
         `;
@@ -1303,6 +1517,85 @@
 
       return '#' + rHex + gHex + bHex;
     }
+
+    // Rename functionality
+    var currentRenameItemNumber = null;
+
+    function showRenameDialog(itemNumber, itemName, description) {
+      currentRenameItemNumber = itemNumber;
+
+      // Populate fields
+      document.getElementById('renameItemNumber').value = itemNumber;
+      document.getElementById('renameItemName').value = itemName;
+      document.getElementById('renameDescription').value = description;
+
+      // Show modal
+      document.getElementById('renameModal').classList.add('show');
+    }
+
+    function closeRenameDialog() {
+      document.getElementById('renameModal').classList.remove('show');
+      currentRenameItemNumber = null;
+    }
+
+    function submitRename() {
+      if (!currentRenameItemNumber) {
+        alert('No rack selected for rename');
+        return;
+      }
+
+      var newItemNumber = document.getElementById('renameItemNumber').value.trim();
+      var newItemName = document.getElementById('renameItemName').value.trim();
+      var newDescription = document.getElementById('renameDescription').value.trim();
+
+      if (!newItemNumber) {
+        alert('Item Number cannot be empty');
+        return;
+      }
+
+      if (!newItemName) {
+        alert('Item Name cannot be empty');
+        return;
+      }
+
+      // Disable button and show loading state
+      var submitBtn = document.getElementById('renameSubmitBtn');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Renaming...';
+
+      // Call backend to rename
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            closeRenameDialog();
+            refreshRackList();  // Refresh the list to show updated name
+            alert('✅ Rack configuration renamed successfully!\n\nSheet tab and metadata cells have been updated.');
+          } else {
+            alert('⚠️ Rename Failed\n\n' + result.message);
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Rename';
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error renaming rack:', error);
+          alert('❌ Error renaming rack:\n\n' + error.message);
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Rename';
+        })
+        .renameRackConfiguration(currentRenameItemNumber, newItemNumber, newItemName, newDescription);
+    }
+
+    // Close modal when clicking outside
+    document.addEventListener('DOMContentLoaded', function() {
+      var modal = document.getElementById('renameModal');
+      if (modal) {
+        modal.addEventListener('click', function(e) {
+          if (e.target === this) {
+            closeRenameDialog();
+          }
+        });
+      }
+    });
   </script>
 </body>
 </html>

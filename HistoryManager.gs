@@ -260,6 +260,60 @@ function createRackHistorySummaryRow(itemNumber, rackName, metadata) {
 }
 
 /**
+ * Updates the rack item number in the History tab
+ * Used when renaming a rack configuration
+ * @param {string} oldItemNumber - Old item number
+ * @param {string} newItemNumber - New item number
+ * @param {string} newItemName - New item name
+ */
+function updateRackHistoryItemNumber(oldItemNumber, newItemNumber, newItemName) {
+  var historySheet = getHistorySheet();
+  if (!historySheet) return;
+
+  var dataRange = historySheet.getDataRange();
+  var values = dataRange.getValues();
+
+  // Find the row with the old item number
+  for (var i = 1; i < values.length; i++) {  // Skip header row
+    if (values[i][HIST_ITEM_NUMBER_COL - 1] === oldItemNumber) {
+      // Update item number and name
+      historySheet.getRange(i + 1, HIST_ITEM_NUMBER_COL).setValue(newItemNumber);
+      historySheet.getRange(i + 1, HIST_ITEM_NAME_COL).setValue(newItemName);
+      Logger.log('Updated History tab: ' + oldItemNumber + ' -> ' + newItemNumber);
+      return;
+    }
+  }
+
+  Logger.log('History row not found for item: ' + oldItemNumber);
+}
+
+/**
+ * Updates the rack name in the History tab
+ * Used when only the name changes (not the item number)
+ * @param {string} itemNumber - Item number
+ * @param {string} newItemName - New item name
+ */
+function updateRackHistoryName(itemNumber, newItemName) {
+  var historySheet = getHistorySheet();
+  if (!historySheet) return;
+
+  var dataRange = historySheet.getDataRange();
+  var values = dataRange.getValues();
+
+  // Find the row with the item number
+  for (var i = 1; i < values.length; i++) {  // Skip header row
+    if (values[i][HIST_ITEM_NUMBER_COL - 1] === itemNumber) {
+      // Update name only
+      historySheet.getRange(i + 1, HIST_ITEM_NAME_COL).setValue(newItemName);
+      Logger.log('Updated History tab name for ' + itemNumber + ': ' + newItemName);
+      return;
+    }
+  }
+
+  Logger.log('History row not found for item: ' + itemNumber);
+}
+
+/**
  * Updates summary row for a rack (or creates if doesn't exist)
  * @param {string} itemNumber - Rack item number
  * @param {Object} metadata - Metadata to update
