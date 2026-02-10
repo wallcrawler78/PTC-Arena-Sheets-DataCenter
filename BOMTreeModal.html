@@ -468,6 +468,10 @@
     var bomTreeExpandedIds = [];
     var currentItemNumber = '';
 
+    // Custom columns configuration
+    var customColumns = [];
+    var attributeValueCache = {};  // Cache for lazy-loaded attribute values
+
     // Column resizing
     var isResizing = false;
     var currentResizer = null;
@@ -478,13 +482,82 @@
       var urlParams = new URLSearchParams(window.location.search);
       currentItemNumber = urlParams.get('itemNumber') || '';
 
-      if (currentItemNumber) {
-        loadBOMTree(currentItemNumber);
-      }
+      // Load custom column configuration first
+      loadColumnConfiguration(function() {
+        if (currentItemNumber) {
+          loadBOMTree(currentItemNumber);
+        }
 
-      // Setup column resizers
-      setupColumnResizers();
+        // Setup column resizers
+        setupColumnResizers();
+      });
     });
+
+    function loadColumnConfiguration(callback) {
+      google.script.run
+        .withSuccessHandler(function(config) {
+          customColumns = config.customColumnDetails || [];
+          console.log('Loaded ' + customColumns.length + ' custom columns');
+
+          // Rebuild table header with custom columns
+          rebuildTableHeader();
+
+          if (callback) callback();
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading column config:', error);
+          if (callback) callback();
+        })
+        .getBOMTreeColumnConfiguration();
+    }
+
+    function rebuildTableHeader() {
+      var thead = document.querySelector('.bom-table-header tr');
+      if (!thead) return;
+
+      // Keep base columns, add custom columns before Description
+      var baseHeaderHTML = `
+        <th class="col-checkbox">
+          <input type="checkbox" id="headerCheckbox" onchange="toggleAllCheckboxes()">
+        </th>
+        <th class="col-expand"></th>
+        <th class="col-item-number">
+          Item Number
+          <div class="column-resizer" data-column="item-number"></div>
+        </th>
+        <th class="col-name">
+          Name
+          <div class="column-resizer" data-column="name"></div>
+        </th>
+        <th class="col-qty">
+          Qty
+          <div class="column-resizer" data-column="qty"></div>
+        </th>
+        <th class="col-revision">
+          Revision
+          <div class="column-resizer" data-column="revision"></div>
+        </th>
+      `;
+
+      var customHeaderHTML = '';
+      customColumns.forEach(function(col) {
+        customHeaderHTML += `
+          <th class="col-custom" style="width: 120px; min-width: 100px;">
+            ${escapeHtml(col.name)}
+            <div class="column-resizer" data-column="${escapeHtml(col.guid)}"></div>
+          </th>
+        `;
+      });
+
+      var descHeaderHTML = `
+        <th class="col-description">Description</th>
+      `;
+
+      thead.innerHTML = baseHeaderHTML + customHeaderHTML + descHeaderHTML;
+
+      // Re-setup column resizers after rebuilding header
+      setTimeout(setupColumnResizers, 100);
+    }
 
     function setupColumnResizers() {
       var resizers = document.querySelectorAll('.column-resizer');
@@ -559,8 +632,10 @@
     function renderBomTable(bomTree) {
       var tbody = document.getElementById('bomTableBody');
 
+      var totalCols = 7 + customColumns.length;  // Base 7 + custom columns
+
       if (!bomTree || bomTree.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state">No BOM components found for this item.</div></td></tr>';
+        tbody.innerHTML = '<tr><td colspan="' + totalCols + '"><div class="empty-state">No BOM components found for this item.</div></td></tr>';
         return;
       }
 
@@ -570,6 +645,9 @@
       });
 
       tbody.innerHTML = html;
+
+      // Lazy-load attributes for visible rows
+      lazyLoadVisibleAttributes();
     }
 
     function renderBomTableRow(node, level) {
@@ -614,6 +692,14 @@
       html += '    <span class="item-revision">' + escapeHtml(node.revision || '-') + '</span>';
       html += '  </td>';
 
+      // Custom attribute columns
+      customColumns.forEach(function(col) {
+        var attrValue = getAttributeValue(node.guid, col.guid);
+        html += '  <td class="col-custom" data-node-id="' + escapeHtml(node.id) + '" data-attr-guid="' + escapeHtml(col.guid) + '">';
+        html += '    <span class="attr-value">' + escapeHtml(attrValue) + '</span>';
+        html += '  </td>';
+      });
+
       // Description
       html += '  <td class="col-description">';
       html += '    <span class="item-description">' + escapeHtml(node.description || '') + '</span>';
@@ -636,13 +722,20 @@
     function toggleBomTreeNode(nodeId) {
       var index = bomTreeExpandedIds.indexOf(nodeId);
 
-      if (index > -1) {
+      var wasExpanded = index > -1;
+
+      if (wasExpanded) {
         bomTreeExpandedIds.splice(index, 1);
       } else {
         bomTreeExpandedIds.push(nodeId);
       }
 
       renderBomTable(bomTreeData);
+
+      // If we just expanded a node, lazy-load attributes for newly visible children
+      if (!wasExpanded && customColumns.length > 0) {
+        setTimeout(lazyLoadVisibleAttributes, 100);
+      }
     }
 
     function toggleBomTreeSelection(nodeId) {
@@ -762,6 +855,119 @@
           collectSelectedComponents(node.children, componentsArray);
         }
       });
+    }
+
+    // ========================================================================
+    // CUSTOM ATTRIBUTE LAZY LOADING
+    // ========================================================================
+
+    function getAttributeValue(itemGuid, attrGuid) {
+      if (!itemGuid || !attrGuid) return '-';
+
+      if (attributeValueCache[itemGuid] && attributeValueCache[itemGuid][attrGuid]) {
+        return attributeValueCache[itemGuid][attrGuid];
+      }
+
+      return '-';  // Default value while not loaded
+    }
+
+    function lazyLoadVisibleAttributes() {
+      if (customColumns.length === 0) return;
+
+      // Collect GUIDs of all visible (expanded or root-level) nodes
+      var visibleNodeGuids = [];
+      collectVisibleNodeGuids(bomTreeData, visibleNodeGuids, 0);
+
+      if (visibleNodeGuids.length === 0) return;
+
+      // Get attribute GUIDs we need to fetch
+      var attrGuids = customColumns.map(function(col) { return col.guid; });
+
+      console.log('Lazy-loading attributes for ' + visibleNodeGuids.length + ' visible items');
+
+      // Fetch attributes for visible nodes
+      google.script.run
+        .withSuccessHandler(function(results) {
+          console.log('Attributes loaded, updating display');
+
+          // Update cache
+          for (var itemGuid in results) {
+            if (!attributeValueCache[itemGuid]) {
+              attributeValueCache[itemGuid] = {};
+            }
+
+            for (var attrGuid in results[itemGuid]) {
+              attributeValueCache[itemGuid][attrGuid] = results[itemGuid][attrGuid];
+            }
+          }
+
+          // Update displayed values
+          updateAttributeDisplay(results);
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading attributes:', error);
+        })
+        .fetchItemAttributeValues(visibleNodeGuids, attrGuids);
+    }
+
+    function collectVisibleNodeGuids(nodes, guidsArray, level) {
+      if (!nodes) return;
+
+      nodes.forEach(function(node) {
+        // Add root level items and expanded items
+        if (level === 0 || bomTreeExpandedIds.indexOf(node.id) > -1) {
+          if (node.guid) {
+            guidsArray.push(node.guid);
+          }
+
+          // Recursively collect children if this node is expanded
+          if (node.children && node.children.length > 0 && bomTreeExpandedIds.indexOf(node.id) > -1) {
+            collectVisibleNodeGuids(node.children, guidsArray, level + 1);
+          }
+        }
+      });
+    }
+
+    function updateAttributeDisplay(results) {
+      // Update all attribute cells with fetched values
+      for (var itemGuid in results) {
+        for (var attrGuid in results[itemGuid]) {
+          var value = results[itemGuid][attrGuid];
+
+          // Find all cells for this item+attribute combination
+          var cells = document.querySelectorAll('td[data-attr-guid="' + attrGuid + '"]');
+
+          cells.forEach(function(cell) {
+            var nodeId = cell.getAttribute('data-node-id');
+
+            // Find the node in bomTreeData to get its GUID
+            var node = findNodeById(bomTreeData, nodeId);
+            if (node && node.guid === itemGuid) {
+              var valueSpan = cell.querySelector('.attr-value');
+              if (valueSpan) {
+                valueSpan.textContent = value;
+              }
+            }
+          });
+        }
+      }
+    }
+
+    function findNodeById(nodes, nodeId) {
+      if (!nodes) return null;
+
+      for (var i = 0; i < nodes.length; i++) {
+        if (nodes[i].id === nodeId) {
+          return nodes[i];
+        }
+
+        if (nodes[i].children && nodes[i].children.length > 0) {
+          var found = findNodeById(nodes[i].children, nodeId);
+          if (found) return found;
+        }
+      }
+
+      return null;
     }
 
     function escapeHtml(text) {
