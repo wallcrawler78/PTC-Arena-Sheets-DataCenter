@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f8f9fa;
+    }
+
+    .container {
+      max-width: 700px;
+      margin: 0 auto;
+      background: white;
+      border-radius: 8px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+    }
+
+    .header {
+      padding: 20px 24px;
+      border-bottom: 1px solid #e0e0e0;
+      background: #1a73e8;
+      color: white;
+      border-radius: 8px 8px 0 0;
+    }
+
+    .header h2 {
+      font-size: 18px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+
+    .header p {
+      font-size: 13px;
+      opacity: 0.9;
+    }
+
+    .content {
+      padding: 24px;
+    }
+
+    .info-box {
+      padding: 12px 16px;
+      background: #e8f0fe;
+      border-left: 3px solid #1a73e8;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #174ea6;
+    }
+
+    .section-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #202124;
+      margin-bottom: 12px;
+    }
+
+    .default-columns {
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      margin-bottom: 20px;
+    }
+
+    .default-columns-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .column-badge {
+      padding: 4px 10px;
+      background: #e0e0e0;
+      border-radius: 12px;
+      font-size: 12px;
+      color: #5f6368;
+    }
+
+    .fetch-section {
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .btn-fetch {
+      padding: 10px 20px;
+      background: #1a73e8;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .btn-fetch:hover {
+      background: #1765cc;
+    }
+
+    .btn-fetch:disabled {
+      background: #dadce0;
+      cursor: not-allowed;
+    }
+
+    .loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 20px;
+      color: #5f6368;
+    }
+
+    .spinner {
+      border: 3px solid #f0f0f0;
+      border-top: 3px solid #1a73e8;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin-bottom: 16px;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .attributes-container {
+      display: none;
+      max-height: 400px;
+      overflow-y: auto;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      padding: 12px;
+    }
+
+    .attributes-container.show {
+      display: block;
+    }
+
+    .attribute-item {
+      padding: 10px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .attribute-item:hover {
+      background: #f8f9fa;
+    }
+
+    .attribute-item:last-child {
+      border-bottom: none;
+    }
+
+    .attribute-item input[type="checkbox"] {
+      cursor: pointer;
+      width: 16px;
+      height: 16px;
+    }
+
+    .attribute-label {
+      flex: 1;
+      font-size: 13px;
+      color: #202124;
+    }
+
+    .attribute-name {
+      font-weight: 500;
+    }
+
+    .attribute-type {
+      font-size: 11px;
+      color: #5f6368;
+      margin-left: 8px;
+    }
+
+    .selection-summary {
+      margin-top: 12px;
+      padding: 12px;
+      background: #f8f9fa;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #5f6368;
+    }
+
+    .selection-count {
+      color: #1a73e8;
+      font-weight: 600;
+    }
+
+    .footer {
+      padding: 16px 24px;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: flex-end;
+      gap: 12px;
+      background: #f8f9fa;
+      border-radius: 0 0 8px 8px;
+    }
+
+    .btn-cancel {
+      padding: 8px 16px;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: #202124;
+    }
+
+    .btn-cancel:hover {
+      background: #f8f9fa;
+    }
+
+    .btn-save {
+      padding: 8px 20px;
+      background: #1a73e8;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+      color: white;
+      font-weight: 500;
+    }
+
+    .btn-save:hover {
+      background: #1765cc;
+    }
+
+    .btn-save:disabled {
+      background: #dadce0;
+      cursor: not-allowed;
+    }
+
+    .error-box {
+      padding: 12px 16px;
+      background: #fce8e6;
+      border-left: 3px solid #d32f2f;
+      border-radius: 4px;
+      margin-bottom: 20px;
+      font-size: 13px;
+      color: #d32f2f;
+    }
+
+    .empty-state {
+      padding: 40px 20px;
+      text-align: center;
+      color: #5f6368;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <h2>Configure BOM Tree Columns</h2>
+      <p>Select additional Arena attributes to display as columns in the BOM tree viewer</p>
+    </div>
+
+    <div class="content">
+      <div class="info-box">
+        <strong>💡 How it works:</strong> Choose Arena attributes (like "Power Consumption", "U Spaces", etc.) to show as columns in the BOM tree. This helps you make better decisions when selecting components.
+      </div>
+
+      <div class="section-title">Default Columns (always shown):</div>
+      <div class="default-columns">
+        <div class="default-columns-list">
+          <span class="column-badge">Item Number</span>
+          <span class="column-badge">Name</span>
+          <span class="column-badge">Qty</span>
+          <span class="column-badge">Revision</span>
+          <span class="column-badge">Description</span>
+        </div>
+      </div>
+
+      <div class="section-title">Custom Attribute Columns:</div>
+
+      <div class="fetch-section" id="fetchSection">
+        <button class="btn-fetch" id="fetchBtn" onclick="fetchAvailableAttributes()">
+          Load Available Attributes from Arena
+        </button>
+      </div>
+
+      <div id="loadingContainer"></div>
+      <div id="errorContainer"></div>
+
+      <div class="attributes-container" id="attributesContainer">
+        <!-- Attributes will be inserted here -->
+      </div>
+
+      <div class="selection-summary" id="selectionSummary" style="display: none;">
+        <span class="selection-count" id="selectionCount">0</span> custom column(s) selected
+      </div>
+    </div>
+
+    <div class="footer">
+      <button class="btn-cancel" onclick="google.script.host.close()">Cancel</button>
+      <button class="btn-save" id="saveBtn" onclick="saveConfiguration()" disabled>Save Configuration</button>
+    </div>
+  </div>
+
+  <script>
+    var availableAttributes = [];
+    var selectedAttributes = [];
+
+    window.addEventListener('load', function() {
+      // Load current configuration
+      loadCurrentConfiguration();
+    });
+
+    function loadCurrentConfiguration() {
+      google.script.run
+        .withSuccessHandler(function(config) {
+          if (config && config.customColumns) {
+            selectedAttributes = config.customColumns || [];
+            console.log('Loaded ' + selectedAttributes.length + ' configured columns');
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.error('Error loading configuration:', error);
+        })
+        .getBOMTreeColumnConfiguration();
+    }
+
+    function fetchAvailableAttributes() {
+      var fetchBtn = document.getElementById('fetchBtn');
+      var loadingContainer = document.getElementById('loadingContainer');
+      var errorContainer = document.getElementById('errorContainer');
+      var attributesContainer = document.getElementById('attributesContainer');
+
+      fetchBtn.disabled = true;
+      fetchBtn.textContent = 'Loading...';
+
+      loadingContainer.innerHTML = '<div class="loading"><div class="spinner"></div><div>Fetching Arena attributes...</div></div>';
+      errorContainer.innerHTML = '';
+      attributesContainer.classList.remove('show');
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          loadingContainer.innerHTML = '';
+
+          if (result.success) {
+            availableAttributes = result.attributes || [];
+            renderAttributes(availableAttributes);
+            attributesContainer.classList.add('show');
+            document.getElementById('saveBtn').disabled = false;
+          } else {
+            errorContainer.innerHTML = '<div class="error-box"><strong>Error:</strong> ' + escapeHtml(result.message) + '</div>';
+          }
+
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = 'Reload Attributes';
+        })
+        .withFailureHandler(function(error) {
+          loadingContainer.innerHTML = '';
+          errorContainer.innerHTML = '<div class="error-box"><strong>Error:</strong> ' + escapeHtml(error.message) + '</div>';
+          fetchBtn.disabled = false;
+          fetchBtn.textContent = 'Load Available Attributes from Arena';
+        })
+        .getAvailableArenaAttributes();
+    }
+
+    function renderAttributes(attributes) {
+      var container = document.getElementById('attributesContainer');
+
+      if (!attributes || attributes.length === 0) {
+        container.innerHTML = '<div class="empty-state">No attributes found. Check your Arena connection.</div>';
+        return;
+      }
+
+      var html = '';
+      attributes.forEach(function(attr) {
+        var isChecked = selectedAttributes.indexOf(attr.guid) > -1;
+
+        html += '<div class="attribute-item" onclick="toggleAttribute(\'' + escapeHtml(attr.guid) + '\')">';
+        html += '  <input type="checkbox" id="attr-' + escapeHtml(attr.guid) + '" ' + (isChecked ? 'checked' : '') + ' onchange="handleAttributeCheckbox(\'' + escapeHtml(attr.guid) + '\')">';
+        html += '  <div class="attribute-label">';
+        html += '    <span class="attribute-name">' + escapeHtml(attr.name) + '</span>';
+        html += '    <span class="attribute-type">(' + escapeHtml(attr.type || 'text') + ')</span>';
+        html += '  </div>';
+        html += '</div>';
+      });
+
+      container.innerHTML = html;
+      updateSelectionSummary();
+    }
+
+    function toggleAttribute(guid) {
+      var checkbox = document.getElementById('attr-' + guid);
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        handleAttributeCheckbox(guid);
+      }
+    }
+
+    function handleAttributeCheckbox(guid) {
+      var checkbox = document.getElementById('attr-' + guid);
+      var index = selectedAttributes.indexOf(guid);
+
+      if (checkbox.checked && index === -1) {
+        selectedAttributes.push(guid);
+      } else if (!checkbox.checked && index > -1) {
+        selectedAttributes.splice(index, 1);
+      }
+
+      updateSelectionSummary();
+    }
+
+    function updateSelectionSummary() {
+      var summary = document.getElementById('selectionSummary');
+      var count = document.getElementById('selectionCount');
+
+      count.textContent = selectedAttributes.length;
+      summary.style.display = selectedAttributes.length > 0 ? 'block' : 'none';
+    }
+
+    function saveConfiguration() {
+      var saveBtn = document.getElementById('saveBtn');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving...';
+
+      // Get selected attribute details
+      var selectedAttributeDetails = availableAttributes.filter(function(attr) {
+        return selectedAttributes.indexOf(attr.guid) > -1;
+      });
+
+      var config = {
+        customColumns: selectedAttributes,
+        customColumnDetails: selectedAttributeDetails
+      };
+
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            alert('✓ BOM Tree column configuration saved!\n\nThe new columns will appear in the BOM tree viewer.');
+            google.script.host.close();
+          } else {
+            alert('✗ Failed to save configuration:\n\n' + result.message);
+            saveBtn.disabled = false;
+            saveBtn.textContent = 'Save Configuration';
+          }
+        })
+        .withFailureHandler(function(error) {
+          alert('Error saving configuration: ' + error.message);
+          saveBtn.disabled = false;
+          saveBtn.textContent = 'Save Configuration';
+        })
+        .saveBOMTreeColumnConfiguration(config);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      var div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+  </script>
+</body>
+</html>

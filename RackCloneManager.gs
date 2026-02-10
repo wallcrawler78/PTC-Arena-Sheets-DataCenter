@@ -1110,3 +1110,96 @@ function updateRackStatusAfterModification(sheet) {
     Logger.log('Warning: Could not update rack status: ' + error.message);
   }
 }
+
+// ============================================================================
+// BOM TREE CUSTOM ATTRIBUTES
+// ============================================================================
+
+/**
+ * Fetches custom attribute values for multiple items
+ * Uses caching to avoid redundant API calls
+ * @param {Array<string>} itemGuids - Array of item GUIDs to fetch attributes for
+ * @param {Array<string>} attributeGuids - Array of attribute GUIDs to fetch
+ * @return {Object} Map of itemGuid -> {attributeGuid: value}
+ */
+function fetchItemAttributeValues(itemGuids, attributeGuids) {
+  try {
+    Logger.log('=== FETCH ITEM ATTRIBUTE VALUES START ===');
+    Logger.log('Items: ' + itemGuids.length + ', Attributes: ' + attributeGuids.length);
+
+    if (!itemGuids || itemGuids.length === 0 || !attributeGuids || attributeGuids.length === 0) {
+      return {};
+    }
+
+    var cache = CacheService.getScriptCache();
+    var arenaClient = new ArenaAPIClient();
+    var results = {};
+
+    itemGuids.forEach(function(itemGuid) {
+      if (!itemGuid) return;
+
+      results[itemGuid] = {};
+
+      // Check cache first
+      var cacheKey = 'attr_' + itemGuid;
+      var cachedData = cache.get(cacheKey);
+
+      if (cachedData) {
+        try {
+          var cached = JSON.parse(cachedData);
+          Logger.log('Cache hit for item: ' + itemGuid);
+
+          // Use cached values for requested attributes
+          attributeGuids.forEach(function(attrGuid) {
+            results[itemGuid][attrGuid] = cached[attrGuid] || '-';
+          });
+
+          return;  // Skip API call, we have cached data
+        } catch (parseError) {
+          Logger.log('Cache parse error: ' + parseError.message);
+        }
+      }
+
+      // Cache miss - fetch from Arena
+      try {
+        Logger.log('Fetching attributes from Arena for: ' + itemGuid);
+        var itemDetails = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
+
+        // Extract attribute values
+        var attributes = itemDetails.attributes || itemDetails.Attributes || {};
+        var attributeData = {};
+
+        attributeGuids.forEach(function(attrGuid) {
+          // Look for attribute value in attributes object
+          var attrValue = '-';
+
+          if (attributes[attrGuid]) {
+            attrValue = attributes[attrGuid].value || attributes[attrGuid].Value || '-';
+          }
+
+          attributeData[attrGuid] = attrValue;
+          results[itemGuid][attrGuid] = attrValue;
+        });
+
+        // Cache the result for 1 hour (3600 seconds)
+        cache.put(cacheKey, JSON.stringify(attributeData), 3600);
+        Logger.log('Cached attributes for: ' + itemGuid);
+
+      } catch (fetchError) {
+        Logger.log('Warning: Could not fetch attributes for ' + itemGuid + ': ' + fetchError.message);
+
+        // Return "-" for all attributes on error
+        attributeGuids.forEach(function(attrGuid) {
+          results[itemGuid][attrGuid] = '-';
+        });
+      }
+    });
+
+    Logger.log('Attribute fetch complete');
+    return results;
+
+  } catch (error) {
+    Logger.log('ERROR in fetchItemAttributeValues: ' + error.message);
+    return {};
+  }
+}

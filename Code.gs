@@ -101,6 +101,7 @@ function onOpen(e) {
         .addItem('Configure Category Colors', 'showConfigureColors')
         .addItem('Configure ' + entitySingular + ' Colors', 'showConfigureRackColors')
         .addItem('Configure BOM Levels', 'showConfigureBOMLevels')
+        .addItem('Configure BOM Tree Columns', 'showConfigureBOMTreeColumns')
         .addItem(entitySingular + ' Location Propagation', 'showRackBOMLocationSetting'))
       .addSubMenu(ui.createMenu('Advanced')
         .addItem('Mark Current ' + entitySingular + ' as Synced', 'markCurrentRackAsSynced')
@@ -749,6 +750,130 @@ function showBOMTreeModal(itemNumber) {
   } catch (error) {
     Logger.log('ERROR in showBOMTreeModal: ' + error.message);
     SpreadsheetApp.getUi().alert('Error opening BOM Tree: ' + error.message);
+  }
+}
+
+/**
+ * Shows the BOM Tree Column Configuration dialog
+ */
+function showConfigureBOMTreeColumns() {
+  try {
+    var html = HtmlService.createHtmlOutputFromFile('ConfigureBOMTreeColumns')
+      .setWidth(700)
+      .setHeight(600);
+
+    SpreadsheetApp.getUi().showModalDialog(html, 'Configure BOM Tree Columns');
+  } catch (error) {
+    Logger.log('ERROR in showConfigureBOMTreeColumns: ' + error.message);
+    SpreadsheetApp.getUi().alert('Error opening configuration: ' + error.message);
+  }
+}
+
+/**
+ * Gets available Arena attributes from the attribute definitions
+ * @return {Object} Result with attributes array
+ */
+function getAvailableArenaAttributes() {
+  try {
+    Logger.log('=== GET AVAILABLE ARENA ATTRIBUTES START ===');
+
+    var arenaClient = new ArenaAPIClient();
+
+    // Fetch attribute definitions from Arena
+    // Arena API endpoint: /settings/attributes
+    var attributesResponse = arenaClient.makeRequest('/settings/attributes', { method: 'GET' });
+    var attributes = attributesResponse.results || attributesResponse.Results || [];
+
+    Logger.log('Found ' + attributes.length + ' attributes in Arena');
+
+    // Filter and format attributes for display
+    var formattedAttributes = [];
+
+    attributes.forEach(function(attr) {
+      var guid = attr.guid || attr.Guid || '';
+      var name = attr.name || attr.Name || '';
+      var apiName = attr.apiName || attr.ApiName || '';
+      var fieldType = attr.fieldType || attr.FieldType || 'TEXT';
+
+      // Skip system attributes or empty names
+      if (!name || name.indexOf('(system)') > -1) {
+        return;
+      }
+
+      formattedAttributes.push({
+        guid: guid,
+        name: name,
+        apiName: apiName,
+        type: fieldType
+      });
+    });
+
+    Logger.log('Formatted ' + formattedAttributes.length + ' user attributes');
+
+    return {
+      success: true,
+      attributes: formattedAttributes
+    };
+
+  } catch (error) {
+    Logger.log('ERROR in getAvailableArenaAttributes: ' + error.message);
+    return {
+      success: false,
+      message: 'Error fetching Arena attributes: ' + error.message
+    };
+  }
+}
+
+/**
+ * Gets the current BOM Tree column configuration
+ * @return {Object} Configuration object
+ */
+function getBOMTreeColumnConfiguration() {
+  try {
+    var configJson = PropertiesService.getScriptProperties().getProperty('bom_tree_columns');
+
+    if (configJson) {
+      return JSON.parse(configJson);
+    }
+
+    return {
+      customColumns: [],
+      customColumnDetails: []
+    };
+  } catch (error) {
+    Logger.log('ERROR in getBOMTreeColumnConfiguration: ' + error.message);
+    return {
+      customColumns: [],
+      customColumnDetails: []
+    };
+  }
+}
+
+/**
+ * Saves the BOM Tree column configuration
+ * @param {Object} config - Configuration object with customColumns array
+ * @return {Object} Result object
+ */
+function saveBOMTreeColumnConfiguration(config) {
+  try {
+    Logger.log('=== SAVE BOM TREE COLUMN CONFIGURATION START ===');
+    Logger.log('Custom columns: ' + config.customColumns.length);
+
+    var configJson = JSON.stringify(config);
+    PropertiesService.getScriptProperties().setProperty('bom_tree_columns', configJson);
+
+    Logger.log('Configuration saved successfully');
+
+    return {
+      success: true,
+      message: 'Column configuration saved successfully'
+    };
+  } catch (error) {
+    Logger.log('ERROR in saveBOMTreeColumnConfiguration: ' + error.message);
+    return {
+      success: false,
+      message: 'Error saving configuration: ' + error.message
+    };
   }
 }
 
