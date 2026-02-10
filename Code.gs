@@ -725,6 +725,34 @@ function showHelp() {
 }
 
 /**
+ * Shows the BOM Tree Modal for selecting components from a multi-level BOM
+ * @param {string} itemNumber - Arena item number to display BOM for
+ */
+function showBOMTreeModal(itemNumber) {
+  try {
+    Logger.log('Opening BOM Tree Modal for: ' + itemNumber);
+
+    var html = HtmlService.createHtmlOutputFromFile('BOMTreeModal')
+      .setWidth(1200)
+      .setHeight(700);
+
+    // Set item number as URL parameter
+    var htmlContent = html.getContent();
+    htmlContent = htmlContent.replace('</body>',
+      '<script>currentItemNumber = "' + itemNumber + '"; loadBOMTree("' + itemNumber + '");</script></body>');
+
+    html = HtmlService.createHtmlOutput(htmlContent)
+      .setWidth(1200)
+      .setHeight(700);
+
+    SpreadsheetApp.getUi().showModalDialog(html, 'Select Components from ' + itemNumber);
+  } catch (error) {
+    Logger.log('ERROR in showBOMTreeModal: ' + error.message);
+    SpreadsheetApp.getUi().alert('Error opening BOM Tree: ' + error.message);
+  }
+}
+
+/**
  * Shows category selector dialog
  * @param {string} title - Dialog title
  * @param {string} subtitle - Dialog subtitle

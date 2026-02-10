@@ -2093,48 +2093,22 @@
     /**
      * Opens the BOM tree modal for an item
      */
+    /**
+     * Opens the BOM tree modal for an item
+     * Now opens as full-width dialog over spreadsheet
+     */
     function openBomTreeModal(itemNumber) {
       var item = templateItems.find(function(i) { return i.number === itemNumber; });
       if (!item) return;
 
-      // Update modal title and item info
-      document.getElementById('bomTreeModalTitle').textContent = 'Select Components from ' + item.number;
-      document.getElementById('bomTreeItemNumber').textContent = item.number;
-      document.getElementById('bomTreeItemName').textContent = item.name;
-      document.getElementById('bomTreeSelectedCount').textContent = '0';
+      console.log('Opening BOM Tree Modal for:', itemNumber);
 
-      // Show modal
-      document.getElementById('bomTreeModal').classList.add('show');
-
-      // Show loading state
-      document.getElementById('bomTreeLoading').style.display = 'block';
-      document.getElementById('bomTreeContainer').innerHTML = '<div class="loading" id="bomTreeLoading"><div class="spinner"></div><div>Loading BOM...</div></div>';
-
-      // Reset state
-      bomTreeData = null;
-      bomTreeSelectedIds = [];
-      bomTreeExpandedIds = [];
-
-      // Fetch multi-level BOM from backend
-      console.log('Fetching multi-level BOM for:', itemNumber);
+      // Call backend to show modal dialog
       google.script.run
-        .withSuccessHandler(function(result) {
-          document.getElementById('bomTreeLoading').style.display = 'none';
-
-          if (result.success) {
-            bomTreeData = result.bomTree;
-            renderBomTree(result.bomTree);
-          } else {
-            document.getElementById('bomTreeContainer').innerHTML =
-              '<div class="empty-state"><p style="color: #d32f2f;">' + escapeHtml(result.message) + '</p></div>';
-          }
-        })
         .withFailureHandler(function(error) {
-          document.getElementById('bomTreeLoading').style.display = 'none';
-          document.getElementById('bomTreeContainer').innerHTML =
-            '<div class="empty-state"><p style="color: #d32f2f;">Error: ' + escapeHtml(error.message) + '</p></div>';
+          alert('Error opening BOM Tree: ' + error.message);
         })
-        .getMultiLevelBOM(itemNumber);
+        .showBOMTreeModal(itemNumber);
     }
 
     /**
