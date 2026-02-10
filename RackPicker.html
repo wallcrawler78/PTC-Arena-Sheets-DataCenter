@@ -54,6 +54,16 @@
       <symbol id="icon-template" viewBox="0 0 24 24">
         <path fill="currentColor" d="M18,6H20V9H18V6M11,6H13V9H11V6M4,6H6V9H4V6M18,11H20V14H18V11M11,11H13V14H11V11M4,11H6V14H4V11M18,16H20V19H18V16M11,16H13V19H11V16M4,16H6V19H4V16M3,22H21V2H3V22M5,4H19V20H5V4Z"/>
       </symbol>
+
+      <!-- Star Icon (for favorites) -->
+      <symbol id="icon-star" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M12,17.27L18.18,21L16.54,13.97L22,9.24L14.81,8.62L12,2L9.19,8.62L2,9.24L7.45,13.97L5.82,21L12,17.27Z"/>
+      </symbol>
+
+      <!-- Star Outline Icon (for non-favorited) -->
+      <symbol id="icon-star-outline" viewBox="0 0 24 24">
+        <path fill="currentColor" d="M12,15.39L8.24,17.66L9.23,13.38L5.91,10.5L10.29,10.13L12,6.09L13.71,10.13L18.09,10.5L14.77,13.38L15.76,17.66M22,9.24L14.81,8.63L12,2L9.19,8.63L2,9.24L7.45,13.97L5.82,21L12,17.27L18.18,21L16.54,13.97L22,9.24Z"/>
+      </symbol>
     </defs>
   </svg>
   <style>
@@ -196,6 +206,155 @@
       outline: none;
       border-color: #1a73e8;
       box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.1);
+    }
+
+    .search-with-button {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .search-with-button input {
+      flex: 1;
+    }
+
+    .search-button {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, #1a73e8 0%, #174ea6 100%);
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .search-button:hover:not(:disabled) {
+      box-shadow: 0 2px 4px rgba(26, 115, 232, 0.3);
+      transform: translateY(-1px);
+    }
+
+    .search-button:active:not(:disabled) {
+      transform: translateY(0);
+    }
+
+    .search-button:disabled {
+      background: #e0e0e0;
+      color: #999;
+      cursor: not-allowed;
+    }
+
+    .search-spinner {
+      border: 2px solid #ffffff40;
+      border-top: 2px solid #ffffff;
+      border-radius: 50%;
+      width: 12px;
+      height: 12px;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
+
+    .favorites-toggle {
+      margin: 0 15px 12px 15px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .favorites-btn {
+      padding: 6px 12px;
+      border: 1px solid #dadce0;
+      background: white;
+      border-radius: 4px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .favorites-btn:hover {
+      border-color: #1a73e8;
+      background: #f8f9fa;
+    }
+
+    .favorites-btn.active {
+      background: #e8f0fe;
+      border-color: #1a73e8;
+      color: #1a73e8;
+      font-weight: 500;
+    }
+
+    .favorite-star {
+      cursor: pointer;
+      color: #dadce0;
+      transition: all 0.2s;
+    }
+
+    .favorite-star:hover {
+      color: #fbbc04;
+      transform: scale(1.2);
+    }
+
+    .favorite-star.favorited {
+      color: #fbbc04;
+    }
+
+    .component-checkbox-item {
+      padding: 8px 12px;
+      border-bottom: 1px solid #f0f0f0;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    .component-checkbox-item:hover {
+      background: #f8f9fa;
+    }
+
+    .component-checkbox-item:last-child {
+      border-bottom: none;
+    }
+
+    .component-checkbox-item input[type="checkbox"] {
+      cursor: pointer;
+    }
+
+    .component-checkbox-label {
+      flex: 1;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .component-checkbox-label .item-number {
+      font-weight: 500;
+      color: #202124;
+    }
+
+    .component-checkbox-label .item-name {
+      color: #5f6368;
+      font-size: 11px;
+    }
+
+    .component-checkbox-label .item-qty {
+      color: #1a73e8;
+      font-size: 11px;
+      font-weight: 500;
     }
 
     .rack-list {
@@ -833,11 +992,27 @@
 
         <!-- Arena Template Mode -->
         <div id="arenaTemplateMode" class="template-mode" style="display: none;">
+          <!-- Search Box with Button -->
           <div class="search-box">
-            <input type="text"
-                   id="templateSearchBox"
-                   placeholder="Search Arena items for templates..."
-                   onkeyup="filterTemplateItems()">
+            <div class="search-with-button">
+              <input type="text"
+                     id="templateSearchBox"
+                     placeholder="Search Arena items for templates..."
+                     onkeypress="if(event.key==='Enter') performTemplateSearch()">
+              <button class="search-button" id="templateSearchButton" onclick="performTemplateSearch()">
+                <svg class="icon icon-sm"><use href="#icon-search"></use></svg>
+                Search
+              </button>
+            </div>
+          </div>
+
+          <!-- Favorites Toggle -->
+          <div class="favorites-toggle">
+            <button class="favorites-btn" id="favoritesOnlyBtn" onclick="toggleFavoritesFilter()">
+              <svg class="icon icon-sm"><use href="#icon-star"></use></svg>
+              Favorites Only
+            </button>
+            <span style="color: #5f6368; font-size: 11px;" id="favoriteCount">0 favorited</span>
           </div>
 
           <div id="templateItemList" class="rack-list">
@@ -925,16 +1100,30 @@
         <h3>Load Arena Template</h3>
       </div>
       <div class="modal-body">
-        <div class="info-box" style="margin-bottom: 12px; background: #fff3cd; border-left-color: #ff9800; color: #856404;">
-          <strong>⚠ Template Mode:</strong> This will load the full BOM from Arena as a starting point. You can then trim/customize before pushing to Arena.
+        <div class="info-box" style="margin-bottom: 12px; background: #e8f0fe; border-left-color: #1a73e8; color: #174ea6;">
+          <strong>💡 Select Components:</strong> Choose which BOM components to include in your template. This lets you create a custom configuration without loading everything first.
         </div>
         <div style="margin-bottom: 12px; padding: 12px; background: #f5f5f5; border-radius: 4px;">
           <div style="margin-bottom: 6px;"><strong>Template Item:</strong> <span id="previewItemNumber">-</span></div>
           <div style="margin-bottom: 6px;"><strong>Name:</strong> <span id="previewItemName">-</span></div>
-          <div style="margin-bottom: 6px;"><strong>Components:</strong> <span id="previewComponentCount">-</span></div>
-          <div style="margin-top: 8px;">
-            <strong>First Components:</strong>
-            <div id="previewComponentsList" style="margin-top: 4px; font-size: 11px; max-height: 120px; overflow-y: auto;"></div>
+          <div style="margin-bottom: 6px;">
+            <strong>Components:</strong>
+            <span id="previewComponentCount">-</span>
+            <span id="previewSelectedCount" style="color: #1a73e8; font-weight: 500;"></span>
+          </div>
+        </div>
+
+        <!-- Component Selection -->
+        <div style="margin-bottom: 12px;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+            <label style="font-weight: 500; font-size: 13px;">Select Components to Include:</label>
+            <div style="display: flex; gap: 8px;">
+              <button type="button" onclick="selectAllComponents()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Select All</button>
+              <button type="button" onclick="deselectAllComponents()" style="font-size: 11px; padding: 4px 8px; background: #f8f9fa; border: 1px solid #dadce0; border-radius: 3px; cursor: pointer;">Deselect All</button>
+            </div>
+          </div>
+          <div id="componentSelectorList" style="max-height: 200px; overflow-y: auto; border: 1px solid #dadce0; border-radius: 4px; background: white;">
+            <!-- Component checkboxes will be inserted here -->
           </div>
         </div>
         <div class="modal-field">
@@ -1076,6 +1265,10 @@
     var selectedTemplateItem = null;
     var cloneRacksLoaded = false;
     var templateItemsLoaded = false;
+    var templateFavorites = [];
+    var showFavoritesOnly = false;
+    var templatePreviewComponents = [];  // Full component list from preview
+    var selectedComponentIndices = [];   // Indices of selected components
 
     /**
      * Loads the Templates tab content
@@ -1102,6 +1295,124 @@
           }
         })
         .getProperty('rack_picker_mode');
+
+      // Load favorites from server
+      loadTemplateFavorites();
+    }
+
+    /**
+     * Loads template favorites from server
+     */
+    function loadTemplateFavorites() {
+      google.script.run
+        .withSuccessHandler(function(favorites) {
+          templateFavorites = favorites || [];
+          updateFavoriteCount();
+          console.log('Loaded ' + templateFavorites.length + ' template favorites');
+        })
+        .withFailureHandler(function(error) {
+          console.log('Error loading favorites:', error);
+          templateFavorites = [];
+        })
+        .getTemplateFavorites();
+    }
+
+    /**
+     * Toggles favorite status for a template item
+     */
+    function toggleTemplateFavorite(itemNumber, event) {
+      if (event) event.stopPropagation();
+
+      var index = templateFavorites.indexOf(itemNumber);
+      if (index > -1) {
+        // Remove from favorites
+        templateFavorites.splice(index, 1);
+      } else {
+        // Add to favorites
+        templateFavorites.push(itemNumber);
+      }
+
+      // Save to server
+      google.script.run
+        .withSuccessHandler(function() {
+          updateFavoriteCount();
+          // Re-render list to update star icons
+          if (showFavoritesOnly) {
+            displayTemplateItems(templateItems.filter(function(item) {
+              return templateFavorites.indexOf(item.number) > -1;
+            }));
+          } else {
+            displayTemplateItems(templateItems);
+          }
+        })
+        .withFailureHandler(function(error) {
+          console.log('Error saving favorite:', error);
+        })
+        .saveTemplateFavorites(templateFavorites);
+    }
+
+    /**
+     * Updates favorite count display
+     */
+    function updateFavoriteCount() {
+      var countEl = document.getElementById('favoriteCount');
+      if (countEl) {
+        countEl.textContent = templateFavorites.length + ' favorited';
+      }
+    }
+
+    /**
+     * Toggles showing favorites only
+     */
+    function toggleFavoritesFilter() {
+      showFavoritesOnly = !showFavoritesOnly;
+
+      var btn = document.getElementById('favoritesOnlyBtn');
+      if (showFavoritesOnly) {
+        btn.classList.add('active');
+        // Show only favorited items
+        var favorited = templateItems.filter(function(item) {
+          return templateFavorites.indexOf(item.number) > -1;
+        });
+        displayTemplateItems(favorited);
+      } else {
+        btn.classList.remove('active');
+        // Show all items
+        displayTemplateItems(templateItems);
+      }
+    }
+
+    /**
+     * Performs template search when search button clicked
+     */
+    function performTemplateSearch() {
+      var searchTerm = document.getElementById('templateSearchBox').value.trim();
+
+      if (!searchTerm) {
+        // If empty, show all items (or favorites if filter active)
+        if (showFavoritesOnly) {
+          var favorited = templateItems.filter(function(item) {
+            return templateFavorites.indexOf(item.number) > -1;
+          });
+          displayTemplateItems(favorited);
+        } else {
+          displayTemplateItems(templateItems);
+        }
+        return;
+      }
+
+      // Show loading state
+      var btn = document.getElementById('templateSearchButton');
+      var originalHTML = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<div class="search-spinner"></div> Searching...';
+
+      // Simulate search delay for UX
+      setTimeout(function() {
+        filterTemplateItems();
+        btn.disabled = false;
+        btn.innerHTML = originalHTML;
+      }, 300);
     }
 
     /**
@@ -1317,13 +1628,18 @@
       var listDiv = document.getElementById('templateItemList');
 
       if (items.length === 0) {
-        listDiv.innerHTML = '<div class="empty-state"><p>No Arena items found</p></div>';
+        var msg = showFavoritesOnly ? 'No favorited templates found' : 'No Arena items found';
+        listDiv.innerHTML = '<div class="empty-state"><p>' + msg + '</p></div>';
         return;
       }
 
       var html = '';
       items.forEach(function(item) {
         var category = item.category || 'Uncategorized';
+        var isFavorited = templateFavorites.indexOf(item.number) > -1;
+        var starIcon = isFavorited ? 'icon-star' : 'icon-star-outline';
+        var starClass = isFavorited ? 'favorite-star favorited' : 'favorite-star';
+
         html += '<div class="rack-item" onclick="selectTemplateItem(\'' + escapeHtml(item.number) + '\')">';
         html += '  <div class="rack-item-header">';
         html += '    <div class="rack-item-content">';
@@ -1332,6 +1648,9 @@
         html += '      <div style="color: #80868b; font-size: 11px;">' + escapeHtml(category) + '</div>';
         html += '    </div>';
         html += '    <div class="rack-item-actions">';
+        html += '      <button class="rack-action-btn ' + starClass + '" onclick="toggleTemplateFavorite(\'' + escapeHtml(item.number) + '\', event)" title="' + (isFavorited ? 'Remove from favorites' : 'Add to favorites') + '">';
+        html += '        <svg class="icon icon-sm"><use href="#' + starIcon + '"></use></svg>';
+        html += '      </button>';
         html += '      <button class="rack-action-btn" onclick="event.stopPropagation(); openTemplatePreviewDialog(\'' + escapeHtml(item.number) + '\')" title="Load as template">';
         html += '        <svg class="icon icon-sm"><use href="#icon-globe"></use></svg>';
         html += '      </button>';
@@ -1399,20 +1718,20 @@
             return;
           }
 
+          // Store full component list
+          templatePreviewComponents = preview.allComponents || preview.firstComponents;
+
           // Populate preview
           document.getElementById('previewItemNumber').textContent = preview.itemNumber;
           document.getElementById('previewItemName').textContent = preview.itemName;
-          document.getElementById('previewComponentCount').textContent = preview.componentCount + (preview.hasMore ? '+' : '');
+          document.getElementById('previewComponentCount').textContent = preview.componentCount;
 
-          var componentsList = document.getElementById('previewComponentsList');
-          var componentsHtml = '';
-          preview.firstComponents.forEach(function(comp) {
-            componentsHtml += '<div>• ' + escapeHtml(comp.itemNumber) + ' - ' + escapeHtml(comp.itemName) + ' (Qty: ' + comp.quantity + ')</div>';
-          });
-          if (preview.hasMore) {
-            componentsHtml += '<div style="margin-top: 4px; font-style: italic;">...and ' + (preview.componentCount - preview.firstComponents.length) + ' more</div>';
-          }
-          componentsList.innerHTML = componentsHtml;
+          // Build component selector with checkboxes
+          buildComponentSelector(templatePreviewComponents);
+
+          // Select all components by default
+          selectedComponentIndices = templatePreviewComponents.map(function(_, i) { return i; });
+          updateSelectedCount();
 
           // Prefill form
           document.getElementById('templateItemNumber').value = '';
@@ -1434,6 +1753,105 @@
     function closeTemplatePreviewDialog() {
       document.getElementById('templatePreviewModal').classList.remove('show');
       selectedTemplateItem = null;
+      templatePreviewComponents = [];
+      selectedComponentIndices = [];
+    }
+
+    /**
+     * Builds component selector with checkboxes
+     */
+    function buildComponentSelector(components) {
+      var listDiv = document.getElementById('componentSelectorList');
+
+      if (!components || components.length === 0) {
+        listDiv.innerHTML = '<div style="padding: 20px; text-align: center; color: #5f6368;">No components found</div>';
+        return;
+      }
+
+      var html = '';
+      components.forEach(function(comp, index) {
+        html += '<div class="component-checkbox-item" onclick="toggleComponentSelection(' + index + ')">';
+        html += '  <input type="checkbox" id="comp_' + index + '" checked onchange="handleComponentCheckboxChange(' + index + ')">';
+        html += '  <label class="component-checkbox-label" for="comp_' + index + '">';
+        html += '    <span class="item-number">' + escapeHtml(comp.itemNumber) + '</span>';
+        html += '    <span class="item-name">' + escapeHtml(comp.itemName) + '</span>';
+        html += '    <span class="item-qty">Qty: ' + comp.quantity + '</span>';
+        html += '  </label>';
+        html += '</div>';
+      });
+
+      listDiv.innerHTML = html;
+    }
+
+    /**
+     * Toggles component selection when clicking the row
+     */
+    function toggleComponentSelection(index) {
+      var checkbox = document.getElementById('comp_' + index);
+      if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        handleComponentCheckboxChange(index);
+      }
+    }
+
+    /**
+     * Handles checkbox change
+     */
+    function handleComponentCheckboxChange(index) {
+      var checkbox = document.getElementById('comp_' + index);
+      if (!checkbox) return;
+
+      var idxPos = selectedComponentIndices.indexOf(index);
+
+      if (checkbox.checked && idxPos === -1) {
+        selectedComponentIndices.push(index);
+      } else if (!checkbox.checked && idxPos > -1) {
+        selectedComponentIndices.splice(idxPos, 1);
+      }
+
+      updateSelectedCount();
+    }
+
+    /**
+     * Updates selected component count display
+     */
+    function updateSelectedCount() {
+      var countEl = document.getElementById('previewSelectedCount');
+      if (countEl && templatePreviewComponents.length > 0) {
+        var selectedCount = selectedComponentIndices.length;
+        var totalCount = templatePreviewComponents.length;
+        countEl.textContent = ' (' + selectedCount + ' of ' + totalCount + ' selected)';
+      }
+    }
+
+    /**
+     * Selects all components
+     */
+    function selectAllComponents() {
+      selectedComponentIndices = templatePreviewComponents.map(function(_, i) { return i; });
+
+      // Update all checkboxes
+      templatePreviewComponents.forEach(function(_, index) {
+        var checkbox = document.getElementById('comp_' + index);
+        if (checkbox) checkbox.checked = true;
+      });
+
+      updateSelectedCount();
+    }
+
+    /**
+     * Deselects all components
+     */
+    function deselectAllComponents() {
+      selectedComponentIndices = [];
+
+      // Update all checkboxes
+      templatePreviewComponents.forEach(function(_, index) {
+        var checkbox = document.getElementById('comp_' + index);
+        if (checkbox) checkbox.checked = false;
+      });
+
+      updateSelectedCount();
     }
 
     /**
@@ -1451,6 +1869,17 @@
         return;
       }
 
+      // Validate at least one component is selected
+      if (selectedComponentIndices.length === 0) {
+        alert('Please select at least one component to include in the template.');
+        return;
+      }
+
+      // Get selected components
+      var selectedComponents = selectedComponentIndices.map(function(index) {
+        return templatePreviewComponents[index];
+      });
+
       // Disable button and show loading
       var submitBtn = document.getElementById('templateSubmitBtn');
       submitBtn.disabled = true;
@@ -1463,10 +1892,18 @@
 
           if (result.success) {
             closeTemplatePreviewDialog();
-            alert('✓ Template loaded successfully!\n\n' +
-                  'New: ' + result.newRackNumber + ' (' + result.newRackName + ')\n' +
-                  'Components: ' + result.componentCount + '\n\n' +
-                  '⚠ Trim to desired components before pushing to Arena.');
+            var msg = '✓ Template loaded successfully!\n\n' +
+                      'New: ' + result.newRackNumber + ' (' + result.newRackName + ')\n' +
+                      'Components: ' + result.componentCount;
+
+            // Don't show trim warning if user already selected components
+            if (selectedComponentIndices.length === templatePreviewComponents.length) {
+              msg += '\n\n⚠ Review components before pushing to Arena.';
+            } else {
+              msg += '\n\nYou selected ' + selectedComponentIndices.length + ' of ' + templatePreviewComponents.length + ' available components.';
+            }
+
+            alert(msg);
           } else {
             alert('✗ Template load failed:\n\n' + result.message);
           }
@@ -1480,7 +1917,8 @@
           arenaItemNumber: selectedTemplateItem.number,
           newRackNumber: newNumber,
           newRackName: newName,
-          newDescription: newDesc
+          newDescription: newDesc,
+          selectedComponents: selectedComponents
         });
     }
 

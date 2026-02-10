@@ -131,13 +131,18 @@ function cloneRackConfiguration(sourceRackNumber, newRackNumber, newRackName, ne
  * @param {string} newRackNumber - New rack item number
  * @param {string} newRackName - New rack name
  * @param {string} newDescription - New rack description (optional)
+ * @param {Array} selectedComponents - Optional array of pre-selected components from preview
  * @return {Object} Result object with success status and details
  */
-function createRackFromArenaTemplate(arenaItemNumber, newRackNumber, newRackName, newDescription) {
+function createRackFromArenaTemplate(arenaItemNumber, newRackNumber, newRackName, newDescription, selectedComponents) {
   try {
     Logger.log('=== CREATE RACK FROM ARENA TEMPLATE START ===');
     Logger.log('Template Item: ' + arenaItemNumber);
     Logger.log('New: ' + newRackNumber + ' (' + newRackName + ')');
+
+    if (selectedComponents && selectedComponents.length > 0) {
+      Logger.log('Using ' + selectedComponents.length + ' pre-selected components');
+    }
 
     // Step 1: Validate inputs
     var validation = validateCloneInputs(null, newRackNumber, newRackName);
@@ -149,38 +154,60 @@ function createRackFromArenaTemplate(arenaItemNumber, newRackNumber, newRackName
       };
     }
 
-    // Step 2: Fetch Arena item and BOM
+    // Step 2: Get BOM data (either from selectedComponents or fetch from Arena)
     var arenaClient = new ArenaAPIClient();
-    var arenaItem = arenaClient.getItemByNumber(arenaItemNumber);
+    var arenaBOM;
 
-    if (!arenaItem) {
+    if (selectedComponents && selectedComponents.length > 0) {
+      // Use pre-selected components (from preview dialog)
+      Logger.log('Using pre-selected components from UI');
+      arenaBOM = selectedComponents.map(function(comp) {
+        // Reconstruct BOM line format
+        return comp.rawBOMLine || {
+          item: {
+            number: comp.itemNumber,
+            Number: comp.itemNumber,
+            name: comp.itemName,
+            Name: comp.itemName
+          },
+          quantity: comp.quantity,
+          Quantity: comp.quantity
+        };
+      });
+    } else {
+      // Fetch full BOM from Arena (backward compatibility)
+      Logger.log('Fetching full BOM from Arena');
+
+      var arenaItem = arenaClient.getItemByNumber(arenaItemNumber);
+      if (!arenaItem) {
+        return {
+          success: false,
+          message: 'Arena item "' + arenaItemNumber + '" not found.'
+        };
+      }
+
+      var itemGuid = arenaItem.guid || arenaItem.Guid;
+      if (!itemGuid) {
+        return {
+          success: false,
+          message: 'Arena item has no GUID.'
+        };
+      }
+
+      Logger.log('Fetching BOM for item GUID: ' + itemGuid);
+
+      var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
+      arenaBOM = bomResponse.results || bomResponse.Results || [];
+    }
+
+    if (!arenaBOM || arenaBOM.length === 0) {
       return {
         success: false,
-        message: 'Arena item "' + arenaItemNumber + '" not found.'
+        message: 'No BOM components to load as template.'
       };
     }
 
-    var itemGuid = arenaItem.guid || arenaItem.Guid;
-    if (!itemGuid) {
-      return {
-        success: false,
-        message: 'Arena item has no GUID.'
-      };
-    }
-
-    Logger.log('Fetching BOM for item GUID: ' + itemGuid);
-
-    var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-    var arenaBOM = bomResponse.results || bomResponse.Results || [];
-
-    if (arenaBOM.length === 0) {
-      return {
-        success: false,
-        message: 'Arena item has no BOM components to load as template.'
-      };
-    }
-
-    Logger.log('Fetched ' + arenaBOM.length + ' BOM lines from Arena');
+    Logger.log('Using ' + arenaBOM.length + ' BOM lines for template');
 
     // Step 3: Create new rack sheet structure
     var entitySingular = getTerminology('entity_singular');
@@ -294,23 +321,24 @@ function getArenaTemplateBOMPreview(arenaItemNumber) {
       };
     }
 
-    // Get first 5-10 components for preview
-    var previewComponents = [];
-    var previewCount = Math.min(arenaBOM.length, 10);
+    // Get ALL components for preview (user will select which to include)
+    var allComponents = [];
 
-    for (var i = 0; i < previewCount; i++) {
-      var line = arenaBOM[i];
+    arenaBOM.forEach(function(line) {
       var bomItem = line.item || line.Item || {};
       var itemNumber = bomItem.number || bomItem.Number || '';
       var itemName = bomItem.name || bomItem.Name || '';
       var quantity = line.quantity || line.Quantity || 1;
 
-      previewComponents.push({
-        itemNumber: itemNumber,
-        itemName: itemName,
-        quantity: quantity
-      });
-    }
+      if (itemNumber) {
+        allComponents.push({
+          itemNumber: itemNumber,
+          itemName: itemName,
+          quantity: quantity,
+          rawBOMLine: line  // Keep raw data for later use
+        });
+      }
+    });
 
     // Analyze categories (if available)
     var categorySet = {};
@@ -323,14 +351,18 @@ function getArenaTemplateBOMPreview(arenaItemNumber) {
 
     var categories = Object.keys(categorySet);
 
+    // Also return first 10 for backward compatibility
+    var firstComponents = allComponents.slice(0, Math.min(10, allComponents.length));
+
     return {
       success: true,
       itemNumber: arenaItem.number || arenaItem.Number || arenaItemNumber,
       itemName: arenaItem.name || arenaItem.Name || '',
       componentCount: arenaBOM.length,
-      firstComponents: previewComponents,
+      allComponents: allComponents,      // NEW: All components for selection
+      firstComponents: firstComponents,   // For backward compatibility
       categories: categories,
-      hasMore: arenaBOM.length > previewCount
+      hasMore: arenaBOM.length > 10
     };
 
   } catch (error) {
@@ -708,7 +740,8 @@ function handleTemplateLoadRequest(params) {
       params.arenaItemNumber,
       params.newRackNumber,
       params.newRackName,
-      params.newDescription || ''
+      params.newDescription || '',
+      params.selectedComponents || null  // NEW: Pass selected components
     );
   } catch (error) {
     Logger.log('ERROR in handleTemplateLoadRequest: ' + error.message);

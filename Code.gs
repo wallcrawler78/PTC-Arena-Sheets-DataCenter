@@ -681,6 +681,40 @@ function getProperty(key) {
 }
 
 /**
+ * Gets template favorites from user properties
+ * @return {Array<string>} Array of favorited item numbers
+ */
+function getTemplateFavorites() {
+  try {
+    var favoritesJson = PropertiesService.getUserProperties().getProperty('template_favorites');
+    if (favoritesJson) {
+      return JSON.parse(favoritesJson);
+    }
+    return [];
+  } catch (error) {
+    Logger.log('Error getting template favorites: ' + error.message);
+    return [];
+  }
+}
+
+/**
+ * Saves template favorites to user properties
+ * @param {Array<string>} favorites - Array of item numbers to save
+ * @return {boolean} Success status
+ */
+function saveTemplateFavorites(favorites) {
+  try {
+    var favoritesJson = JSON.stringify(favorites || []);
+    PropertiesService.getUserProperties().setProperty('template_favorites', favoritesJson);
+    Logger.log('Saved ' + favorites.length + ' template favorites');
+    return true;
+  } catch (error) {
+    Logger.log('Error saving template favorites: ' + error.message);
+    return false;
+  }
+}
+
+/**
  * Shows the help modal with documentation and guides
  */
 function showHelp() {
