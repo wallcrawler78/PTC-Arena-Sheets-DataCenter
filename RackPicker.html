@@ -1610,15 +1610,24 @@
         return;
       }
 
+      // Show loading state
+      document.getElementById('templateItemList').innerHTML = `
+        <div class="loading">
+          <div class="spinner"></div>
+          <div>Loading Arena items...</div>
+        </div>
+      `;
+
       google.script.run
-        .withSuccessHandler(function(items) {
-          templateItems = items;
-          displayTemplateItems(items);
+        .withSuccessHandler(function(data) {
+          allArenaItems = data.items || [];
+          templateItems = allArenaItems;
+          displayTemplateItems(templateItems);
         })
         .withFailureHandler(function(error) {
           showTemplateError('Failed to load Arena items: ' + error.message);
         })
-        .getAllItemsWithCache();
+        .loadItemPickerData();
     }
 
     /**
