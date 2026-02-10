@@ -16,44 +16,17 @@ function onInstall(e) {
  * REFACTORED: Adds first-run detection and auto-migration
  */
 function onOpen(e) {
+  // OPTIMIZATION: Build and display menu FIRST before any heavy operations
+  // This makes the UI feel responsive and avoids permission prompts blocking the menu
+
   var ui = SpreadsheetApp.getUi();
 
-  // Check for first run and handle initialization
-  var firstRunCheck = checkFirstRun();
-
-  if (firstRunCheck.action === 'auto-migrate') {
-    // Silently auto-migrate datacenter configuration
-    Logger.log('Auto-migrating datacenter configuration...');
-    var migrationResult = autoMigrateIfNeeded();
-
-    if (migrationResult.performed && migrationResult.success) {
-      Logger.log('Auto-migration successful');
-
-      // Show one-time notification if needed
-      if (shouldShowMigrationNotification()) {
-        showMigrationNotification();
-      }
-    }
-  } else if (firstRunCheck.action === 'show-wizard') {
-    // First run - show setup wizard to configure terminology
-    SpreadsheetApp.getActiveSpreadsheet().toast(
-      'Welcome! Please complete the setup wizard to configure your integration.',
-      'First Time Setup',
-      5
-    );
-
-    // Show wizard after a short delay to let menu load
-    Utilities.sleep(500);
-    showSetupWizard();
-    return; // Exit early - wizard will trigger reload when complete
-  }
-
-  // Get dynamic terminology for menu labels
+  // Get dynamic terminology for menu labels (fast - just reads from properties)
   var entitySingular = getTerminology('entity_singular');
   var entityPlural = getTerminology('entity_plural');
   var level0Name = getTerminology('hierarchy_level_0');
 
-  // Get active sheet to detect if we're on a rack sheet
+  // Get active sheet to detect if we're on a rack sheet (fast - no permissions needed)
   var activeSheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
   var isOnRackSheet = isRackConfigSheet(activeSheet);
 
@@ -114,6 +87,39 @@ function onOpen(e) {
     .addSeparator()
     .addItem('Help and Documentation', 'showHelp')
     .addToUi();
+
+  // NOW handle initialization and migration AFTER menu is visible
+  // This prevents heavy operations from blocking the menu display
+
+  // Check for first run and handle initialization
+  var firstRunCheck = checkFirstRun();
+
+  if (firstRunCheck.action === 'auto-migrate') {
+    // Silently auto-migrate datacenter configuration
+    Logger.log('Auto-migrating datacenter configuration...');
+    var migrationResult = autoMigrateIfNeeded();
+
+    if (migrationResult.performed && migrationResult.success) {
+      Logger.log('Auto-migration successful');
+
+      // Show one-time notification if needed
+      if (shouldShowMigrationNotification()) {
+        showMigrationNotification();
+      }
+    }
+  } else if (firstRunCheck.action === 'show-wizard') {
+    // First run - show setup wizard to configure terminology
+    SpreadsheetApp.getActiveSpreadsheet().toast(
+      'Welcome! Please complete the setup wizard to configure your integration.',
+      'First Time Setup',
+      5
+    );
+
+    // Show wizard after a short delay to let menu load
+    Utilities.sleep(500);
+    showSetupWizard();
+    return; // Exit early - wizard will trigger reload when complete
+  }
 }
 
 /**
