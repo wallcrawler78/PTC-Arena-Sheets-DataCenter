@@ -863,29 +863,45 @@ function fetchBOMRecursive(arenaClient, itemGuid, itemData, level) {
       var childGuid = childItem.guid || childItem.Guid || '';
       var quantity = line.quantity || line.Quantity || 1;
 
-      // Get item details including revision and description
-      var childDetails = null;
-      try {
-        if (childGuid) {
-          childDetails = arenaClient.makeRequest('/items/' + childGuid, { method: 'GET' });
-        }
-      } catch (detailError) {
-        Logger.log('Warning: Could not fetch details for ' + childNumber + ': ' + detailError.message);
-      }
-
+      // Try to get item details including revision and description
+      // Use data from BOM line first (faster), fallback to API call if needed
       var description = '';
       var revision = '';
 
-      if (childDetails) {
-        description = childDetails.description || childDetails.Description || '';
+      // Try to get description from BOM line data first
+      if (childItem.description || childItem.Description) {
+        description = childItem.description || childItem.Description || '';
+      }
 
-        // Get revision from effectivity or revisionNumber field
-        if (childDetails.effectivity && childDetails.effectivity.effectiveRevisionNumber) {
-          revision = childDetails.effectivity.effectiveRevisionNumber;
-        } else if (childDetails.revisionNumber) {
-          revision = childDetails.revisionNumber;
-        } else if (childDetails.RevisionNumber) {
-          revision = childDetails.RevisionNumber;
+      // Try to get revision from BOM line data first
+      if (line.revisionNumber || line.RevisionNumber) {
+        revision = line.revisionNumber || line.RevisionNumber || '';
+      } else if (childItem.revisionNumber || childItem.RevisionNumber) {
+        revision = childItem.revisionNumber || childItem.RevisionNumber || '';
+      }
+
+      // Only fetch full item details if we're missing critical info and level is shallow
+      // This prevents too many API calls for deep hierarchies
+      if ((!description || !revision) && level < 2 && childGuid) {
+        try {
+          var childDetails = arenaClient.makeRequest('/items/' + childGuid, { method: 'GET' });
+
+          if (!description) {
+            description = childDetails.description || childDetails.Description || '';
+          }
+
+          if (!revision) {
+            if (childDetails.effectivity && childDetails.effectivity.effectiveRevisionNumber) {
+              revision = childDetails.effectivity.effectiveRevisionNumber;
+            } else if (childDetails.revisionNumber) {
+              revision = childDetails.revisionNumber;
+            } else if (childDetails.RevisionNumber) {
+              revision = childDetails.RevisionNumber;
+            }
+          }
+        } catch (detailError) {
+          Logger.log('Warning: Could not fetch details for ' + childNumber + ': ' + detailError.message);
+          // Continue with whatever data we have
         }
       }
 
