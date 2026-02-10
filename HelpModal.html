@@ -981,30 +981,124 @@
       </div>
 
       <h3>Option C: Clone or Load Templates</h3>
-      <p>Save time by cloning existing racks or loading Arena items as templates!</p>
+      <p>Save time by cloning existing racks or loading Arena items as templates! Perfect for creating variants or using the "150% BOM" approach.</p>
 
+      <div class="info-box" style="margin-bottom: 20px;">
+        <strong>💡 What is the "150% BOM" Workflow?</strong>
+        <p>Load a comprehensive Arena item containing ALL possible options (e.g., 50 component variants), then trim it down to your actual needs (15 components). This is faster than adding components one-by-one!</p>
+      </div>
+
+      <h4>Clone Existing Rack</h4>
       <div class="step-box">
         <span class="step-number">1</span>
-        <strong>Clone an existing rack</strong>
-        <div class="menu-path">Arena → Create Layout → Clone Existing Rack</div>
-        <p>Duplicate a rack configuration to create variants. Perfect for "Server Type A" → "Server Type B" scenarios.</p>
+        <strong>Open Rack Picker Templates Tab</strong>
+        <div class="menu-path">Arena → Show Rack Picker → Templates Tab</div>
+        <p>Or use: <span class="menu-path">Arena → Create Layout → Clone Existing Rack</span></p>
       </div>
 
       <div class="step-box">
         <span class="step-number">2</span>
-        <strong>Or load an Arena template</strong>
-        <div class="menu-path">Arena → Create Layout → Load Arena Item as Template</div>
-        <p>Load comprehensive Arena BOMs (e.g., an item with 50 component options), then trim down to your desired configuration.</p>
+        <strong>Find rack to clone</strong>
+        <p>Browse existing racks or use the search box to find "Server Type A". Click the <strong>clone icon ⧉</strong> next to the rack name.</p>
       </div>
 
       <div class="step-box">
         <span class="step-number">3</span>
-        <strong>Using the Templates tab</strong>
-        <p>Open <strong>Rack Picker → Templates tab</strong> to browse and select items to clone or use as templates. Toggle between "Clone Existing" and "Arena Template" modes.</p>
+        <strong>Enter new rack details</strong>
+        <p>Provide a new rack number and name (e.g., "Type B"). The clone modal shows you how many components will be copied.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">4</span>
+        <strong>Edit the cloned rack</strong>
+        <p>New rack is created as <strong>PLACEHOLDER</strong> (red status). Modify components as needed, then push to Arena when ready.</p>
+      </div>
+
+      <h4>Load Arena Template (150% BOM)</h4>
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Switch to Arena Template mode</strong>
+        <div class="menu-path">Rack Picker → Templates Tab → Arena Template</div>
+        <p>Or use: <span class="menu-path">Arena → Create Layout → Load Arena Item as Template</span></p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Search for comprehensive item</strong>
+        <p>Find an Arena item with ALL component options (e.g., "SERVER-ALL-OPTIONS" with 50 components including 5 storage options, 5 RAM types, etc.)</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">3</span>
+        <strong>Preview BOM before loading</strong>
+        <p>Click "Load as Template" to see a preview showing component count and categories. Click "Confirm" to create the rack.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">4</span>
+        <strong>Trim down to desired config</strong>
+        <p>Delete unwanted rows (35 of 50), keeping only what you need (15 components). Then push to Arena as your custom configuration.</p>
       </div>
 
       <div class="tip-box">
-        <strong>Pro Tip:</strong> Cloned and template-loaded racks are created as <strong>PLACEHOLDER</strong> status, so you can edit freely before pushing to Arena. Look for the clone icon ⧉ next to each rack for quick duplication!
+        <strong>Quick Clone Tip:</strong> When viewing a rack sheet, use <span class="menu-path">Arena → Create Layout → Clone This Rack</span> for instant duplication!
+      </div>
+
+      <h3>BOM Tree Viewer - Add Components Intelligently</h3>
+      <p>Browse Arena BOMs in a hierarchical tree view and selectively insert components into your rack configurations.</p>
+
+      <h4>Opening the BOM Tree</h4>
+      <p>From Item Picker or Rack Picker, click the <strong>tree icon 🌳</strong> next to any item to view its complete BOM structure.</p>
+
+      <h4>Key Features</h4>
+      <ul>
+        <li><strong>Hierarchical View:</strong> Expand/collapse nodes to explore multi-level BOMs (up to 10 levels deep)</li>
+        <li><strong>Selective Insert:</strong> Check boxes next to components you want, then click "Insert Selected"</li>
+        <li><strong>Resizable Columns:</strong> Drag column dividers to resize Item Number, Name, Qty, Revision, Description</li>
+        <li><strong>Custom Attributes:</strong> Add Arena attribute columns like "Power Consumption", "U Spaces", "Geo Usage" (see below)</li>
+        <li><strong>Fast Performance:</strong> Optimized to load BOMs in 3-5 seconds without extra API calls</li>
+      </ul>
+
+      <h4>Using Custom Attribute Columns</h4>
+      <p>Display Arena custom attributes as columns to make better component selection decisions:</p>
+
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Configure available attributes</strong>
+        <div class="menu-path">Arena → Setup → Configuration → Configure BOM Tree Columns</div>
+        <p>Click "Load Available Attributes" to see all 85+ custom attributes defined in your Arena workspace.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Search and select attributes</strong>
+        <p>Use the search box to find attributes like "power", "spaces", or "weight". Check the boxes for attributes you want as columns.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">3</span>
+        <strong>Save configuration</strong>
+        <p>Click "Save Configuration". Your selected attributes (e.g., Power Consumption, U Spaces Required) now appear as columns in the BOM Tree viewer.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">4</span>
+        <strong>View attributes in BOM Tree</strong>
+        <p>Open any BOM Tree - your custom columns appear after the default columns. Values are lazy-loaded and cached for performance.</p>
+      </div>
+
+      <div class="info-box">
+        <strong>Performance Note:</strong> Attribute values are fetched only for <em>visible</em> nodes and cached for 1 hour. This keeps the BOM Tree fast even with many custom columns!
+      </div>
+
+      <div class="tip-box">
+        <strong>Use Cases:</strong>
+        <ul style="margin-top: 8px;">
+          <li><strong>Power Planning:</strong> Add "Power Consumption (W)" to calculate total rack power</li>
+          <li><strong>Space Planning:</strong> Add "U Spaces Required" to ensure components fit</li>
+          <li><strong>Compliance:</strong> Add "Geo Usage" to filter components by region</li>
+          <li><strong>Lifecycle:</strong> Add custom lifecycle fields to track component phases</li>
+        </ul>
       </div>
 
       <h3>Creating an Overview Layout</h3>
