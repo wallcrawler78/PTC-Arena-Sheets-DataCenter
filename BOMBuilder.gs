@@ -282,15 +282,13 @@ function pushBOM() {
       Logger.log('Created new parent item: ' + parentItemNumber);
 
     } else {
-      // Find existing parent item
-      var searchResults = client.searchItems(parentItemNumber);
-      var items = searchResults.results || searchResults.Results || [];
-
-      if (items.length === 0) {
-        throw new Error('Parent item not found: ' + parentItemNumber);
+      // Validate parent item exists before attempting BOM operation
+      var parentItem = client.getItemByNumber(parentItemNumber);
+      if (!parentItem) {
+        throw new Error('Cannot create/update BOM: parent item "' + parentItemNumber + '" not found in Arena. Please verify the item number.');
       }
 
-      parentGuid = items[0].guid || items[0].Guid;
+      parentGuid = parentItem.guid || parentItem.Guid;
       Logger.log('Found parent item: ' + parentItemNumber);
     }
 

@@ -13,12 +13,18 @@ function onInstall(e) {
 
 /**
  * Runs when the spreadsheet is opened
- * REFACTORED: Adds first-run detection and auto-migration
+ * REFACTORED: Delegates to helper functions for clarity
  */
 function onOpen(e) {
-  // OPTIMIZATION: Build and display menu FIRST before any heavy operations
-  // This makes the UI feel responsive and avoids permission prompts blocking the menu
+  _buildArenaMenu();
+  _checkFirstRunAsync();
+}
 
+/**
+ * Builds and displays the Arena menu in the UI
+ * Extracted from onOpen() for readability (QA-05)
+ */
+function _buildArenaMenu() {
   var ui = SpreadsheetApp.getUi();
 
   // Get dynamic terminology for menu labels (fast - just reads from properties)
@@ -87,11 +93,13 @@ function onOpen(e) {
     .addSeparator()
     .addItem('Help and Documentation', 'showHelp')
     .addToUi();
+}
 
-  // NOW handle initialization and migration AFTER menu is visible
-  // This prevents heavy operations from blocking the menu display
-
-  // Check for first run and handle initialization
+/**
+ * Handles first-run detection, auto-migration, and setup wizard
+ * Extracted from onOpen() for readability (QA-05)
+ */
+function _checkFirstRunAsync() {
   var firstRunCheck = checkFirstRun();
 
   if (firstRunCheck.action === 'auto-migrate') {
@@ -118,7 +126,6 @@ function onOpen(e) {
     // Show wizard after a short delay to let menu load
     Utilities.sleep(500);
     showSetupWizard();
-    return; // Exit early - wizard will trigger reload when complete
   }
 }
 

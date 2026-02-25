@@ -15,6 +15,15 @@ var META_ITEM_DESC_COL = 4;  // Column D - Description
 var META_HISTORY_LINK_COL = 5;  // Column E - History Link
 
 /**
+ * Validates an Arena item number format (NNN-NNNN)
+ * @param {string} itemNumber - The item number to validate
+ * @return {boolean} True if valid Arena item number format
+ */
+function _isValidArenaItemNumber(itemNumber) {
+  return typeof itemNumber === 'string' && /^\d{3}-\d{4}$/.test(itemNumber.trim());
+}
+
+/**
  * Creates a new rack configuration tab
  * Prompts user for rack name and parent item
  */
@@ -76,6 +85,12 @@ function createNewRackConfiguration() {
     rackItemNumber = itemResponse.getResponseText().trim();
     if (!rackItemNumber) {
       ui.alert('Error', 'Item number cannot be empty.', ui.ButtonSet.OK);
+      return;
+    }
+
+    // Validate Arena item number format before API call
+    if (!_isValidArenaItemNumber(rackItemNumber)) {
+      ui.alert('Error', 'Invalid item number format "' + rackItemNumber + '". Expected format: NNN-NNNN (e.g., 100-0042)', ui.ButtonSet.OK);
       return;
     }
 

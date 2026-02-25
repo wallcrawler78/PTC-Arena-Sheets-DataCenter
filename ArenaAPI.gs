@@ -14,6 +14,28 @@ function getArenaClient() {
   return _arenaClientInstance;
 }
 
+/**
+ * Normalizes an Arena API item response to consistent lowercase field names.
+ * Arena API can return fields as either camelCase or PascalCase depending on
+ * the endpoint and API version. This ensures consistent access patterns.
+ * @param {Object} item - Raw item object from Arena API
+ * @return {Object} Normalized item with consistent field names, or null if input is null/undefined
+ */
+function normalizeArenaItem(item) {
+  if (!item) return null;
+  return {
+    guid:          item.guid          || item.Guid          || '',
+    number:        item.number        || item.Number        || '',
+    name:          item.name          || item.Name          || '',
+    description:   item.description   || item.Description   || '',
+    lifecyclePhase:item.lifecyclePhase|| item.LifecyclePhase|| '',
+    category:      item.category      || item.Category      || null,
+    revisionNumber:item.revisionNumber|| item.RevisionNumber|| '',
+    // Preserve all original fields for callers that need them
+    _raw:          item
+  };
+}
+
 // SEC-01: Gate verbose request/response logging behind a script property
 var DEBUG_MODE = PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true';
 
@@ -233,7 +255,7 @@ ArenaAPIClient.prototype.getItem = function(itemId) {
     throw new Error('Invalid item identifier: must be a non-empty string');
   }
   var endpoint = '/items/' + encodeURIComponent(itemId) + '?responseview=full';
-  return this.makeRequest(endpoint, { method: 'GET' });
+  return normalizeArenaItem(this.makeRequest(endpoint, { method: 'GET' }));
 };
 
 /**
@@ -359,7 +381,13 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
 
   endpoint += '?' + queryParams.join('&');
 
-  return this.makeRequest(endpoint, { method: 'GET' });
+  var response = this.makeRequest(endpoint, { method: 'GET' });
+  // Normalize items in the results array
+  var key = response.results ? 'results' : (response.Results ? 'Results' : null);
+  if (key && Array.isArray(response[key])) {
+    response[key] = response[key].map(normalizeArenaItem);
+  }
+  return response;
 };
 
 /**
@@ -405,7 +433,7 @@ ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
     }
 
     Logger.log('✓ Found item in cache: ' + itemNumber);
-    return item;
+    return normalizeArenaItem(item);
 
   } catch (error) {
     Logger.log('Error getting item by number: ' + error.message);
