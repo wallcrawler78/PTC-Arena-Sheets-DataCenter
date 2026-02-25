@@ -795,42 +795,214 @@ function getMultiLevelBOM(itemNumber) {
 
     var arenaClient = getArenaClient();
 
-    // Step 1: Get the root item
+    // Step 1: Get the root item (cache hit on warm cache)
     var rootItem = arenaClient.getItemByNumber(itemNumber);
     if (!rootItem) {
-      return {
-        success: false,
-        message: 'Item "' + itemNumber + '" not found in Arena.'
-      };
+      return { success: false, message: 'Item "' + itemNumber + '" not found in Arena.' };
     }
 
     var rootGuid = rootItem.guid || rootItem.Guid;
     if (!rootGuid) {
-      return {
-        success: false,
-        message: 'Item has no GUID.'
-      };
+      return { success: false, message: 'Item has no GUID.' };
     }
 
+    var rootName = rootItem.name || rootItem.Name || '';
     Logger.log('Root item GUID: ' + rootGuid);
 
-    // Step 2: Fetch BOM recursively
-    var bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
+    // Step 2: Try Export API first (~5-12s for any size vs ~N×0.5s recursive)
+    try {
+      Logger.log('Attempting Export API approach...');
+      var exportData = arenaClient.runBOMExport(itemNumber, rootGuid);
+      var bomTree = _buildBOMTreeFromExport(exportData, rootGuid);
+      Logger.log('Export API success: ' + _countBOMNodes(bomTree) + ' nodes');
+      return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
+    } catch (exportErr) {
+      Logger.log('Export API failed, falling back to recursive: ' + exportErr.message);
+    }
 
-    return {
-      success: true,
-      itemNumber: itemNumber,
-      itemName: rootItem.name || rootItem.Name || '',
-      bomTree: bomTree
-    };
+    // Step 3: Fallback — recursive /items/{guid}/bom calls
+    Logger.log('Using recursive BOM approach for ' + itemNumber);
+    var bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
+    return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
 
   } catch (error) {
     Logger.log('ERROR in getMultiLevelBOM: ' + error.message);
-    return {
-      success: false,
-      message: 'Error fetching multi-level BOM: ' + error.message
-    };
+    return { success: false, message: 'Error fetching multi-level BOM: ' + error.message };
   }
+}
+
+/**
+ * Counts all nodes in a BOM tree (all levels combined).
+ * @param {Array} nodes
+ * @return {number}
+ */
+function _countBOMNodes(nodes) {
+  if (!nodes) return 0;
+  var count = nodes.length;
+  for (var i = 0; i < nodes.length; i++) {
+    if (nodes[i].children && nodes[i].children.length > 0) {
+      count += _countBOMNodes(nodes[i].children);
+    }
+  }
+  return count;
+}
+
+/**
+ * Dispatches Arena export JSON to the correct tree-builder based on the
+ * structure returned. Arena can return several shapes depending on version/config:
+ *
+ *   Format A — Array of items each with a "bom" sub-array (most common for FULL BOM):
+ *     [ { guid, number, name, ..., bom: [{quantity, item:{...}}] }, ... ]
+ *
+ *   Format B — Same but wrapped in an object:
+ *     { items: [ { guid, ..., bom: [...] } ] }
+ *
+ *   Format C — Flat list of parent→child relationships:
+ *     [ { parent: {guid,...}, item: {guid,...}, quantity: N }, ... ]
+ *     OR { bom: [ { parent, item, quantity } ] }
+ *
+ * Logs the raw structure on first call so you can verify format in execution logs.
+ *
+ * @param {*}      exportData  Parsed JSON from the export ZIP
+ * @param {string} rootGuid    GUID of the root item
+ * @return {Array} Hierarchical BOM tree matching BOMTreeModal.html expected format
+ */
+function _buildBOMTreeFromExport(exportData, rootGuid) {
+  // Log structure for diagnosis (first call)
+  if (Array.isArray(exportData)) {
+    Logger.log('Export: array[' + exportData.length + '], first keys: ' +
+      (exportData.length ? Object.keys(exportData[0]).join(', ') : 'empty'));
+  } else {
+    Logger.log('Export: object, keys: ' + Object.keys(exportData).join(', '));
+  }
+
+  // Format A: top-level array, items have a "bom" key
+  if (Array.isArray(exportData) && exportData.length > 0 && exportData[0].bom !== undefined) {
+    Logger.log('Export format: A (items array with nested bom)');
+    return _buildTreeFromItemsArray(exportData, rootGuid);
+  }
+
+  // Format B: { items: [...] } wrapper
+  if (exportData.items && Array.isArray(exportData.items)) {
+    Logger.log('Export format: B (object.items with nested bom)');
+    return _buildTreeFromItemsArray(exportData.items, rootGuid);
+  }
+
+  // Format C: flat parent→child list
+  var flatLines = null;
+  if (Array.isArray(exportData) && exportData.length > 0 && exportData[0].parent !== undefined) {
+    flatLines = exportData;
+  } else if (exportData.bom && Array.isArray(exportData.bom)) {
+    flatLines = exportData.bom;
+  }
+  if (flatLines) {
+    Logger.log('Export format: C (flat parent-child list, ' + flatLines.length + ' lines)');
+    return _buildTreeFromFlatList(flatLines, rootGuid);
+  }
+
+  Logger.log('ERROR: Unrecognized export format: ' + JSON.stringify(exportData).substring(0, 400));
+  throw new Error('Unrecognized Arena export JSON format — check execution logs');
+}
+
+// ── Format A/B helpers ──────────────────────────────────────────────────────
+
+function _buildTreeFromItemsArray(items, rootGuid) {
+  // Build GUID → item map
+  var itemMap = {};
+  for (var i = 0; i < items.length; i++) {
+    var g = items[i].guid || items[i].Guid || '';
+    if (g) itemMap[g] = items[i];
+  }
+
+  var rootItem = itemMap[rootGuid];
+  if (!rootItem) {
+    Logger.log('Root GUID not in export items list, using index 0');
+    rootItem = items[0];
+    rootGuid = rootItem.guid || rootItem.Guid || '';
+  }
+
+  return _nodesFromItemsArray(rootItem, itemMap, 0);
+}
+
+function _nodesFromItemsArray(parentItem, itemMap, level) {
+  var bomLines = parentItem.bom || parentItem.Bom || [];
+  var nodes = [];
+
+  for (var i = 0; i < bomLines.length; i++) {
+    var line = bomLines[i];
+    var childRef = line.item || line.Item || {};
+    var childGuid = childRef.guid || childRef.Guid || '';
+    var node = {
+      id: childGuid + '_' + level + '_' + i,
+      itemNumber: childRef.number  || childRef.Number  || '',
+      itemName:   childRef.name    || childRef.Name    || '',
+      description:childRef.description || childRef.Description || '',
+      revision:   line.revisionNumber  || line.RevisionNumber  ||
+                  childRef.revisionNumber || childRef.RevisionNumber || '',
+      quantity:   line.quantity || line.Quantity || 1,
+      level:      level + 1,
+      guid:       childGuid,
+      children:   [],
+      hasChildren: false
+    };
+
+    var childData = itemMap[childGuid];
+    if (childData) {
+      var children = _nodesFromItemsArray(childData, itemMap, level + 1);
+      if (children.length) { node.children = children; node.hasChildren = true; }
+    }
+
+    nodes.push(node);
+  }
+  return nodes;
+}
+
+// ── Format C helpers ────────────────────────────────────────────────────────
+
+function _buildTreeFromFlatList(flatLines, rootGuid) {
+  // Map: parentGuid → [line objects]
+  var childMap = {};
+  for (var i = 0; i < flatLines.length; i++) {
+    var parentObj = flatLines[i].parent || flatLines[i].Parent || {};
+    var pGuid = parentObj.guid || parentObj.Guid || '';
+    if (!pGuid) continue;
+    if (!childMap[pGuid]) childMap[pGuid] = [];
+    childMap[pGuid].push(flatLines[i]);
+  }
+  Logger.log('Flat list: ' + Object.keys(childMap).length + ' unique parents');
+  return _nodesFromFlatList(rootGuid, childMap, 0);
+}
+
+function _nodesFromFlatList(parentGuid, childMap, level) {
+  var lines = childMap[parentGuid] || [];
+  var nodes = [];
+
+  for (var i = 0; i < lines.length; i++) {
+    var line = lines[i];
+    var childObj = line.item || line.Item || {};
+    var childGuid = childObj.guid || childObj.Guid || '';
+    var node = {
+      id: childGuid + '_' + level + '_' + i,
+      itemNumber: childObj.number  || childObj.Number  || '',
+      itemName:   childObj.name    || childObj.Name    || '',
+      description:childObj.description || childObj.Description || '',
+      revision:   line.revisionNumber  || line.RevisionNumber  ||
+                  childObj.revisionNumber || childObj.RevisionNumber || '',
+      quantity:   line.quantity || line.Quantity || 1,
+      level:      level + 1,
+      guid:       childGuid,
+      children:   [],
+      hasChildren: false
+    };
+
+    if (childGuid && childMap[childGuid]) {
+      var children = _nodesFromFlatList(childGuid, childMap, level + 1);
+      if (children.length) { node.children = children; node.hasChildren = true; }
+    }
+
+    nodes.push(node);
+  }
+  return nodes;
 }
 
 /**

@@ -810,3 +810,164 @@ ArenaAPIClient.prototype.buildArenaWebURL = function(item, itemNumber) {
     return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
   }
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT API — Multi-level BOM fast path
+// Uses POST /exports + run + poll + download ZIP instead of N recursive calls.
+// For a 151-item tree this reduces ~152 API calls (~70s) to ~5-8 calls (~5-12s).
+// ═══════════════════════════════════════════════════════════════════════════
+
+var EXPORT_DEF_PROP_KEY = 'ARENA_BOM_EXPORT_DEF_GUID';
+
+/**
+ * Gets the cached BOM export definition GUID, or creates a new one.
+ * The definition is generic (no criteria) and reused across all BOM loads.
+ * GUID is persisted in PropertiesService so it survives across sessions.
+ * @return {string} Export definition GUID
+ */
+ArenaAPIClient.prototype._getOrCreateBOMExportDef = function() {
+  var props = PropertiesService.getScriptProperties();
+  var cachedGuid = props.getProperty(EXPORT_DEF_PROP_KEY);
+
+  if (cachedGuid) {
+    // Quick verify — Arena returns 404 if the def was deleted
+    try {
+      this.makeRequest('/exports/' + cachedGuid, { method: 'GET' });
+      Logger.log('BOM export def: using cached ' + cachedGuid);
+      return cachedGuid;
+    } catch (e) {
+      Logger.log('Cached export def gone, recreating: ' + e.message);
+      props.deleteProperty(EXPORT_DEF_PROP_KEY);
+    }
+  }
+
+  Logger.log('Creating BOM export definition...');
+  var defResponse = this.makeRequest('/exports', {
+    method: 'POST',
+    payload: {
+      name: 'BOM Tree Loader - Arena Sheets',
+      description: 'Auto-created by PTC Arena Sheets. Safe to delete — will be recreated on next use.',
+      world: 'ITEMS',
+      options: {
+        exportViews: ['BOM'],
+        bomLevels: 'FULL',
+        header: 'apiName',
+        revisionStatus: 'WORKING',
+        format: 'json'
+      }
+    }
+  });
+
+  var defGuid = defResponse.guid || defResponse.Guid;
+  if (!defGuid) {
+    throw new Error('Export def creation returned no GUID: ' + JSON.stringify(defResponse));
+  }
+
+  props.setProperty(EXPORT_DEF_PROP_KEY, defGuid);
+  Logger.log('BOM export def created: ' + defGuid);
+  return defGuid;
+};
+
+/**
+ * Downloads a binary blob from Arena (used for ZIP export files).
+ * Unlike makeRequest() which always JSON-parses, this returns the raw Blob.
+ * @param {string} url - Full URL to fetch
+ * @return {Blob} Response blob
+ */
+ArenaAPIClient.prototype._fetchBlob = function(url) {
+  var response = UrlFetchApp.fetch(url, {
+    method: 'GET',
+    headers: {
+      'arena_session_id': this.sessionId,
+      'Content-Type': 'application/json'
+    },
+    muteHttpExceptions: true
+  });
+
+  var code = response.getResponseCode();
+  if (code < 200 || code >= 300) {
+    throw new Error('Export download failed: HTTP ' + code + ' from ' + url);
+  }
+  return response.getBlob();
+};
+
+/**
+ * Runs a full multi-level BOM export for a single root item and returns
+ * the parsed JSON content from the ZIP result.
+ *
+ * Flow: create/cache def → POST run → poll until COMPLETE → download ZIP → parse JSON
+ *
+ * @param {string} itemNumber - Arena item number (used for logging only)
+ * @param {string} itemGuid   - Arena item GUID (used as run criteria)
+ * @return {*} Parsed export JSON (structure varies by Arena version — handled by callers)
+ */
+ArenaAPIClient.prototype.runBOMExport = function(itemNumber, itemGuid) {
+  var defGuid = this._getOrCreateBOMExportDef();
+
+  // POST the export run scoped to just this one item
+  Logger.log('Starting BOM export run for ' + itemNumber + ' (' + itemGuid + ')...');
+  var runResponse = this.makeRequest('/exports/' + defGuid + '/runs', {
+    method: 'POST',
+    payload: {
+      criteria: [{
+        attribute: 'guid',
+        operator: 'IS_EQUAL_TO',
+        value: itemGuid
+      }]
+    }
+  });
+
+  var runGuid = runResponse.guid || runResponse.Guid;
+  if (!runGuid) {
+    throw new Error('Export run returned no GUID: ' + JSON.stringify(runResponse));
+  }
+
+  Logger.log('Export run ' + runGuid + ' started, polling for completion...');
+
+  // Poll until COMPLETE / FAILED / ABORTED (max 40 × 2s = 80s)
+  var status = runResponse.status || runResponse.Status || 'CREATED';
+  var runData = runResponse;
+  var maxPolls = 40;
+
+  for (var i = 0; i < maxPolls && status !== 'COMPLETE' && status !== 'FAILED' && status !== 'ABORTED'; i++) {
+    Utilities.sleep(2000);
+    runData = this.makeRequest('/exports/' + defGuid + '/runs/' + runGuid, { method: 'GET' });
+    status = runData.status || runData.Status || '';
+    Logger.log('Export poll ' + (i + 1) + '/40: status = ' + status);
+  }
+
+  if (status !== 'COMPLETE') {
+    throw new Error('Export run ended with status "' + status + '" — not COMPLETE');
+  }
+
+  // Extract file GUID from the completed run
+  var files = runData.files || runData.Files || [];
+  if (!files.length) {
+    throw new Error('Export COMPLETE but returned no files');
+  }
+
+  var fileGuid = files[0].guid || files[0].Guid;
+  if (!fileGuid) {
+    throw new Error('Export file entry has no GUID: ' + JSON.stringify(files[0]));
+  }
+
+  Logger.log('Downloading export ZIP (file ' + fileGuid + ')...');
+  var downloadUrl = this.apiBase + '/exports/' + defGuid + '/runs/' + runGuid + '/files/' + fileGuid + '/content';
+  var zipBlob = this._fetchBlob(downloadUrl);
+
+  // Unzip and find the JSON file
+  var zipFiles = Utilities.unzip(zipBlob);
+  Logger.log('Export ZIP contains ' + zipFiles.length + ' file(s)');
+
+  for (var j = 0; j < zipFiles.length; j++) {
+    var name = zipFiles[j].getName();
+    Logger.log('ZIP entry: ' + name);
+    if (name.toLowerCase().indexOf('.json') !== -1) {
+      var content = zipFiles[j].getDataAsString();
+      Logger.log('Parsing JSON export (' + Math.round(content.length / 1024) + ' KB)...');
+      return JSON.parse(content);
+    }
+  }
+
+  throw new Error('No .json file found inside export ZIP (' + zipFiles.length + ' entries)');
+};
