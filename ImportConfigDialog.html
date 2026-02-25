@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <base target="_top">
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; padding: 16px; font-size: 13px; }
+    h3 { margin: 0 0 8px; font-size: 15px; }
+    p  { color: #64748b; margin: 0 0 10px; }
+    textarea { width: 100%; height: 400px; font-family: monospace; font-size: 12px; border: 1px solid #e2e8f0; border-radius: 4px; padding: 8px; box-sizing: border-box; }
+    .btn-row { display: flex; gap: 8px; margin-top: 10px; }
+    button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; }
+    .btn-primary { background: #3b82f6; color: #fff; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-secondary { background: #e2e8f0; color: #1e293b; }
+    #result { margin-top: 10px; padding: 10px; display: none; border-radius: 4px; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <h3>Configuration Import</h3>
+  <p>Paste your configuration JSON below:</p>
+  <textarea id="configJson" placeholder="Paste JSON here..."></textarea>
+  <div class="btn-row">
+    <button class="btn-primary" onclick="importConfig()">Import</button>
+    <button class="btn-secondary" onclick="google.script.host.close()">Cancel</button>
+  </div>
+  <div id="result"></div>
+  <script>
+    function importConfig() {
+      var json = document.getElementById('configJson').value;
+      if (!json.trim()) {
+        alert('Please paste a configuration JSON');
+        return;
+      }
+      var resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.style.backgroundColor = '#e0f2fe';
+      resultDiv.style.color = '#0369a1';
+      resultDiv.textContent = 'Importing...';
+      google.script.run
+        .withSuccessHandler(function(result) {
+          if (result.success) {
+            resultDiv.style.backgroundColor = '#d4edda';
+            resultDiv.style.color = '#155724';
+            resultDiv.textContent = 'Success: ' + result.message;
+            setTimeout(function() { google.script.host.close(); }, 2000);
+          } else {
+            resultDiv.style.backgroundColor = '#f8d7da';
+            resultDiv.style.color = '#721c24';
+            resultDiv.textContent = 'Error: ' + result.message;
+          }
+        })
+        .withFailureHandler(function(error) {
+          resultDiv.style.backgroundColor = '#f8d7da';
+          resultDiv.style.color = '#721c24';
+          resultDiv.textContent = 'Error: ' + error.message;
+        })
+        .importConfiguration(json);
+    }
+  </script>
+</body>
+</html>

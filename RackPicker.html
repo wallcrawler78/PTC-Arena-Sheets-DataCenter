@@ -974,7 +974,7 @@
         <div id="arenaItemList" class="rack-list">
           <div class="loading">
             <div class="spinner"></div>
-            <div>Loading Arena items...</div>
+            <div>Fetching items from Arena...</div>
           </div>
         </div>
       </div>
@@ -1055,7 +1055,7 @@
           <div id="templateItemList" class="rack-list">
             <div class="loading">
               <div class="spinner"></div>
-              <div>Loading Arena items...</div>
+              <div>Loading templates from Arena...</div>
             </div>
           </div>
         </div>
@@ -1272,7 +1272,7 @@
           <!-- BOM tree will be inserted here -->
           <div class="loading" id="bomTreeLoading">
             <div class="spinner"></div>
-            <div>Loading BOM...</div>
+            <div id="bomTreeLoadingMessage">Connecting to Arena...</div>
           </div>
         </div>
       </div>
@@ -1540,7 +1540,7 @@
       var btn = document.getElementById('templateSearchButton');
       var originalHTML = btn.innerHTML;
       btn.disabled = true;
-      btn.innerHTML = '<div class="search-spinner"></div> Searching...';
+      btn.innerHTML = '<div class="search-spinner"></div> Searching Arena...';
 
       // Simulate search delay for UX
       setTimeout(function() {
@@ -1749,7 +1749,7 @@
       document.getElementById('templateItemList').innerHTML = `
         <div class="loading">
           <div class="spinner"></div>
-          <div>Loading Arena items...</div>
+          <div id="templateLoadingMessage">Loading templates from Arena...</div>
         </div>
       `;
 
@@ -1757,6 +1757,10 @@
         .withSuccessHandler(function(data) {
           allArenaItems = data.items || [];
           templateItems = allArenaItems;
+
+          var msg = document.getElementById('templateLoadingMessage');
+          if (msg) msg.textContent = 'Processing ' + allArenaItems.length + ' templates...';
+
           displayTemplateItems(templateItems);
         })
         .withFailureHandler(function(error) {
@@ -1846,7 +1850,7 @@
       // Show loading in modal
       var submitBtn = document.getElementById('templateSubmitBtn');
       submitBtn.disabled = true;
-      submitBtn.textContent = 'Loading preview...';
+      submitBtn.textContent = 'Fetching BOM from Arena...';
 
       document.getElementById('templatePreviewModal').classList.add('show');
 
@@ -2636,7 +2640,7 @@
       document.getElementById('arenaItemList').innerHTML = `
         <div class="loading">
           <div class="spinner"></div>
-          <div>Loading Arena items...</div>
+          <div id="arenaLoadingMessage">Fetching items from Arena...</div>
         </div>
       `;
 
@@ -2645,6 +2649,9 @@
           allArenaItems = data.items || [];
           filteredArenaItems = allArenaItems;
           arenaItemsLoaded = true;
+
+          var msg = document.getElementById('arenaLoadingMessage');
+          if (msg) msg.textContent = 'Processing ' + allArenaItems.length + ' items...';
 
           // Build lookup for quantities tab
           arenaItemsLookup = {};

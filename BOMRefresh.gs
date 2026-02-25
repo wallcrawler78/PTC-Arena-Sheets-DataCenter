@@ -57,6 +57,9 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
 
   Logger.log('compareBOMs: Starting comparison with ' + currentBOM.length + ' current items and ' + arenaBOM.length + ' Arena items');
 
+  // Show progress toast - fetching phase
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('Fetching BOM from Arena...', 'BOM Refresh', -1); } catch(e) {}
+
   // Build lookup map for current BOM
   var currentMap = {};
   currentBOM.forEach(function(item) {
@@ -76,6 +79,9 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
   } catch (cacheErr) {
     Logger.log('compareBOMs: Cache warm-up failed, will fallback per-item: ' + cacheErr.message);
   }
+
+  // Show progress toast - comparing phase
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('Comparing ' + arenaBOM.length + ' components...', 'BOM Refresh', -1); } catch(e) {}
 
   // Build Arena map using cached item details instead of per-item API calls
   var arenaMap = {};
@@ -240,7 +246,11 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
     }
   }
 
+  var totalChanges = changes.modified.length + changes.added.length + changes.removed.length;
   Logger.log('compareBOMs: Comparison complete - Modified: ' + changes.modified.length + ', Added: ' + changes.added.length + ', Removed: ' + changes.removed.length);
+
+  // Show completion toast
+  try { SpreadsheetApp.getActiveSpreadsheet().toast('BOM refresh complete — ' + totalChanges + ' change(s) found', 'BOM Refresh', 4); } catch(e) {}
 
   return changes;
 }

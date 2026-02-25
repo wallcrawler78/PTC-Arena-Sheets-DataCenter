@@ -24,19 +24,32 @@ function mapArenaItemToRackPart(arenaItem) {
 }
 
 /**
+ * Extracts a field from an Arena item object by trying multiple field names in order.
+ * Handles Arena API's inconsistent field naming across endpoints and versions.
+ * @param {Object} item - Arena API item object
+ * @param {Array<string>} fieldNames - Field names to try, in priority order
+ * @param {*} defaultValue - Returned if no field is found
+ * @param {Function=} transform - Optional value transform (e.g. parseInt)
+ * @return {*} First matching value (transformed), or defaultValue
+ */
+function _extractField(item, fieldNames, defaultValue, transform) {
+  if (!item) return defaultValue;
+  for (var i = 0; i < fieldNames.length; i++) {
+    var val = item[fieldNames[i]];
+    if (val !== undefined && val !== null && val !== '') {
+      return transform ? transform(val) : val;
+    }
+  }
+  return defaultValue;
+}
+
+/**
  * Extracts the item number from an Arena item
  * @param {Object} arenaItem - Arena API item
  * @return {string} The item number
  */
 function extractItemNumber(arenaItem) {
-  // Try various possible field names for item number
-  if (arenaItem.number) return arenaItem.number;
-  if (arenaItem.itemNumber) return arenaItem.itemNumber;
-  if (arenaItem.partNumber) return arenaItem.partNumber;
-  if (arenaItem.guid) return arenaItem.guid;
-  if (arenaItem.id) return arenaItem.id;
-
-  return 'UNKNOWN';
+  return _extractField(arenaItem, ['number', 'itemNumber', 'partNumber', 'guid', 'id'], 'UNKNOWN');
 }
 
 /**
@@ -45,12 +58,7 @@ function extractItemNumber(arenaItem) {
  * @return {string} The item name/description
  */
 function extractItemName(arenaItem) {
-  // Try various possible field names for item name
-  if (arenaItem.name) return arenaItem.name;
-  if (arenaItem.description) return arenaItem.description;
-  if (arenaItem.title) return arenaItem.title;
-
-  return 'Unknown Item';
+  return _extractField(arenaItem, ['name', 'description', 'title'], 'Unknown Item');
 }
 
 /**
@@ -59,12 +67,7 @@ function extractItemName(arenaItem) {
  * @return {number} The quantity (default 1)
  */
 function extractQuantity(arenaItem) {
-  // Try various possible field names for quantity
-  if (arenaItem.quantity) return parseInt(arenaItem.quantity, 10) || 1;
-  if (arenaItem.qty) return parseInt(arenaItem.qty, 10) || 1;
-  if (arenaItem.count) return parseInt(arenaItem.count, 10) || 1;
-
-  return 1; // Default quantity
+  return _extractField(arenaItem, ['quantity', 'qty', 'count'], 1, function(v) { return parseInt(v, 10) || 1; });
 }
 
 /**

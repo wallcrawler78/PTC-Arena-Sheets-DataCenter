@@ -642,7 +642,7 @@
 
       <div id="itemsLoading" class="loading hidden">
         <div class="spinner"></div>
-        <p>Loading items...</p>
+        <p id="itemsLoadingMessage">Fetching items from Arena...</p>
       </div>
 
       <div class="item-list" id="itemList"></div>
@@ -837,12 +837,15 @@
 
     function loadItemsData(forceRefresh) {
       document.getElementById('itemsLoading').classList.remove('hidden');
+      document.getElementById('itemsLoadingMessage').textContent = 'Fetching items from Arena...';
 
       google.script.run
         .withSuccessHandler(function(data) {
           categories = data.categories || [];
           categoryColors = data.colors || {};
           allItems = data.items || [];
+
+          document.getElementById('itemsLoadingMessage').textContent = 'Processing ' + allItems.length + ' items...';
 
           // Extract unique lifecycle phases
           var lifecycleSet = {};

@@ -446,9 +446,9 @@
         <tbody id="bomTableBody">
           <tr>
             <td colspan="7">
-              <div class="loading">
+              <div class="loading" id="bomLoading">
                 <div class="spinner"></div>
-                <div>Loading BOM...</div>
+                <div id="bomLoadingMessage">Connecting to Arena...</div>
               </div>
             </td>
           </tr>
@@ -603,6 +603,10 @@
       document.getElementById('modalTitle').textContent = 'Select Components from ' + itemNumber;
       document.getElementById('itemNumber').textContent = itemNumber;
 
+      // Update loading message
+      var loadingMsg = document.getElementById('bomLoadingMessage');
+      if (loadingMsg) loadingMsg.textContent = 'Connecting to Arena...';
+
       console.log('Fetching multi-level BOM for:', itemNumber);
 
       var startTime = Date.now();
@@ -613,6 +617,9 @@
           console.log('BOM loaded in ' + (endTime - startTime) + 'ms');
 
           if (result.success) {
+            // Show processing phase
+            if (loadingMsg) loadingMsg.textContent = 'Building component tree...';
+
             document.getElementById('itemName').textContent = result.itemName || '-';
             bomTreeData = result.bomTree;
             renderBomTable(result.bomTree);

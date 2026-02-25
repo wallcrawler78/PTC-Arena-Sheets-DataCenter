@@ -295,27 +295,10 @@ function showExportDialog() {
     return;
   }
 
-  // Create HTML output to display JSON
-  // SECURITY FIX: Use JavaScript to set textarea value to prevent XSS
-  var html = HtmlService.createHtmlOutput(
-    '<h3>Configuration Export</h3>' +
-    '<p>Copy the JSON below to back up your configuration:</p>' +
-    '<textarea id="configJson" style="width:100%; height:400px; font-family:monospace; font-size:12px;"></textarea>' +
-    '<br><br>' +
-    '<button onclick="selectAll()">Select All</button>' +
-    '<button onclick="google.script.host.close()">Close</button>' +
-    '<script>' +
-    '(function() {' +
-    '  var jsonData = ' + JSON.stringify(exportResult.json) + ';' +
-    '  document.getElementById("configJson").value = jsonData;' +
-    '})();' +
-    'function selectAll() {' +
-    '  document.getElementById("configJson").select();' +
-    '  document.execCommand("copy");' +
-    '  alert("Copied to clipboard!");' +
-    '}' +
-    '</script>'
-  )
+  // Use template file for export dialog (QA-03: extracted from inline HTML)
+  var template = HtmlService.createTemplateFromFile('ExportConfigDialog');
+  template.jsonData = exportResult.json;
+  var html = template.evaluate()
     .setWidth(600)
     .setHeight(500);
 
@@ -326,47 +309,8 @@ function showExportDialog() {
  * Shows import dialog for pasting JSON configuration
  */
 function showImportDialog() {
-  var html = HtmlService.createHtmlOutput(
-    '<h3>Configuration Import</h3>' +
-    '<p>Paste your configuration JSON below:</p>' +
-    '<textarea id="configJson" style="width:100%; height:400px; font-family:monospace; font-size:12px;"></textarea>' +
-    '<br><br>' +
-    '<button onclick="importConfig()">Import</button>' +
-    '<button onclick="google.script.host.close()">Cancel</button>' +
-    '<div id="result" style="margin-top:10px; padding:10px; display:none;"></div>' +
-    '<script>' +
-    'function importConfig() {' +
-    '  var json = document.getElementById("configJson").value;' +
-    '  if (!json.trim()) {' +
-    '    alert("Please paste a configuration JSON");' +
-    '    return;' +
-    '  }' +
-    '  google.script.run' +
-    '    .withSuccessHandler(function(result) {' +
-    '      var resultDiv = document.getElementById("result");' +
-    '      resultDiv.style.display = "block";' +
-    '      if (result.success) {' +
-    '        resultDiv.style.backgroundColor = "#d4edda";' +
-    '        resultDiv.style.color = "#155724";' +
-    '        resultDiv.innerHTML = "Success: " + result.message;' +
-    '        setTimeout(function() { google.script.host.close(); }, 2000);' +
-    '      } else {' +
-    '        resultDiv.style.backgroundColor = "#f8d7da";' +
-    '        resultDiv.style.color = "#721c24";' +
-    '        resultDiv.innerHTML = "Error: " + result.message;' +
-    '      }' +
-    '    })' +
-    '    .withFailureHandler(function(error) {' +
-    '      var resultDiv = document.getElementById("result");' +
-    '      resultDiv.style.display = "block";' +
-    '      resultDiv.style.backgroundColor = "#f8d7da";' +
-    '      resultDiv.style.color = "#721c24";' +
-    '      resultDiv.innerHTML = "Error: " + error.message;' +
-    '    })' +
-    '    .importConfiguration(json);' +
-    '}' +
-    '</script>'
-  )
+  // Use template file for import dialog (QA-03: extracted from inline HTML)
+  var html = HtmlService.createHtmlOutputFromFile('ImportConfigDialog')
     .setWidth(600)
     .setHeight(550);
 

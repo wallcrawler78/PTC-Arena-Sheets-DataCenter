@@ -1168,6 +1168,7 @@ function loadItemPickerData(forceRefresh) {
 
     // Fetch all items from Arena
     Logger.log('Fetching items from Arena...');
+    try { SpreadsheetApp.getActiveSpreadsheet().toast('Loading items from Arena...', 'Item Picker', -1); } catch(e) {}
     var rawItems = arenaClient.getAllItems(400);
     Logger.log('Received ' + rawItems.length + ' raw items from Arena');
 
@@ -1236,6 +1237,7 @@ function loadItemPickerData(forceRefresh) {
     });
 
     Logger.log('Mapped ' + mappedItems.length + ' items for Item Picker');
+    try { SpreadsheetApp.getActiveSpreadsheet().toast('Items loaded — ' + mappedItems.length + ' items ready', 'Item Picker', 3); } catch(e) {}
 
     // Log badge detection summary
     var itemsWithECO = mappedItems.filter(function(i) { return i.hasPendingChanges; }).length;
@@ -1402,6 +1404,7 @@ function refreshCurrentRackBOM() {
 
   try {
     // Fetch current BOM from Arena
+    try { SpreadsheetApp.getActiveSpreadsheet().toast('Connecting to Arena...', 'BOM Refresh', -1); } catch(e) {}
     var arenaClient = getArenaClient();
     var bomResponse = arenaClient.makeRequest('/items/' + arenaGuid + '/bom', { method: 'GET' });
     var arenaBOM = bomResponse.results || bomResponse.Results || [];
@@ -1420,7 +1423,11 @@ function refreshCurrentRackBOM() {
     Logger.log('Current sheet has ' + currentData.length + ' rows');
 
     // Compare and detect changes (pass arenaClient to fetch full item details)
+    try { SpreadsheetApp.getActiveSpreadsheet().toast('Comparing with Arena BOM...', 'BOM Refresh', -1); } catch(e) {}
     var changes = compareBOMs(currentData, arenaBOM, arenaClient);
+
+    // Show analysis complete toast
+    try { SpreadsheetApp.getActiveSpreadsheet().toast('Analysis complete', 'BOM Refresh', 2); } catch(e) {}
 
     Logger.log('Changes detected:');
     Logger.log('- Modified: ' + changes.modified.length);
