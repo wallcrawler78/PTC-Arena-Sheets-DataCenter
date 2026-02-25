@@ -55,7 +55,7 @@
       background: #f8f9fa;
       border-bottom: 1px solid #e0e0e0;
       display: grid;
-      grid-template-columns: repeat(4, 1fr);
+      grid-template-columns: repeat(5, 1fr);
       gap: 16px;
       flex-shrink: 0;
     }
@@ -405,6 +405,12 @@
         </div>
       </div>
       <div class="item-info-field">
+        <div class="item-info-label">Load Time</div>
+        <div class="item-info-value">
+          <span class="selected-count" id="loadTime" style="color: #5f6368;">—</span>
+        </div>
+      </div>
+      <div class="item-info-field">
         <div class="item-info-label">Selected Components</div>
         <div class="item-info-value">
           <span class="selected-count" id="selectedCount">0</span>
@@ -474,6 +480,7 @@
     var bomTreeSelectedIds = [];
     var bomTreeExpandedIds = [];
     var currentItemNumber = '';
+    var bomLoadStartTime = 0;
 
     // Custom columns configuration
     var customColumns = [];
@@ -616,12 +623,11 @@
 
       console.log('Fetching multi-level BOM for:', itemNumber);
 
-      var startTime = Date.now();
+      bomLoadStartTime = Date.now();
 
       google.script.run
         .withSuccessHandler(function(result) {
-          var endTime = Date.now();
-          console.log('BOM loaded in ' + (endTime - startTime) + 'ms');
+          console.log('BOM data received in ' + (Date.now() - bomLoadStartTime) + 'ms');
 
           if (result.success) {
             // Show processing phase
@@ -797,6 +803,12 @@
       if (el) {
         el.textContent = count;
         el.style.color = '#202124';
+      }
+      var timeEl = document.getElementById('loadTime');
+      if (timeEl && bomLoadStartTime > 0) {
+        var ms = Date.now() - bomLoadStartTime;
+        timeEl.textContent = ms >= 1000 ? (ms / 1000).toFixed(1) + 's' : ms + 'ms';
+        timeEl.style.color = ms > 5000 ? '#d32f2f' : ms > 2000 ? '#e65100' : '#202124';
       }
     }
 
