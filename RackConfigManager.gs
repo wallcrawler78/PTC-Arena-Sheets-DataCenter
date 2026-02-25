@@ -81,7 +81,7 @@ function createNewRackConfiguration() {
 
     // Fetch item details from Arena
     try {
-      var arenaClient = new ArenaAPIClient();
+      var arenaClient = getArenaClient();
       var item = arenaClient.getItemByNumber(rackItemNumber);
 
       if (!item) {

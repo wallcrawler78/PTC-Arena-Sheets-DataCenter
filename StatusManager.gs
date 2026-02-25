@@ -363,7 +363,7 @@ function updateOverviewTabName(sheet, status) {
 function checkAllRackStatuses() {
   Logger.log('=== CHECK ALL RACK STATUSES START ===');
 
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var results = {
     synced: 0,
     outOfSync: 0,

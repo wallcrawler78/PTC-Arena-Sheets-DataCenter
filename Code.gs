@@ -229,7 +229,7 @@ function testArenaConnection() {
   }
 
   try {
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var result = arenaClient.testConnection();
 
     if (result.success) {
@@ -293,7 +293,7 @@ function importArenaData() {
     showProgressDialog(progressMsg);
 
     // Create Arena API client
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
 
     // Fetch all items from Arena
     Logger.log('Starting Arena data import...');
@@ -797,7 +797,7 @@ function getAvailableArenaAttributes() {
   try {
     Logger.log('=== GET AVAILABLE ARENA ATTRIBUTES START ===');
 
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
 
     // Fetch attribute definitions from Arena settings (not from a specific item)
     Logger.log('Fetching attribute definitions from /settings/items/attributes');
@@ -1157,7 +1157,7 @@ function loadItemPickerData(forceRefresh) {
     }
 
     // Cache miss or force refresh - fetch from Arena
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
 
     // Fetch all items from Arena
     Logger.log('Fetching items from Arena...');
@@ -1395,7 +1395,7 @@ function refreshCurrentRackBOM() {
 
   try {
     // Fetch current BOM from Arena
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var bomResponse = arenaClient.makeRequest('/items/' + arenaGuid + '/bom', { method: 'GET' });
     var arenaBOM = bomResponse.results || bomResponse.Results || [];
 
@@ -1446,7 +1446,7 @@ function refreshCurrentRackBOM() {
     }
 
     // Build enhanced change summary with Arena link
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var rackArenaItem = arenaClient.getItemByNumber(metadata.itemNumber);
     var arenaUrl = buildArenaItemURLFromItem(rackArenaItem, metadata.itemNumber);
 
@@ -1675,7 +1675,7 @@ function getItemQuantitiesWithScope(scope) {
     Logger.log('Scanning ' + sheetsToScan.length + ' sheets');
 
     // Get all item numbers from Arena to use as a lookup
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var items = arenaClient.getAllItems(400);
 
     // Build a set of valid item numbers for fast lookup
@@ -1915,7 +1915,7 @@ function insertItemIntoRackConfig(sheet, row, item) {
   if (item.guid) {
     try {
       Logger.log('Fetching full item details from Arena for GUID: ' + item.guid);
-      var arenaClient = new ArenaAPIClient();
+      var arenaClient = getArenaClient();
       var arenaItem = arenaClient.getItem(item.guid);
 
       if (arenaItem) {
@@ -2213,7 +2213,7 @@ function createRackConfigFromArenaItem(arenaItem) {
  */
 function pullBOMForRack(sheet, itemNumber, itemGuid) {
   try {
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
 
     Logger.log('pullBOMForRack: Starting BOM pull for item: ' + itemNumber);
 

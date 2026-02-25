@@ -141,7 +141,7 @@ function saveItemColumns(columns) {
  */
 function getArenaCategories() {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
     var response = client.makeRequest('/settings/items/categories', { method: 'GET' });
 
     var categories = response.results || response.Results || [];
@@ -166,7 +166,7 @@ function getArenaCategories() {
  */
 function getArenaAttributes() {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
     var response = client.makeRequest('/settings/items/attributes', { method: 'GET' });
 
     var attributes = response.results || response.Results || [];
@@ -293,7 +293,7 @@ function validateBOMHierarchy(hierarchy) {
  */
 function getItemsByCategory(categoryGuid, lifecyclePhase) {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
 
     // Build search criteria
     var criteria = [[{
@@ -329,7 +329,7 @@ function getItemsByCategory(categoryGuid, lifecyclePhase) {
  */
 function searchItems(searchQuery, lifecyclePhase) {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
 
     var queryParams = ['searchQuery=' + encodeURIComponent(searchQuery)];
 
@@ -353,7 +353,7 @@ function searchItems(searchQuery, lifecyclePhase) {
  */
 function getLifecyclePhases() {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
     var response = client.makeRequest('/settings/items/lifecyclephases', { method: 'GET' });
 
     var phases = response.results || response.Results || [];

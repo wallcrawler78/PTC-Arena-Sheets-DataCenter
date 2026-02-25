@@ -28,7 +28,7 @@ function showRackBOMLocationSetting() {
  */
 function loadBOMPositionConfigData() {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
 
     // Get all BOM attributes from Arena
     // Fetches BOM attributes (attributes that can be set on BOM lines)
@@ -164,7 +164,7 @@ function validateBOMAttributeConfig(config) {
 
     Logger.log('Validating BOM attribute config: ' + config.name + ' (' + config.guid + ')');
 
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
 
     // 1. Fetch current BOM attributes from Arena
     var bomAttributes = getBOMAttributes(client);

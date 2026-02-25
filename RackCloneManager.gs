@@ -155,7 +155,7 @@ function createRackFromArenaTemplate(arenaItemNumber, newRackNumber, newRackName
     }
 
     // Step 2: Get BOM data (either from selectedComponents or fetch from Arena)
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var arenaBOM;
 
     if (selectedComponents && selectedComponents.length > 0) {
@@ -292,7 +292,7 @@ function getArenaTemplateBOMPreview(arenaItemNumber) {
   try {
     Logger.log('Getting Arena template preview for: ' + arenaItemNumber);
 
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var arenaItem = arenaClient.getItemByNumber(arenaItemNumber);
 
     if (!arenaItem) {
@@ -793,7 +793,7 @@ function getMultiLevelBOM(itemNumber) {
     Logger.log('=== GET MULTI-LEVEL BOM START ===');
     Logger.log('Item: ' + itemNumber);
 
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
 
     // Step 1: Get the root item
     var rootItem = arenaClient.getItemByNumber(itemNumber);
@@ -994,7 +994,7 @@ function insertComponentsIntoCurrentRack(components) {
     Logger.log('Inserting at row: ' + insertRow);
 
     // Step 3: Prepare component data for insertion
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var itemColumns = getItemColumns();
     var numCols = 6 + itemColumns.length;
 
@@ -1158,7 +1158,7 @@ function fetchItemAttributeValues(itemGuids, attributeGuids) {
     }
 
     var cache = CacheService.getScriptCache();
-    var arenaClient = new ArenaAPIClient();
+    var arenaClient = getArenaClient();
     var results = {};
 
     itemGuids.forEach(function(itemGuid) {

@@ -249,7 +249,7 @@ function pushBOM() {
 
     var parentItemNumber = response.getResponseText().trim();
 
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
     var parentGuid;
     var createNew = !parentItemNumber;
 
@@ -576,7 +576,7 @@ function consolidateBOM(rackSheetNames) {
     var quantities = aggregateQuantities(rackSheetNames);
 
     // Get item details from Arena
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
     var consolidatedLines = [];
 
     for (var itemNumber in quantities) {
@@ -1034,7 +1034,7 @@ function pushConsolidatedBOMToArena() {
   var updateExisting = (response === ui.Button.YES);
   var parentItemNumber;
   var parentGuid;
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
 
   try {
     if (updateExisting) {
@@ -1232,7 +1232,7 @@ function readBOMFromSheet(sheet) {
  * @return {Array} Array of custom rack objects {itemNumber, metadata, sheet}
  */
 function identifyCustomRacks(rackItemNumbers) {
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var customRacks = [];
 
   rackItemNumbers.forEach(function(itemNumber) {
@@ -1343,7 +1343,7 @@ function createCustomRackItems(customRacks) {
   }
 
   var ui = SpreadsheetApp.getUi();
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var createdItems = [];
 
   for (var i = 0; i < customRacks.length; i++) {
@@ -1663,7 +1663,7 @@ function scanOverviewByRow(sheet) {
  */
 function createRowItems(rowData, rowCategory) {
   var ui = SpreadsheetApp.getUi();
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var rowItems = [];
 
   for (var i = 0; i < rowData.length; i++) {
@@ -1868,7 +1868,7 @@ function createRowItems(rowData, rowCategory) {
  */
 function createPODItem(rowItems, podCategory) {
   var ui = SpreadsheetApp.getUi();
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
 
   // Prompt user for POD name
   var promptMsg = '========================================\n' +
@@ -2074,7 +2074,7 @@ function validatePreconditions(overviewSheet, customRacks) {
   // 1. Validate Arena connection
   Logger.log('1. Validating Arena connection...');
   try {
-    client = new ArenaAPIClient();
+    client = getArenaClient();
     var testEndpoint = client.makeRequest('/settings/items/attributes', { method: 'GET' });
     if (!testEndpoint) {
       errors.push('Arena connection test failed - no response from API');
@@ -2293,7 +2293,7 @@ function pushPODStructureToArena() {
 function preparePODWizardDataForModal() {
   Logger.log('Preparing POD wizard data...');
 
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var ss = SpreadsheetApp.getActiveSpreadsheet();
 
   // Find overview sheet by checking header in cell A1 (not sheet name)
@@ -2600,7 +2600,7 @@ function executePODPush(wizardData) {
   PropertiesService.getUserProperties().setProperty('podPush_lock', 'true');
   Logger.log('POD push lock acquired');
 
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   var createdRacks = [];
   var createdRows = [];
 
@@ -2870,7 +2870,7 @@ function openPODInArena() {
  * @return {Array} Array of all cached items
  */
 function getAllCachedItems() {
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
   return client.getAllCachedItems();
 }
 
@@ -2922,7 +2922,7 @@ function updateOverviewWithPODInfo(sheet, podItem, rowItems) {
   sheet.getRange(headerRow, 2).setFontWeight('bold').setBackground('#f0f0f0');
 
   // Fetch full item data from Arena for building URLs
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
 
   // Add row item links
   rowItems.forEach(function(rowItem) {
@@ -2955,7 +2955,7 @@ function repairPODAndRowBOMs() {
   Logger.log('==========================================');
 
   var ui = SpreadsheetApp.getUi();
-  var client = new ArenaAPIClient();
+  var client = getArenaClient();
 
   try {
     // Find overview sheet
