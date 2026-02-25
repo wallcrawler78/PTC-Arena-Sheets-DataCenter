@@ -55,7 +55,7 @@
       background: #f8f9fa;
       border-bottom: 1px solid #e0e0e0;
       display: grid;
-      grid-template-columns: repeat(3, 1fr);
+      grid-template-columns: repeat(4, 1fr);
       gap: 16px;
       flex-shrink: 0;
     }
@@ -398,6 +398,13 @@
         <div class="item-info-value" id="itemName">-</div>
       </div>
       <div class="item-info-field">
+        <div class="item-info-label">Items Loaded</div>
+        <div class="item-info-value">
+          <span class="selected-count" id="loadedCount" style="color: #5f6368;">—</span>
+          <span style="color: #5f6368; font-weight: normal; font-size: 13px;"> item(s)</span>
+        </div>
+      </div>
+      <div class="item-info-field">
         <div class="item-info-label">Selected Components</div>
         <div class="item-info-value">
           <span class="selected-count" id="selectedCount">0</span>
@@ -653,6 +660,9 @@
 
       tbody.innerHTML = html;
 
+      // Update the loaded-items counter in the header strip
+      updateLoadedCount(bomTree);
+
       // Lazy-load attributes for visible rows
       lazyLoadVisibleAttributes();
     }
@@ -768,6 +778,26 @@
 
     function updateSelectedCount() {
       document.getElementById('selectedCount').textContent = bomTreeSelectedIds.length;
+    }
+
+    function countAllNodes(nodes) {
+      if (!nodes) return 0;
+      var total = nodes.length;
+      nodes.forEach(function(node) {
+        if (node.children && node.children.length > 0) {
+          total += countAllNodes(node.children);
+        }
+      });
+      return total;
+    }
+
+    function updateLoadedCount(nodes) {
+      var count = countAllNodes(nodes);
+      var el = document.getElementById('loadedCount');
+      if (el) {
+        el.textContent = count;
+        el.style.color = '#202124';
+      }
     }
 
     function bomTreeSelectAll() {
