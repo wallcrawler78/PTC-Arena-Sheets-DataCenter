@@ -327,27 +327,18 @@ function createNewRackConfiguration() {
  */
 function getRackConfigMetadata(sheet) {
   if (!sheet) return null;
-
   try {
-    var label = sheet.getRange(METADATA_ROW, META_LABEL_COL).getValue();
-
-    Logger.log('getRackConfigMetadata: Checking sheet "' + sheet.getName() + '"');
-    Logger.log('getRackConfigMetadata: Cell A1 value = "' + label + '"');
-    Logger.log('getRackConfigMetadata: Expected value = "PARENT_ITEM"');
-
+    var metaValues = sheet.getRange(METADATA_ROW, META_LABEL_COL, 1, 4).getValues()[0];
+    var label = metaValues[0];
     if (label !== 'PARENT_ITEM') {
-      Logger.log('getRackConfigMetadata: NOT a rack config sheet (metadata label mismatch)');
-      return null;  // Not a rack config sheet
+      return null;
     }
-
-    Logger.log('getRackConfigMetadata: IS a rack config sheet!');
-
     return {
-      itemNumber: sheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).getValue(),
-      itemName: sheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).getValue(),
-      description: sheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).getValue(),
-      sheetName: sheet.getName(),
-      sheet: sheet
+      itemNumber:  metaValues[1],
+      itemName:    metaValues[2],
+      description: metaValues[3],
+      sheetName:   sheet.getName(),
+      sheet:       sheet
     };
   } catch (error) {
     Logger.log('Error reading metadata from sheet "' + sheet.getName() + '": ' + error.message);
@@ -596,11 +587,11 @@ function getRackConfigChildren(sheet) {
 function validateRackConfigurations() {
   var warnings = [];
   var rackConfigs = getAllRackConfigTabs();
+  var arenaClient = getArenaClient(); // Single client for all validations — Phase 1 A1 singleton
 
   rackConfigs.forEach(function(config) {
     // Check if parent item exists in Arena
     try {
-      var arenaClient = new ArenaAPIClient();
       var item = arenaClient.getItemByNumber(config.itemNumber);
       if (!item) {
         warnings.push('Rack "' + config.sheetName + '": Parent item "' + config.itemNumber + '" not found in Arena');
@@ -661,6 +652,18 @@ function populateRackBOMFromArena(sheet, arenaBOMLines, arenaClient) {
 
   var rowData = [];
 
+  Logger.log('populateRackBOMFromArena: Pre-warming item cache for ' + arenaBOMLines.length + ' BOM lines...');
+  try {
+    if (!CacheService.getScriptCache().get(ITEM_CACHE_KEY)) {
+      arenaClient.refreshItemCache();
+      Logger.log('populateRackBOMFromArena: Cache refreshed successfully');
+    } else {
+      Logger.log('populateRackBOMFromArena: Cache already warm');
+    }
+  } catch (cacheErr) {
+    Logger.log('populateRackBOMFromArena: Cache warm-up failed: ' + cacheErr.message);
+  }
+
   arenaBOMLines.forEach(function(line, index) {
     try {
       var bomItem = line.item || line.Item || {};
@@ -675,23 +678,14 @@ function populateRackBOMFromArena(sheet, arenaBOMLines, arenaClient) {
 
       Logger.log('populateRackBOMFromArena: Fetching details for ' + itemNumber);
 
-      // Fetch FULL item details
-      var fullItem = null;
-      if (itemGuid) {
+      // Use cache instead of per-item API call
+      var fullItem = arenaClient.getItemByNumber(itemNumber);
+      if (!fullItem && itemGuid) {
         try {
           fullItem = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
-        } catch (error) {
-          Logger.log('populateRackBOMFromArena: Error fetching by GUID: ' + error.message);
-        }
-      }
-
-      // Fallback to search by number
-      if (!fullItem) {
-        try {
-          fullItem = arenaClient.getItemByNumber(itemNumber);
-        } catch (error) {
-          Logger.log('populateRackBOMFromArena: Error fetching by number: ' + error.message);
-          fullItem = bomItem;  // Use lightweight data as last resort
+        } catch (e) {
+          Logger.log('populateRackBOMFromArena: Fallback API call failed for ' + itemNumber + ': ' + e.message);
+          fullItem = bomItem;
         }
       }
 

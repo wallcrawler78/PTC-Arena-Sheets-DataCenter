@@ -152,6 +152,11 @@ function onSelectionChange(e) {
   } catch (error) {
     Logger.log('Error in onSelectionChange: ' + error.message);
     Logger.log('Error stack: ' + error.stack);
+    try {
+      SpreadsheetApp.getActiveSpreadsheet().toast(
+        'History sidebar could not open: ' + error.message, 'Notice', 4
+      );
+    } catch (toastErr) { /* ignore if toast itself fails */ }
   }
 }
 
@@ -193,7 +198,10 @@ function onEdit(e) {
 
   } catch (error) {
     // Silent failure - don't interrupt user's editing experience
-    Logger.log('Error in onEdit trigger: ' + error.message);
+    Logger.log('Error in onEdit trigger [sheet: ' +
+      (e && e.range ? e.range.getSheet().getName() : 'unknown') +
+      ', row: ' + (e && e.range ? e.range.getRow() : 'unknown') +
+      ']: ' + error.message);
   }
 }
 

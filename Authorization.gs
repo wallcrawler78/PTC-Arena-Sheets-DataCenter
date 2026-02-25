@@ -36,6 +36,14 @@ function saveArenaCredentials(credentials) {
       throw new Error('Workspace ID is required');
     }
 
+    var wsId = credentials.workspaceId.trim();
+    if (!/^\d+$/.test(wsId)) {
+      throw new Error(
+        'Workspace ID must be a number (e.g. 123456789). ' +
+        'Find it in Arena under Settings → Workspace. You may have entered the workspace name instead.'
+      );
+    }
+
     // Save credentials
     userProperties.setProperty(PROPERTY_KEYS.API_BASE, ARENA_API_BASE);
     userProperties.setProperty(PROPERTY_KEYS.EMAIL, credentials.email.trim());
@@ -260,6 +268,14 @@ function loginToArena() {
       // Arena returns 'arenaSessionId' (camelCase)
       var sessionId = data.arenaSessionId || data.arena_session_id;
       if (sessionId) {
+        if (data.workspaceId !== undefined && data.workspaceId.toString() !== credentials.workspaceId.toString()) {
+          throw new Error(
+            'Workspace ID mismatch: you configured "' + credentials.workspaceId +
+            '" but Arena returned "' + data.workspaceId + '". ' +
+            'Please re-enter the correct Workspace ID in Arena → Settings.'
+          );
+        }
+
         saveSession(sessionId, new Date().getTime());
 
         Logger.log('Login successful - session created');
