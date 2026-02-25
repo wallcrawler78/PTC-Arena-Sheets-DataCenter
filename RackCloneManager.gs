@@ -1200,18 +1200,44 @@ function fetchBOMParallel(arenaClient, rootGuid) {
     depth++;
   }
 
-  // Reconstruct the tree from the flat bomCache
-  function buildTree(guid) {
-    var nodes = bomCache[guid] || [];
-    for (var n = 0; n < nodes.length; n++) {
-      var children = buildTree(nodes[n].guid);
-      nodes[n].children = children;
-      nodes[n].hasChildren = children.length > 0;
+  // Reconstruct the tree from the flat bomCache.
+  // IMPORTANT: creates NEW node objects for every tree position so that:
+  //   (a) shared assemblies (same GUID under multiple parents) get unique IDs per path
+  //   (b) the bomCache source arrays are never mutated
+  //   (c) circular references are guarded with a visited set
+  function buildTree(guid, pathPrefix, visited) {
+    if (visited && visited[guid]) return [];
+
+    var newVisited = {};
+    if (visited) { for (var vk in visited) newVisited[vk] = true; }
+    newVisited[guid] = true;
+
+    var srcNodes = bomCache[guid] || [];
+    var result = [];
+    for (var n = 0; n < srcNodes.length; n++) {
+      var src = srcNodes[n];
+      // Path-unique ID: every occurrence of the same GUID at a different tree position
+      // gets a different ID, preventing collectSelectedComponents from matching it
+      // multiple times when the user checks one checkbox.
+      var uniqueId = (pathPrefix ? pathPrefix + '/' : '') + src.guid + '_' + n;
+      var children = buildTree(src.guid, uniqueId, newVisited);
+      result.push({
+        id:          uniqueId,
+        itemNumber:  src.itemNumber,
+        itemName:    src.itemName,
+        description: src.description,
+        revision:    src.revision,
+        quantity:    src.quantity,
+        level:       src.level,
+        guid:        src.guid,
+        children:    children,
+        hasChildren: children.length > 0
+      });
     }
-    return nodes;
+    return result;
   }
 
-  return buildTree(rootGuid);
+  return buildTree(rootGuid, '', {});
 }
 
 /**
@@ -1305,38 +1331,38 @@ function insertComponentsIntoCurrentRack(components) {
       Logger.log('Could not load item cache: ' + e.message);
     }
 
-    // If custom attribute columns are configured, batch-fetch full item details in parallel
-    // (the item cache only stores base fields; additionalAttributes require a full item fetch)
-    var fullItemMap = {}; // guid → full item object with additionalAttributes
-    if (itemColumns.length > 0) {
-      var guidsToFetch = [];
-      var seenGuids = {};
-      for (var gi = 0; gi < components.length; gi++) {
-        var g = components[gi].guid;
-        if (g && !seenGuids[g]) { seenGuids[g] = true; guidsToFetch.push(g); }
-      }
+    // Always batch-fetch full item details in parallel.
+    // Category, lifecyclePhase, and additionalAttributes are NOT present in BOM line
+    // responses — they only come from GET /items/{guid}. Fetching all unique GUIDs
+    // here gives us everything we need for both base columns and custom attr columns.
+    var fullItemMap = {}; // guid → full item object
+    var guidsToFetch = [];
+    var seenGuids = {};
+    for (var gi = 0; gi < components.length; gi++) {
+      var g = components[gi].guid;
+      if (g && !seenGuids[g]) { seenGuids[g] = true; guidsToFetch.push(g); }
+    }
 
-      if (guidsToFetch.length > 0) {
-        Logger.log('Fetching full item details for ' + guidsToFetch.length + ' items (custom attrs)...');
-        var itemRequests = guidsToFetch.map(function(guid) {
-          return {
-            url: arenaClient.apiBase + '/items/' + encodeURIComponent(guid) + '?responseview=full',
-            method: 'GET',
-            headers: { 'arena_session_id': arenaClient.sessionId, 'Content-Type': 'application/json' },
-            muteHttpExceptions: true
-          };
-        });
-        try {
-          var itemResponses = UrlFetchApp.fetchAll(itemRequests);
-          for (var ri = 0; ri < guidsToFetch.length; ri++) {
-            if (itemResponses[ri].getResponseCode() === 200) {
-              fullItemMap[guidsToFetch[ri]] = JSON.parse(itemResponses[ri].getContentText());
-            }
+    if (guidsToFetch.length > 0) {
+      Logger.log('Fetching full item details for ' + guidsToFetch.length + ' items...');
+      var itemRequests = guidsToFetch.map(function(guid) {
+        return {
+          url: arenaClient.apiBase + '/items/' + encodeURIComponent(guid),
+          method: 'GET',
+          headers: { 'arena_session_id': arenaClient.sessionId, 'Content-Type': 'application/json' },
+          muteHttpExceptions: true
+        };
+      });
+      try {
+        var itemResponses = UrlFetchApp.fetchAll(itemRequests);
+        for (var ri = 0; ri < guidsToFetch.length; ri++) {
+          if (itemResponses[ri].getResponseCode() === 200) {
+            fullItemMap[guidsToFetch[ri]] = JSON.parse(itemResponses[ri].getContentText());
           }
-          Logger.log('Full item details fetched: ' + Object.keys(fullItemMap).length);
-        } catch (fetchErr) {
-          Logger.log('Could not batch-fetch item details: ' + fetchErr.message);
         }
+        Logger.log('Full item details fetched: ' + Object.keys(fullItemMap).length);
+      } catch (fetchErr) {
+        Logger.log('Could not batch-fetch item details: ' + fetchErr.message);
       }
     }
 
@@ -1353,20 +1379,28 @@ function insertComponentsIntoCurrentRack(components) {
       var lifecycle  = comp.lifecycle  || '';
       var quantity   = comp.quantity   || 1;
 
-      // Fill missing base fields from item cache
-      var cached = cachedItems[itemNumber];
-      if (cached) {
-        if (!description && cached.description) description = cached.description;
-        if (!itemName   && cached.name)         itemName    = cached.name;
-        if (!category   && cached.category)     category    = cached.category.name || cached.category.Name || '';
-        if (!lifecycle  && cached.lifecyclePhase) lifecycle = cached.lifecyclePhase.name || cached.lifecyclePhase.Name || '';
+      // Full item (always fetched above) — has category, lifecyclePhase, additionalAttributes
+      var fullItem = fullItemMap[comp.guid] || null;
+      if (fullItem) {
+        if (!description && fullItem.description)    description = fullItem.description;
+        if (!itemName    && fullItem.name)            itemName    = fullItem.name;
+        if (!category    && fullItem.category)        category    = fullItem.category.name    || fullItem.category.Name    || '';
+        if (!lifecycle   && fullItem.lifecyclePhase)  lifecycle   = fullItem.lifecyclePhase.name || fullItem.lifecyclePhase.Name || '';
+      } else {
+        // Fallback to item cache if full item fetch failed for this GUID
+        var cached = cachedItems[itemNumber];
+        if (cached) {
+          if (!description && cached.description)    description = cached.description;
+          if (!itemName    && cached.name)            itemName    = cached.name;
+          if (!category    && cached.category)        category    = cached.category.name    || cached.category.Name    || '';
+          if (!lifecycle   && cached.lifecyclePhase)  lifecycle   = cached.lifecyclePhase.name || cached.lifecyclePhase.Name || '';
+        }
       }
 
       // Build row: 6 base fields + configured attribute columns
       var rowValues = [itemNumber, itemName, description, category, lifecycle, quantity];
 
-      // Custom attribute columns — use full item when available, otherwise blank
-      var fullItem = fullItemMap[comp.guid] || null;
+      // Custom attribute columns — use full item (already fetched above)
       for (var i = 0; i < itemColumns.length; i++) {
         rowValues.push(fullItem ? (getAttributeValue(fullItem, itemColumns[i].attributeGuid) || '') : '');
       }
