@@ -30,22 +30,41 @@ var HIST_DETAIL_SUMMARY_COL = 7;        // G: Changes Summary
 var HIST_DETAIL_DETAILS_COL = 8;        // H: Details
 var HIST_DETAIL_LINK_COL = 9;           // I: Link
 
-// Event type constants
+/**
+ * History event types used in the Rack History log.
+ * Each event type records a specific action and its associated data.
+ * @enum {string}
+ */
 var HISTORY_EVENT = {
+  /** New rack configuration created from scratch. Records initial status and metadata. */
   RACK_CREATED: 'RACK_CREATED',
-  RACK_CLONED: 'RACK_CLONED',         // Rack cloned from existing rack
-  TEMPLATE_LOADED: 'TEMPLATE_LOADED', // Rack created from Arena template
+  /** Rack cloned from an existing rack configuration. Records source rack item number. */
+  RACK_CLONED: 'RACK_CLONED',
+  /** Rack created by loading an Arena item as a template. Records Arena item GUID and BOM data. */
+  TEMPLATE_LOADED: 'TEMPLATE_LOADED',
+  /** Rack sync status changed (e.g., PLACEHOLDER → SYNCED). Records before/after status. */
   STATUS_CHANGE: 'STATUS_CHANGE',
+  /** User manually edited BOM data in the sheet. Records which cells changed. */
   LOCAL_EDIT: 'LOCAL_EDIT',
+  /** User accepted Arena BOM refresh, overwriting local data. Records diff summary. */
   REFRESH_ACCEPTED: 'REFRESH_ACCEPTED',
+  /** User declined Arena BOM refresh, keeping local data. Records diff that was rejected. */
   REFRESH_DECLINED: 'REFRESH_DECLINED',
+  /** Arena BOM refresh found no changes from current sheet data. */
   REFRESH_NO_CHANGES: 'REFRESH_NO_CHANGES',
+  /** POD structure pushed to Arena. Records items and quantities sent. */
   POD_PUSH: 'POD_PUSH',
+  /** BOM pulled from Arena into sheet. Records item count and source GUID. */
   BOM_PULL: 'BOM_PULL',
+  /** User manually marked rack as synced via menu action. */
   MANUAL_SYNC: 'MANUAL_SYNC',
+  /** Batch status check ran across all racks. Records aggregate results. */
   BATCH_CHECK: 'BATCH_CHECK',
+  /** An error occurred during a sync or API operation. Records error message. */
   ERROR: 'ERROR',
+  /** BOM checksum mismatch detected between sheet and stored value. */
   CHECKSUM_MISMATCH: 'CHECKSUM_MISMATCH',
+  /** Metadata migrated from legacy Row 1 storage to History tab. */
   MIGRATION: 'MIGRATION'
 };
 

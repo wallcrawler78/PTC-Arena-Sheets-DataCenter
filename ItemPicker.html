@@ -1074,7 +1074,12 @@
       }
 
       if (filteredItems.length === 0) {
-        list.innerHTML = '<div class="empty-state"><p>No items found</p></div>';
+        list.innerHTML =
+          '<div style="text-align:center;padding:48px 20px;color:#64748b;">' +
+          '<div style="font-size:40px;margin-bottom:12px;">&#128269;</div>' +
+          '<div style="font-size:15px;font-weight:600;margin-bottom:6px;">No items found</div>' +
+          '<div style="font-size:13px;">Try a different search term, or check that you are connected to Arena.</div>' +
+          '</div>';
         updateLoadMoreButton();
         return;
       }

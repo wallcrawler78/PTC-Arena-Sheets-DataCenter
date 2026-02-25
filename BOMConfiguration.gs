@@ -84,6 +84,42 @@ function loadBOMPositionConfigData() {
 }
 
 /**
+ * Fetches all pages from a paginated Arena list endpoint.
+ * @param {ArenaAPIClient} client - Arena API client
+ * @param {string} endpoint - Base endpoint path (e.g. '/items')
+ * @param {Object} params - Optional additional query params as key-value pairs
+ * @return {Array} All results across all pages
+ */
+function _fetchAllPages(client, endpoint, params) {
+  var allResults = [];
+  var offset = 0;
+  var limit = 100;
+
+  while (true) {
+    var sep = endpoint.indexOf('?') !== -1 ? '&' : '?';
+    var url = endpoint + sep + 'limit=' + limit + '&offset=' + offset;
+
+    // Append any extra params
+    if (params) {
+      Object.keys(params).forEach(function(k) {
+        url += '&' + encodeURIComponent(k) + '=' + encodeURIComponent(params[k]);
+      });
+    }
+
+    var response = client.makeRequest(url);
+    var page = response.results || response.items || (Array.isArray(response) ? response : []);
+
+    allResults = allResults.concat(page);
+    Logger.log('_fetchAllPages: fetched ' + page.length + ' items (total so far: ' + allResults.length + ')');
+
+    if (page.length < limit || allResults.length >= 5000) break;
+    offset += limit;
+  }
+
+  return allResults;
+}
+
+/**
  * Gets BOM-level attributes from Arena
  * @param {ArenaAPIClient} client - Initialized Arena API client
  * @return {Array} Array of BOM attribute objects
@@ -93,21 +129,17 @@ function getBOMAttributes(client) {
     // Arena API endpoint for BOM-level attributes
     // BOM attributes are different from Item attributes - they appear on BOM lines
     var endpoint = '/settings/items/bom/attributes';
-    var response = client.makeRequest(endpoint);
+    var results = _fetchAllPages(client, endpoint);
 
-    if (response && response.results) {
-      return response.results.map(function(attr) {
-        return {
-          guid: attr.guid,
-          name: attr.name,
-          fieldType: attr.fieldType,
-          apiName: attr.apiName,
-          fullPath: attr.category ? (attr.category + ' > ' + attr.name) : attr.name
-        };
-      });
-    }
-
-    return [];
+    return results.map(function(attr) {
+      return {
+        guid: attr.guid,
+        name: attr.name,
+        fieldType: attr.fieldType,
+        apiName: attr.apiName,
+        fullPath: attr.category ? (attr.category + ' > ' + attr.name) : attr.name
+      };
+    });
 
   } catch (error) {
     Logger.log('Error fetching BOM attributes: ' + error.message);

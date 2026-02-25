@@ -155,15 +155,6 @@ function groupItemsByEntityType(arenaItems) {
 }
 
 /**
- * @deprecated Use groupItemsByEntityType() instead
- * Kept for backward compatibility with existing code
- */
-function groupItemsByRackType(arenaItems) {
-  Logger.log('DEPRECATED: groupItemsByRackType() called. Use groupItemsByEntityType() instead.');
-  return groupItemsByEntityType(arenaItems);
-}
-
-/**
  * Groups items by category for Legend-NET
  * @param {Array<Object>} arenaItems - Array of Arena items
  * @return {Object} Object with categories as keys

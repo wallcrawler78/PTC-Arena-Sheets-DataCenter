@@ -14,6 +14,9 @@ function getArenaClient() {
   return _arenaClientInstance;
 }
 
+// SEC-01: Gate verbose request/response logging behind a script property
+var DEBUG_MODE = PropertiesService.getScriptProperties().getProperty('DEBUG_MODE') === 'true';
+
 /**
  * Arena API Client Class
  */
@@ -69,12 +72,12 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
   }
 
   try {
-    Logger.log('Making request to: ' + url);
+    if (DEBUG_MODE) { Logger.log('Making request to: ' + url); }
     var response = UrlFetchApp.fetch(url, requestOptions);
     var responseCode = response.getResponseCode();
     var responseText = response.getContentText();
 
-    Logger.log('Response code: ' + responseCode);
+    if (DEBUG_MODE) { Logger.log('Response code: ' + responseCode); }
 
     // Check if session expired (401 unauthorized)
     if (responseCode === 401) {
@@ -225,6 +228,10 @@ ArenaAPIClient.prototype.getItems = function(options) {
  * @return {Object} Item data
  */
 ArenaAPIClient.prototype.getItem = function(itemId) {
+  // SEC-04: Validate item identifier before constructing API URL
+  if (!itemId || typeof itemId !== 'string' || itemId.trim().length === 0) {
+    throw new Error('Invalid item identifier: must be a non-empty string');
+  }
   var endpoint = '/items/' + encodeURIComponent(itemId) + '?responseview=full';
   return this.makeRequest(endpoint, { method: 'GET' });
 };
@@ -337,8 +344,11 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
 
   var endpoint = '/items/searches';
 
+  // SEC-08: Sanitize and encode user-provided search query
+  var safeQuery = encodeURIComponent((query || '').toString().trim().substring(0, 200));
+
   var queryParams = [];
-  queryParams.push('searchQuery=' + encodeURIComponent(query));
+  queryParams.push('searchQuery=' + safeQuery);
 
   if (options.limit) {
     queryParams.push('limit=' + options.limit);
@@ -454,6 +464,18 @@ ArenaAPIClient.prototype.refreshItemCache = function() {
   var cache = CacheService.getScriptCache();
   try {
     var cacheJson = JSON.stringify(itemCache);
+
+    // PERF-11: Check payload size before storing (CacheService limit is 100KB per key)
+    if (cacheJson.length > 100000) {
+      Logger.log('Item cache payload too large (' + Math.round(cacheJson.length / 1024) + 'KB), storing first 500 items only');
+      var keys = Object.keys(itemCache);
+      var trimmedCache = {};
+      for (var t = 0; t < Math.min(500, keys.length); t++) {
+        trimmedCache[keys[t]] = itemCache[keys[t]];
+      }
+      cacheJson = JSON.stringify(trimmedCache);
+    }
+
     cache.put(ITEM_CACHE_KEY, cacheJson, ITEM_CACHE_TTL);
     var elapsed = Date.now() - startTime;
     Logger.log('✓ Cached ' + allItems.length + ' items (' + Math.round(cacheJson.length / 1024) + ' KB) in ' + elapsed + 'ms (TTL: 6 hours)');

@@ -21,6 +21,16 @@ var SHEET_NAMES = {
 };
 SHEET_NAMES.HISTORY = 'Rack History'; // History tracking tab
 
+// PropertiesService keys — single source of truth
+var PROPERTY_KEYS = {
+  ARENA_CREDENTIALS: 'arenaCredentials',
+  ARENA_SESSION:     'arenaSession',
+  WORKSPACE_CONFIG:  'workspaceConfig',
+  TYPE_SYSTEM:       'typeSystemConfig',
+  FAVORITES:         'categoryFavorites',
+  COLUMN_CONFIG:     'columnConfig'
+};
+
 var CACHE_6H_SECONDS = 6 * 60 * 60; // 6 hours — used for CacheService TTL values
 
 // Rack Tab Column Headers
@@ -240,15 +250,6 @@ function determineEntityType(arenaItem) {
   }
 
   return null; // No entity type match found
-}
-
-/**
- * @deprecated Use determineEntityType() instead
- * Kept for backward compatibility with existing code
- */
-function determineRackType(arenaItem) {
-  Logger.log('DEPRECATED: determineRackType() called. Use determineEntityType() instead.');
-  return determineEntityType(arenaItem);
 }
 
 /**

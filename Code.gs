@@ -387,7 +387,7 @@ function clearCredentials() {
     'Are you sure you want to clear your Arena API credentials?',
     ui.ButtonSet.YES_NO);
 
-  if (response == ui.Button.YES) {
+  if (response === ui.Button.YES) {
     clearArenaCredentials();
     ui.alert('Cleared', 'Arena API credentials have been cleared.', ui.ButtonSet.OK);
   }

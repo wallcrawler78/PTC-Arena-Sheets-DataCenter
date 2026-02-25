@@ -165,7 +165,7 @@ function loadRackColorData() {
       return;
     }
 
-    // Look for rack pattern: item number in name
+    // Match Arena-style item numbers: 3 digits, hyphen, 4 digits (e.g., "100-0042")
     var match = sheet.getName().match(/(\d{3}-\d{4})/);
     if (match) {
       var itemNumber = match[1];

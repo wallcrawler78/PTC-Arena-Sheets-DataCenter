@@ -293,19 +293,24 @@ function showAllRackSheets() {
  * @return {Object} Backup information
  */
 function createSheetBackup() {
-  var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmmss');
-  var backupName = 'Backup_' + timestamp;
+  try {
+    var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
+    var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd_HHmmss');
+    var backupName = 'Backup_' + timestamp;
 
-  // Create a copy of the spreadsheet
-  var backup = spreadsheet.copy(backupName);
+    // Create a copy of the spreadsheet
+    var backup = spreadsheet.copy(backupName);
 
-  return {
-    success: true,
-    backupName: backupName,
-    backupUrl: backup.getUrl(),
-    timestamp: timestamp
-  };
+    return {
+      success: true,
+      backupName: backupName,
+      backupUrl: backup.getUrl(),
+      timestamp: timestamp
+    };
+  } catch (error) {
+    Logger.log('createSheetBackup failed for "' + (SpreadsheetApp.getActiveSpreadsheet() ? SpreadsheetApp.getActiveSpreadsheet().getName() : 'unknown') + '": ' + error.message);
+    throw error;
+  }
 }
 
 /**

@@ -322,6 +322,8 @@ function getArenaTemplateBOMPreview(arenaItemNumber) {
     }
 
     // Get ALL components for preview (user will select which to include)
+    // No per-item API calls needed — use BOM response data directly
+    Logger.log('RackCloneManager: Using cached item data for preview (no extra API calls)');
     var allComponents = [];
 
     arenaBOM.forEach(function(line) {

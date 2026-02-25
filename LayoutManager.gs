@@ -3,6 +3,20 @@
  * Handles creation and management of different sheet layouts (Tower, Overview, Rack Config)
  */
 
+// Standard column widths used across layout types
+var COLUMN_WIDTHS = {
+  POSITION:    80,
+  QTY:         60,
+  LEVEL:       60,
+  ROW_HEADER:  50,
+  LIFECYCLE:   100,
+  CATEGORY:    120,
+  GRID_CELL:   120,
+  ITEM_NUMBER: 150,
+  NOTES:       200,
+  ITEM_NAME:   250
+};
+
 /**
  * Creates a tower layout sheet (vertical server stacking)
  * @param {string} sheetName - Name for the new tower sheet
@@ -50,12 +64,12 @@ function createTowerLayout(sheetName) {
     .setHorizontalAlignment('center');
 
   // Set column widths
-  sheet.setColumnWidth(1, 80);  // Position
-  sheet.setColumnWidth(2, 60);  // Qty
-  sheet.setColumnWidth(3, 150); // Item Number
-  sheet.setColumnWidth(4, 250); // Item Name
-  sheet.setColumnWidth(5, 120); // Category
-  sheet.setColumnWidth(6, 200); // Notes
+  sheet.setColumnWidth(1, COLUMN_WIDTHS.POSITION);    // Position
+  sheet.setColumnWidth(2, COLUMN_WIDTHS.QTY);          // Qty
+  sheet.setColumnWidth(3, COLUMN_WIDTHS.ITEM_NUMBER);  // Item Number
+  sheet.setColumnWidth(4, COLUMN_WIDTHS.ITEM_NAME);    // Item Name
+  sheet.setColumnWidth(5, COLUMN_WIDTHS.CATEGORY);     // Category
+  sheet.setColumnWidth(6, COLUMN_WIDTHS.NOTES);        // Notes
 
   // Add initial rows (positions)
   var positions = [];
@@ -150,9 +164,9 @@ function createOverviewLayout(sheetName, rows, cols) {
     .setBackground('#f0f0f0');
 
   // Set cell sizes for grid
-  sheet.setColumnWidth(1, 50); // Row header column
+  sheet.setColumnWidth(1, COLUMN_WIDTHS.ROW_HEADER); // Row header column
   for (var c = 2; c <= cols + 1; c++) {
-    sheet.setColumnWidth(c, 120);
+    sheet.setColumnWidth(c, COLUMN_WIDTHS.GRID_CELL);
   }
 
   for (var r = startRow + 1; r <= startRow + rows; r++) {
@@ -219,13 +233,13 @@ function createRackConfigSheet(rackName) {
     .setHorizontalAlignment('center');
 
   // Set column widths
-  sheet.setColumnWidth(1, 60);  // Level
-  sheet.setColumnWidth(2, 60);  // Qty
-  sheet.setColumnWidth(3, 150); // Item Number
-  sheet.setColumnWidth(4, 250); // Item Name
-  sheet.setColumnWidth(5, 120); // Category
-  sheet.setColumnWidth(6, 100); // Lifecycle
-  sheet.setColumnWidth(7, 200); // Notes
+  sheet.setColumnWidth(1, COLUMN_WIDTHS.LEVEL);        // Level
+  sheet.setColumnWidth(2, COLUMN_WIDTHS.QTY);           // Qty
+  sheet.setColumnWidth(3, COLUMN_WIDTHS.ITEM_NUMBER);   // Item Number
+  sheet.setColumnWidth(4, COLUMN_WIDTHS.ITEM_NAME);     // Item Name
+  sheet.setColumnWidth(5, COLUMN_WIDTHS.CATEGORY);      // Category
+  sheet.setColumnWidth(6, COLUMN_WIDTHS.LIFECYCLE);     // Lifecycle
+  sheet.setColumnWidth(7, COLUMN_WIDTHS.NOTES);         // Notes
 
   // Add rack info section at top
   sheet.insertRowBefore(1);

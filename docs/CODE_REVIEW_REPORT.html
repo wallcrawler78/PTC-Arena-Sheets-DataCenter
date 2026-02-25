@@ -177,6 +177,8 @@
     <div class="meta-item"><span>Agents</span>Security · Performance · Code Quality · Arena API/UX</div>
     <div class="meta-item"><span>Phase 1 Status</span>✅ Applied 2026-02-25 — 10 fixes (A1–A5, B1–B3, C1–C3)</div>
     <div class="meta-item"><span>Phase 2 Status</span>✅ Applied 2026-02-25 — 7 fixes (A1–A3, B1–B2, C1–C2)</div>
+    <div class="meta-item"><span>Phase 3 Status</span>✅ Applied 2026-02-25 — 18 fixes (A1–A4, B1–B4, C1–C2, D1–D8, E1–E2)</div>
+    <div class="meta-item"><span>Remediation</span>~34 of 65 findings fixed · 13 deferred · See REMEDIATION_LOG.md</div>
   </div>
 </div>
 
@@ -191,6 +193,13 @@
     <div class="score-card low">     <div class="count">29</div><div class="label">Low</div></div>
     <div class="score-card total">   <div class="count">65</div><div class="label">Total Findings</div></div>
   </div>
+  <div class="scorecard" style="margin-top:16px;">
+    <div class="score-card" style="border-color:#16a34a;background:#f0fdf4;"><div class="count" style="color:#16a34a;">~34</div><div class="label">Fixed (3 phases)</div></div>
+    <div class="score-card" style="border-color:#ca8a04;background:#fefce8;"><div class="count" style="color:#ca8a04;">13</div><div class="label">Deferred</div></div>
+    <div class="score-card" style="border-color:#6366f1;background:#eef2ff;"><div class="count" style="color:#6366f1;">3</div><div class="label">Phases Complete</div></div>
+    <div class="score-card" style="border-color:#2563eb;background:#eff6ff;"><div class="count" style="color:#2563eb;">35</div><div class="label">Fixes Applied</div></div>
+  </div>
+  <p style="color:#64748b;font-size:12px;margin-top:10px;">Full fix history: <code>docs/REMEDIATION_LOG.md</code> · Last updated: 2026-02-25</p>
 
   <div class="exec-prose">
     <p>The PTC Arena Sheets DataCenter is a well-structured Google Apps Script integration with Arena PLM. No critical security vulnerabilities were found — credentials are properly stored in PropertiesService, authentication flows are solid, and CSRF is handled by the platform. However, <strong>two critical architectural issues</strong> were identified in Arena API integration design, and a <strong>significant performance bottleneck</strong> exists in rack template loading that can be reduced by 75–80%.</p>
@@ -212,16 +221,14 @@
       </ul>
     </div>
     <div class="exec-box needs">
-      <h4>⚠ Needs Attention</h4>
+      <h4>⚠ Remaining / Deferred</h4>
       <ul>
-        <li>N+1 API calls per BOM component on template load (root cause of slow loading)</li>
-        <li>No 429 rate-limit handling or exponential backoff</li>
-        <li>Mixed/inconsistent error handling patterns across files</li>
-        <li>~30 hardcoded sheet names, column indices, magic numbers</li>
-        <li>DomainApi layer missing per Arena API architecture guidance</li>
-        <li>Destructive operations (BOM clear) have no confirmation dialogs</li>
-        <li>Loading spinners absent for long API operations in UI</li>
-        <li>Raw API error messages surfaced to users</li>
+        <li><strong>API-01:</strong> DomainApi layer missing per Arena architecture guidance — deferred (major refactor)</li>
+        <li><strong>SEC-02:</strong> Password in PropertiesService — accepted (correct GAS pattern, no better option)</li>
+        <li><strong>QA-03/05/06:</strong> HTML string building, onOpen() size, duplicate extraction — deferred refactors</li>
+        <li><strong>API-03/04:</strong> Metadata-first validation, response normalisation — deferred to API layer sprint</li>
+        <li><strong>UX-01/05/06/07:</strong> Loading spinners, modal help text, keyboard nav — frontend work</li>
+        <li><strong>PERF-09/10:</strong> getActiveSpreadsheet() calls, progress feedback — low priority</li>
       </ul>
     </div>
   </div>

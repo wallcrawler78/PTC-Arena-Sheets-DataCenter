@@ -163,8 +163,7 @@ function addRackTotalsRow(rackName) {
   // Add blank row, then totals row
   var totalsRow = lastRow + 2;
 
-  sheet.getRange(totalsRow, 1).setValue(totals.totalQuantity);
-  sheet.getRange(totalsRow, 2).setValue('TOTAL ITEMS: ' + totals.totalItems);
+  sheet.getRange(totalsRow, 1, 1, 2).setValues([[totals.totalQuantity, 'TOTAL ITEMS: ' + totals.totalItems]]);
 
   // Format totals row
   var totalsRange = sheet.getRange(totalsRow, 1, 1, 4);

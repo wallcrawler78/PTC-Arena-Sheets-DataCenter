@@ -19,6 +19,20 @@ function _getBOMHierarchyName(level) {
 }
 
 /**
+ * Translates raw Arena API errors into user-friendly messages.
+ * Use for ui.alert() calls; keep raw messages in Logger.log().
+ */
+function _getFriendlyApiError(error) {
+  var msg = error ? (error.message || String(error)) : 'Unknown error';
+  if (msg.indexOf('HTTP 403') !== -1) return 'Access denied — check your Arena permissions for this item.';
+  if (msg.indexOf('HTTP 404') !== -1) return 'Item not found in Arena — it may have been deleted or the number is incorrect.';
+  if (msg.indexOf('HTTP 401') !== -1) return 'Session expired — please re-authenticate via the Arena menu.';
+  if (msg.indexOf('HTTP 429') !== -1) return 'Arena API rate limit reached — please wait a moment and try again.';
+  if (msg.indexOf('HTTP 5') !== -1) return 'Arena server error — please try again. If this persists, contact Arena support.';
+  return 'Arena error: ' + msg;
+}
+
+/**
  * Finds overview sheet by checking the title in cell A1
  * Instead of looking for "overview" in sheet name, checks for "Overview" in the header
  * This allows users to name sheets anything they want (e.g., "Boston Restaurant")
@@ -80,9 +94,19 @@ function pullBOM(itemNumber) {
     // Get the active sheet
     var sheet = SpreadsheetApp.getActiveSheet();
 
-    // Clear existing data (except headers)
+    // Confirm before clearing existing BOM data
     var lastRow = sheet.getLastRow();
     if (lastRow > 1) {
+      var ui = SpreadsheetApp.getUi();
+      var confirmed = ui.alert(
+        'Clear BOM',
+        'This will remove all current BOM items. This action cannot be undone. Continue?',
+        ui.ButtonSet.YES_NO
+      );
+      if (confirmed !== ui.Button.YES) {
+        Logger.log('BOM clear cancelled by user');
+        return;
+      }
       sheet.getRange(2, 1, lastRow - 1, sheet.getLastColumn()).clear();
     }
 
@@ -782,7 +806,7 @@ function navigateToConsolidatedBOM() {
  */
 function buildConsolidatedBOMFromOverview(overviewSheet) {
   var hierarchy = getBOMHierarchy();
-  var arenaClient = new ArenaAPIClient();
+  var arenaClient = getArenaClient();
 
   // Step 1: Scan overview sheet for all rack placements
   Logger.log('Step 1: Scanning overview sheet for rack placements...');
@@ -850,6 +874,20 @@ function buildConsolidatedBOMFromOverview(overviewSheet) {
 
   // Step 3: Fetch additional details from Arena and apply hierarchy levels
   Logger.log('Step 3: Fetching item details from Arena and applying hierarchy...');
+
+  // Pre-warm item cache before BOM consolidation loop
+  Logger.log('BOM consolidation: Pre-warming item cache...');
+  try {
+    if (!CacheService.getScriptCache().get(ITEM_CACHE_KEY)) {
+      arenaClient.refreshItemCache();
+      Logger.log('BOM consolidation: Cache refreshed successfully');
+    } else {
+      Logger.log('BOM consolidation: Cache already warm');
+    }
+  } catch (_cacheErr) {
+    Logger.log('BOM consolidation: Cache pre-warm failed: ' + _cacheErr.message);
+  }
+
   var bomLines = [];
 
   for (var itemNumber in consolidatedItems) {
@@ -1123,7 +1161,7 @@ function pushConsolidatedBOMToArena() {
   } catch (error) {
     Logger.log('Error pushing BOM to Arena: ' + error.message + '\n' + error.stack);
     ui.alert('Error',
-      'Failed to push BOM to Arena:\n\n' + error.message,
+      'Failed to push BOM to Arena:\n\n' + _getFriendlyApiError(error),
       ui.ButtonSet.OK);
   }
 }
@@ -1518,7 +1556,7 @@ function createCustomRackItems(customRacks) {
 
     } catch (error) {
       Logger.log('Error creating rack item: ' + error.message);
-      ui.alert('Error', 'Failed to create rack item: ' + error.message, ui.ButtonSet.OK);
+      ui.alert('Error', 'Failed to create rack item: ' + _getFriendlyApiError(error), ui.ButtonSet.OK);
       return { success: false, message: error.message };
     }
   }
@@ -1814,7 +1852,7 @@ function createRowItems(rowData, rowCategory) {
 
     } catch (error) {
       Logger.log('Error creating row item: ' + error.message);
-      ui.alert('Error', 'Failed to create row item: ' + error.message, ui.ButtonSet.OK);
+      ui.alert('Error', 'Failed to create row item: ' + _getFriendlyApiError(error), ui.ButtonSet.OK);
       return null;
     }
   }
@@ -1935,7 +1973,7 @@ function createPODItem(rowItems, podCategory) {
 
   } catch (error) {
     Logger.log('Error creating POD item: ' + error.message);
-    ui.alert('Error', 'Failed to create POD item: ' + error.message, ui.ButtonSet.OK);
+    ui.alert('Error', 'Failed to create POD item: ' + _getFriendlyApiError(error), ui.ButtonSet.OK);
     return null;
   }
 }
@@ -1962,7 +2000,7 @@ function attemptRollback(context, client) {
   var createdItems = context.createdItems;
 
   // Delete in reverse order: POD → Rows → Racks
-  var deleteOrder = ['POD', 'Row', 'Rack'];
+  var deleteOrder = [_getBOMHierarchyName(0), _getBOMHierarchyName(1), _getBOMHierarchyName(2)];
 
   for (var typeIdx = 0; typeIdx < deleteOrder.length; typeIdx++) {
     var itemType = deleteOrder[typeIdx];
@@ -3138,7 +3176,7 @@ function repairPODAndRowBOMs() {
 
   } catch (error) {
     Logger.log('Error repairing BOMs: ' + error.message + '\n' + error.stack);
-    ui.alert('Error', 'Failed to repair BOMs:\n\n' + error.message, ui.ButtonSet.OK);
+    ui.alert('Error', 'Failed to repair BOMs:\n\n' + _getFriendlyApiError(error), ui.ButtonSet.OK);
   }
 }
 
