@@ -7,6 +7,13 @@
 var ITEM_CACHE_KEY = 'arena_items_cache';
 var ITEM_CACHE_TTL = 6 * 60 * 60; // 6 hours in seconds (max recommended)
 
+// Singleton accessor — new code should use getArenaClient() instead of new ArenaAPIClient()
+var _arenaClientInstance = null;
+function getArenaClient() {
+  if (!_arenaClientInstance) { _arenaClientInstance = new ArenaAPIClient(); }
+  return _arenaClientInstance;
+}
+
 /**
  * Arena API Client Class
  */
@@ -22,6 +29,7 @@ var ArenaAPIClient = function() {
 
   // Get a valid session ID (will login if necessary)
   this.sessionId = getValidSessionId();
+  this._sessionRetryAttempted = false;
 };
 
 /**
@@ -70,14 +78,28 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
 
     // Check if session expired (401 unauthorized)
     if (responseCode === 401) {
-      Logger.log('Session expired, attempting to re-login...');
-      clearSession();
-      this.sessionId = getValidSessionId();
+      if (!this._sessionRetryAttempted) {
+        this._sessionRetryAttempted = true;
+        Logger.log('Session expired, attempting to re-login...');
+        clearSession();
+        this.sessionId = getValidSessionId();
 
-      // Retry the request with new session
-      headers['arena_session_id'] = this.sessionId;
-      requestOptions.headers = headers;
+        // Retry the request with new session
+        headers['arena_session_id'] = this.sessionId;
+        requestOptions.headers = headers;
 
+        response = UrlFetchApp.fetch(url, requestOptions);
+        responseCode = response.getResponseCode();
+        responseText = response.getContentText();
+      } else {
+        throw new Error('Session expired and re-login failed. Please re-authenticate via the Arena menu.');
+      }
+    }
+
+    if (responseCode === 429) {
+      var retryAfterSec = parseInt((response.getHeaders()['Retry-After'] || response.getHeaders()['retry-after'] || '10'), 10);
+      Logger.log('Rate limited by Arena API. Waiting ' + retryAfterSec + 's before retry.');
+      Utilities.sleep(retryAfterSec * 1000);
       response = UrlFetchApp.fetch(url, requestOptions);
       responseCode = response.getResponseCode();
       responseText = response.getContentText();
@@ -343,8 +365,15 @@ ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
 
     var itemCache;
     if (cachedJson) {
-      itemCache = JSON.parse(cachedJson);
-      Logger.log('Using shared cache (' + Object.keys(itemCache).length + ' items)');
+      try {
+        itemCache = JSON.parse(cachedJson);
+        if (typeof itemCache !== 'object' || Array.isArray(itemCache)) throw new Error('invalid shape');
+        Logger.log('Using shared cache (' + Object.keys(itemCache).length + ' items)');
+      } catch (parseErr) {
+        Logger.log('Item cache corrupted, refreshing: ' + parseErr.message);
+        CacheService.getScriptCache().remove(ITEM_CACHE_KEY);
+        itemCache = this.refreshItemCache();
+      }
     } else {
       // Cache miss - refresh
       itemCache = this.refreshItemCache();
@@ -584,9 +613,6 @@ ArenaAPIClient.prototype.getAllItems = function(batchSize) {
       } else {
         hasMore = false;
       }
-
-      // Add a small delay to avoid rate limiting
-      Utilities.sleep(200);
 
     } catch (error) {
       Logger.log('Error fetching items at offset ' + offset + ': ' + error.message);

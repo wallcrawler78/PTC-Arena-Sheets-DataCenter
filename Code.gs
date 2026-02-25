@@ -131,7 +131,7 @@ function onSelectionChange(e) {
     var sheet = SpreadsheetApp.getActiveSheet();
 
     // Auto-open sidebar when History tab is activated
-    if (sheet && sheet.getName() === 'Rack History') {
+    if (sheet && sheet.getName() === SHEET_NAMES.HISTORY) {
       Logger.log('Rack History tab detected - opening sidebar');
 
       // Check if sidebar already shown this session
@@ -144,7 +144,7 @@ function onSelectionChange(e) {
         Logger.log('Opening sidebar for first time this session');
         showHistoryFilterSidebar();
         // Set flag for 6 hours (cache expires after that)
-        cache.put('history_sidebar_shown', 'true', 21600);
+        cache.put('history_sidebar_shown', 'true', CACHE_6H_SECONDS);
       } else {
         Logger.log('Sidebar already shown this session - skipping auto-open');
       }
@@ -350,9 +350,14 @@ function importArenaData() {
  * @param {string} message - Progress message to display
  */
 function showProgressDialog(message) {
+  var safeMsg = message
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\n/g, '<br>');
   var html = '<div style="padding: 20px; font-family: Arial, sans-serif;">' +
             '<h3 style="color: #1a73e8;">Arena Data Import</h3>' +
-            '<p>' + message.replace(/\n/g, '<br>') + '</p>' +
+            '<p>' + safeMsg + '</p>' +
             '<p style="color: #666; font-size: 12px;">This dialog will close automatically when complete.</p>' +
             '</div>';
 

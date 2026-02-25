@@ -210,24 +210,22 @@ function highlightItemsByCategory(rackName) {
   var categoryRange = sheet.getRange(2, RACK_COLUMN_INDICES.ITEM_CATEGORY + 1, lastRow - 1, 1);
   var categories = categoryRange.getValues();
 
-  // Apply colors row by row based on category
+  // Build color arrays for bulk apply instead of per-row sheet calls
+  var backgrounds = [];
+  var fontColors = [];
   for (var i = 0; i < categories.length; i++) {
     var category = categories[i][0];
-    var rowRange = sheet.getRange(i + 2, 1, 1, 4);
-
-    // Determine color based on category
     var color = getCategoryColor(category);
-
-    if (color) {
-      rowRange.setBackground(color);
-
-      // Adjust text color for readability
-      if (isColorDark(color)) {
-        rowRange.setFontColor('#FFFFFF');
-      } else {
-        rowRange.setFontColor('#000000');
-      }
-    }
+    var rowBg = color || '#ffffff';
+    var rowFg = (color && isColorDark(color)) ? '#FFFFFF' : '#000000';
+    backgrounds.push([rowBg, rowBg, rowBg, rowBg]);
+    fontColors.push([rowFg, rowFg, rowFg, rowFg]);
+  }
+  // Single bulk call instead of N × 3 individual calls
+  if (backgrounds.length > 0) {
+    var colorRange = sheet.getRange(2, 1, backgrounds.length, 4);
+    colorRange.setBackgrounds(backgrounds);
+    colorRange.setFontColors(fontColors);
   }
 }
 

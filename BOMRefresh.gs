@@ -63,7 +63,21 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
     currentMap[item.itemNumber] = item;
   });
 
-  // Build Arena map by fetching FULL item details for each BOM line
+  // Pre-warm item cache to avoid N+1 API calls per BOM line
+  Logger.log('compareBOMs: Pre-warming item cache for ' + arenaBOM.length + ' BOM lines...');
+  try {
+    var testCacheKey = CacheService.getScriptCache().get(ITEM_CACHE_KEY);
+    if (!testCacheKey) {
+      arenaClient.refreshItemCache(); // One bulk fetch if cache is cold
+      Logger.log('compareBOMs: Cache refreshed successfully');
+    } else {
+      Logger.log('compareBOMs: Cache already warm, using existing cache');
+    }
+  } catch (cacheErr) {
+    Logger.log('compareBOMs: Cache warm-up failed, will fallback per-item: ' + cacheErr.message);
+  }
+
+  // Build Arena map using cached item details instead of per-item API calls
   var arenaMap = {};
   arenaBOM.forEach(function(line) {
     try {
@@ -76,26 +90,15 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
         return;
       }
 
-      Logger.log('compareBOMs: Fetching full details for item ' + itemNumber + ' (GUID: ' + itemGuid + ')');
-
-      // Fetch FULL item details from Arena
-      var fullItem = null;
-      if (itemGuid) {
+      // Use cache instead of per-item API call
+      var fullItem = arenaClient.getItemByNumber(itemNumber);
+      if (!fullItem && itemGuid) {
+        // Only hit API if item truly not in cache (shouldn't happen after warm-up)
         try {
           fullItem = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
-        } catch (error) {
-          Logger.log('compareBOMs: Error fetching item by GUID: ' + error.message);
-        }
-      }
-
-      // Fallback to search by number if GUID fetch failed
-      if (!fullItem) {
-        Logger.log('compareBOMs: Trying search by number for ' + itemNumber);
-        try {
-          fullItem = arenaClient.getItemByNumber(itemNumber);
-        } catch (error) {
-          Logger.log('compareBOMs: Error fetching item by number: ' + error.message);
-          fullItem = bomItem; // Fallback to lightweight BOM item
+        } catch (e) {
+          Logger.log('compareBOMs: Fallback API call failed for ' + itemNumber + ': ' + e.message);
+          fullItem = bomItem;
         }
       }
 

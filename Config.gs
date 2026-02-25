@@ -19,6 +19,9 @@ var SHEET_NAMES = {
   FULL_RACK_F: 'Full Rack F',
   FULL_RACK_G: 'Full Rack Item G'
 };
+SHEET_NAMES.HISTORY = 'Rack History'; // History tracking tab
+
+var CACHE_6H_SECONDS = 6 * 60 * 60; // 6 hours — used for CacheService TTL values
 
 // Rack Tab Column Headers
 var RACK_COLUMNS = {

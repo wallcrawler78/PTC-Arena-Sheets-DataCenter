@@ -164,10 +164,9 @@ function createNewRackConfiguration() {
 
   // Step 5: Set up metadata row (Row 1)
   Logger.log('Step 5: Setting up metadata row...');
-  newSheet.getRange(METADATA_ROW, META_LABEL_COL).setValue('PARENT_ITEM');
-  newSheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).setValue(rackItemNumber);
-  newSheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).setValue(rackItemName);
-  newSheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(rackItemDescription || '');
+  newSheet.getRange(METADATA_ROW, META_LABEL_COL, 1, 4).setValues([
+    ['PARENT_ITEM', rackItemNumber, rackItemName, rackItemDescription || '']
+  ]);
   // NOTE: E1 will be set to History link below
 
   // Format metadata row (basic info only, columns A-D)
@@ -524,9 +523,9 @@ function updateRackConfigMetadata(sheet, itemNumber, itemName, description) {
   }
 
   // Update metadata cells
-  sheet.getRange(METADATA_ROW, META_ITEM_NUM_COL).setValue(itemNumber);
-  sheet.getRange(METADATA_ROW, META_ITEM_NAME_COL).setValue(itemName);
-  sheet.getRange(METADATA_ROW, META_ITEM_DESC_COL).setValue(description);
+  sheet.getRange(METADATA_ROW, META_ITEM_NUM_COL, 1, 3).setValues([
+    [itemNumber, itemName, description]
+  ]);
 
   // Update sheet name
   var newSheetName = 'Rack - ' + itemNumber + ' (' + itemName + ')';
