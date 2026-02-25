@@ -126,18 +126,20 @@
 | — | API-03 | `pushBOM()`: replaced `searchItems()` partial match with exact `getItemByNumber()` validation before any BOM create/update |
 | — | API-04 | Added `normalizeArenaItem()` helper to ArenaAPI.gs; applied at `getItem()`, `getItemByNumber()`, `searchItems()` return boundaries |
 
-### Fixed (~42 total)
-SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-11 · QA-01, QA-02, QA-04, QA-05, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · API-02, API-03, API-04, API-05, UX-02, UX-03, UX-04, UX-05, UX-08
+### Phase Final-2 — Remaining deferred items (2026-02-25)
 
-### Deferred (by design)
+| Fix | Finding | Description |
+|-----|---------|-------------|
+| — | QA-06 | Added `_extractField()` helper to DataMapper.gs; refactored `extractItemNumber`, `extractItemName`, `extractQuantity` to use it. Zero behaviour change. |
+| — | QA-03 | Extracted inline HTML from MigrationManager.gs into ExportConfigDialog.html + ImportConfigDialog.html. Uses `createTemplateFromFile()` / `createHtmlOutputFromFile()`. |
+| — | UX-01 | Phase-specific loading messages in ItemPicker.html, RackPicker.html (7 states), BOMTreeModal.html. Text-only updates to existing elements. |
+| — | PERF-10 | Progress toasts (try/catch wrapped) added to `compareBOMs()`, `loadItemPickerData()`, `refreshCurrentRackBOM()`. Persistent toasts while running; auto-dismiss on completion. |
+
+### Fixed (~48 total)
+SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-11 · QA-01, QA-02, QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · API-02, API-03, API-04, API-05, UX-01, UX-02, UX-03, UX-04, UX-05, UX-08
+
+### Deferred (by design — 2 remaining)
 | Finding | Reason |
 |---------|--------|
-| API-01 | DomainApi layer refactor — major architectural change touching all files, deferred to dedicated sprint |
-| SEC-02 | PropertiesService is the correct GAS pattern for secret storage; no better option exists natively |
-| QA-03 | Extracting HTML string-building to templates — low security risk now SEC-03 is fixed; deferred |
-| QA-06 | Duplicate item field extraction in DataMapper — complex refactor; deferred |
-| PERF-10 | Loading progress UI feedback — frontend feature work |
-| UX-01 | Loading spinners in modals — frontend work |
-| UX-05 | Item number input validation in RackConfigManager — needs Arena item number format spec |
-| UX-06 | Help text/tooltips in modals — frontend work |
-| UX-07 | Keyboard navigation in modals — accessibility work |
+| API-01 | DomainApi layer — major architectural change touching all files; requires dedicated sprint |
+| SEC-02 | PropertiesService is the correct GAS pattern for credentials; no better native option in GAS |
