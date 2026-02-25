@@ -1293,21 +1293,51 @@ function insertComponentsIntoCurrentRack(components) {
     var itemColumns = getItemColumns();
     var numCols = 6 + itemColumns.length;
 
-    // OPTIMIZATION: Load item cache once for all lookups
-    Logger.log('Loading item cache for batch lookup...');
-    var cache = CacheService.getScriptCache();
-    var cachedJson = cache.get('arena_item_cache');
+    // Load item cache (correct key) for base-field lookups
     var cachedItems = {};
-
     try {
+      var cachedJson = CacheService.getScriptCache().get(ITEM_CACHE_KEY);
       if (cachedJson) {
         cachedItems = JSON.parse(cachedJson);
-        Logger.log('Using cached data for ' + Object.keys(cachedItems).length + ' items');
-      } else {
-        Logger.log('Cache miss - will use component data only');
+        Logger.log('Item cache loaded: ' + Object.keys(cachedItems).length + ' items');
       }
     } catch (e) {
-      Logger.log('Note: Could not load item cache, using component data only: ' + e.message);
+      Logger.log('Could not load item cache: ' + e.message);
+    }
+
+    // If custom attribute columns are configured, batch-fetch full item details in parallel
+    // (the item cache only stores base fields; additionalAttributes require a full item fetch)
+    var fullItemMap = {}; // guid → full item object with additionalAttributes
+    if (itemColumns.length > 0) {
+      var guidsToFetch = [];
+      var seenGuids = {};
+      for (var gi = 0; gi < components.length; gi++) {
+        var g = components[gi].guid;
+        if (g && !seenGuids[g]) { seenGuids[g] = true; guidsToFetch.push(g); }
+      }
+
+      if (guidsToFetch.length > 0) {
+        Logger.log('Fetching full item details for ' + guidsToFetch.length + ' items (custom attrs)...');
+        var itemRequests = guidsToFetch.map(function(guid) {
+          return {
+            url: arenaClient.apiBase + '/items/' + encodeURIComponent(guid) + '?responseview=full',
+            method: 'GET',
+            headers: { 'arena_session_id': arenaClient.sessionId, 'Content-Type': 'application/json' },
+            muteHttpExceptions: true
+          };
+        });
+        try {
+          var itemResponses = UrlFetchApp.fetchAll(itemRequests);
+          for (var ri = 0; ri < guidsToFetch.length; ri++) {
+            if (itemResponses[ri].getResponseCode() === 200) {
+              fullItemMap[guidsToFetch[ri]] = JSON.parse(itemResponses[ri].getContentText());
+            }
+          }
+          Logger.log('Full item details fetched: ' + Object.keys(fullItemMap).length);
+        } catch (fetchErr) {
+          Logger.log('Could not batch-fetch item details: ' + fetchErr.message);
+        }
+      }
     }
 
     var values = [];
@@ -1316,41 +1346,29 @@ function insertComponentsIntoCurrentRack(components) {
     var categoryColors = getCategoryColors();
 
     components.forEach(function(comp) {
-      // Use data already in component (from BOM tree fetch)
       var itemNumber = comp.itemNumber || '';
-      var itemName = comp.itemName || '';
+      var itemName   = comp.itemName   || '';
       var description = comp.description || '';
-      var category = comp.category || '';
-      var lifecycle = comp.lifecycle || '';
-      var quantity = comp.quantity || 1;
+      var category   = comp.category   || '';
+      var lifecycle  = comp.lifecycle  || '';
+      var quantity   = comp.quantity   || 1;
 
-      // OPTIMIZATION: Only look up cached item if we're missing critical data
-      if ((!category || !lifecycle) && cachedItems[itemNumber]) {
-        var cached = cachedItems[itemNumber];
-
-        if (!category && cached.category) {
-          category = cached.category.name || cached.category.Name || '';
-        }
-
-        if (!lifecycle && cached.lifecyclePhase) {
-          lifecycle = cached.lifecyclePhase.name || cached.lifecyclePhase.Name || '';
-        }
-
-        // Also update name/description if not already set
-        if (!itemName && cached.name) {
-          itemName = cached.name || cached.Name;
-        }
-        if (!description && cached.description) {
-          description = cached.description || cached.Description;
-        }
+      // Fill missing base fields from item cache
+      var cached = cachedItems[itemNumber];
+      if (cached) {
+        if (!description && cached.description) description = cached.description;
+        if (!itemName   && cached.name)         itemName    = cached.name;
+        if (!category   && cached.category)     category    = cached.category.name || cached.category.Name || '';
+        if (!lifecycle  && cached.lifecyclePhase) lifecycle = cached.lifecyclePhase.name || cached.lifecyclePhase.Name || '';
       }
 
-      // Build row values (match standard BOM format)
+      // Build row: 6 base fields + configured attribute columns
       var rowValues = [itemNumber, itemName, description, category, lifecycle, quantity];
 
-      // Add custom attribute columns (empty for now)
+      // Custom attribute columns — use full item when available, otherwise blank
+      var fullItem = fullItemMap[comp.guid] || null;
       for (var i = 0; i < itemColumns.length; i++) {
-        rowValues.push('');
+        rowValues.push(fullItem ? (getAttributeValue(fullItem, itemColumns[i].attributeGuid) || '') : '');
       }
 
       values.push(rowValues);
