@@ -812,7 +812,29 @@ ArenaAPIClient.prototype.buildArenaWebURL = function(item, itemNumber) {
 };
 
 // ═══════════════════════════════════════════════════════════════════════════
-// EXPORT API — Multi-level BOM fast path
+// PARALLEL BOM FETCH — UrlFetchApp.fetchAll() fast path
+// ═══════════════════════════════════════════════════════════════════════════
+
+/**
+ * Builds a UrlFetchApp-compatible request object for fetching one item's BOM.
+ * Used with UrlFetchApp.fetchAll() to fetch an entire BOM level in one batch.
+ * @param {string} itemGuid - Item GUID
+ * @return {Object} Request object compatible with UrlFetchApp.fetchAll
+ */
+ArenaAPIClient.prototype.bomFetchRequest = function(itemGuid) {
+  return {
+    url: this.apiBase + '/items/' + encodeURIComponent(itemGuid) + '/bom',
+    method: 'GET',
+    headers: {
+      'arena_session_id': this.sessionId,
+      'Content-Type': 'application/json'
+    },
+    muteHttpExceptions: true
+  };
+};
+
+// ═══════════════════════════════════════════════════════════════════════════
+// EXPORT API — Multi-level BOM fast path (alternative, kept for reference)
 // Uses POST /exports + run + poll + download ZIP instead of N recursive calls.
 // For a 151-item tree this reduces ~152 API calls (~70s) to ~5-8 calls (~5-12s).
 // ═══════════════════════════════════════════════════════════════════════════
@@ -909,11 +931,12 @@ ArenaAPIClient.prototype.runBOMExport = function(itemNumber, itemGuid) {
   var runResponse = this.makeRequest('/exports/' + defGuid + '/runs', {
     method: 'POST',
     payload: {
-      criteria: [{
+      // Arena requires criteria wrapped in a criterion group (double array = OR[AND[...]])
+      criteria: [[{
         attribute: 'guid',
         operator: 'IS_EQUAL_TO',
         value: itemGuid
-      }]
+      }]]
     }
   });
 

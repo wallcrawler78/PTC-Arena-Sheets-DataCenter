@@ -809,19 +809,21 @@ function getMultiLevelBOM(itemNumber) {
     var rootName = rootItem.name || rootItem.Name || '';
     Logger.log('Root item GUID: ' + rootGuid);
 
-    // Step 2: Try Export API first (~5-12s for any size vs ~N×0.5s recursive)
+    // Step 2: Parallel BFS with deduplication (primary fast path)
+    // Uses UrlFetchApp.fetchAll() to fetch each BOM level in one parallel batch.
+    // Deduplication ensures shared rack/component GUIDs are only fetched once,
+    // collapsing the ~147 sequential calls into ~4 parallel rounds (~4-8s).
     try {
-      Logger.log('Attempting Export API approach...');
-      var exportData = arenaClient.runBOMExport(itemNumber, rootGuid);
-      var bomTree = _buildBOMTreeFromExport(exportData, rootGuid);
-      Logger.log('Export API success: ' + _countBOMNodes(bomTree) + ' nodes');
+      Logger.log('Attempting parallel BFS approach...');
+      var bomTree = fetchBOMParallel(arenaClient, rootGuid);
+      Logger.log('Parallel BFS success: ' + _countBOMNodes(bomTree) + ' nodes');
       return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
-    } catch (exportErr) {
-      Logger.log('Export API failed, falling back to recursive: ' + exportErr.message);
+    } catch (parallelErr) {
+      Logger.log('Parallel BFS failed, falling back to recursive: ' + parallelErr.message);
     }
 
-    // Step 3: Fallback — recursive /items/{guid}/bom calls
-    Logger.log('Using recursive BOM approach for ' + itemNumber);
+    // Step 3: Last-resort fallback — sequential recursive /items/{guid}/bom calls
+    Logger.log('Using sequential recursive BOM approach for ' + itemNumber);
     var bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
     return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
 
@@ -1089,6 +1091,127 @@ function fetchBOMRecursive(arenaClient, itemGuid, itemData, level) {
   }
 
   return bomTree;
+}
+
+/**
+ * Fetches a multi-level BOM using breadth-first parallel requests.
+ *
+ * Key improvements over fetchBOMRecursive:
+ *  1. PARALLEL — all items at the same BOM level fetched in one UrlFetchApp.fetchAll() call
+ *  2. DEDUPLICATED — shared rack/component GUIDs fetched only once regardless of how many
+ *     parents reference them (critical: the POD has 3 rows all sharing the same rack type)
+ *
+ * For a 3-level tree (POD→Row→Rack→Component):
+ *   Old: ~147 sequential calls × ~460ms = ~68s
+ *   New: 4 parallel rounds × ~1.5s = ~6s
+ *
+ * @param {ArenaAPIClient} arenaClient
+ * @param {string} rootGuid - GUID of the root item
+ * @return {Array} Hierarchical BOM tree matching BOMTreeModal.html format
+ */
+function fetchBOMParallel(arenaClient, rootGuid) {
+  // bomCache: guid → [{node},...] — stores BOM children for every fetched item
+  // Also serves as deduplication: if guid is a key, we've already fetched (or are fetching) it
+  var bomCache = {};
+
+  // Process level by level (BFS)
+  var currentBatch = [rootGuid];
+  var depth = 0;
+  var MAX_DEPTH = 10;
+
+  while (currentBatch.length > 0 && depth < MAX_DEPTH) {
+    // Only fetch GUIDs not yet in bomCache
+    var toFetch = [];
+    for (var f = 0; f < currentBatch.length; f++) {
+      if (!bomCache.hasOwnProperty(currentBatch[f])) {
+        toFetch.push(currentBatch[f]);
+        bomCache[currentBatch[f]] = []; // Reserve slot to prevent double-fetch
+      }
+    }
+
+    Logger.log('BFS depth ' + depth + ': batch=' + currentBatch.length +
+               ', fetching=' + toFetch.length + ' (deduped ' + (currentBatch.length - toFetch.length) + ')');
+
+    if (toFetch.length === 0) { break; }
+
+    // Build and fire all requests for this level in parallel
+    var requests = [];
+    for (var r = 0; r < toFetch.length; r++) {
+      requests.push(arenaClient.bomFetchRequest(toFetch[r]));
+    }
+    var responses = UrlFetchApp.fetchAll(requests);
+
+    // Collect all child GUIDs for the next level
+    var nextBatch = [];
+
+    for (var i = 0; i < toFetch.length; i++) {
+      var parentGuid = toFetch[i];
+      var resp = responses[i];
+      var code = resp.getResponseCode();
+
+      if (code !== 200) {
+        Logger.log('BFS: BOM fetch HTTP ' + code + ' for ' + parentGuid);
+        continue; // bomCache[parentGuid] already = [], so tree builds cleanly
+      }
+
+      var data;
+      try {
+        data = JSON.parse(resp.getContentText());
+      } catch (e) {
+        Logger.log('BFS: parse error for ' + parentGuid + ': ' + e.message);
+        continue;
+      }
+
+      var lines = data.results || data.Results || [];
+      var nodes = [];
+
+      for (var j = 0; j < lines.length; j++) {
+        var line = lines[j];
+        var child = line.item || line.Item || {};
+        var childGuid = child.guid || child.Guid || '';
+
+        nodes.push({
+          id: childGuid + '_' + depth + '_' + j,
+          itemNumber:  child.number      || child.Number      || '',
+          itemName:    child.name        || child.Name        || '',
+          description: child.description || child.Description || '',
+          revision:    line.revisionNumber  || line.RevisionNumber  ||
+                       child.revisionNumber || child.RevisionNumber || '',
+          quantity:    line.quantity || line.Quantity || 1,
+          level:       depth + 1,
+          guid:        childGuid,
+          children:    [],
+          hasChildren: false
+        });
+
+        // Queue child for next round — skip if we've already processed it (dedup)
+        // Also skip if item is explicitly marked as non-assembly (no children)
+        var isAssembly = child.isAssembly !== undefined ? child.isAssembly : true;
+        if (childGuid && isAssembly !== false && !bomCache.hasOwnProperty(childGuid)) {
+          nextBatch.push(childGuid);
+        }
+      }
+
+      bomCache[parentGuid] = nodes;
+      Logger.log('BFS: ' + parentGuid + ' → ' + nodes.length + ' children');
+    }
+
+    currentBatch = nextBatch;
+    depth++;
+  }
+
+  // Reconstruct the tree from the flat bomCache
+  function buildTree(guid) {
+    var nodes = bomCache[guid] || [];
+    for (var n = 0; n < nodes.length; n++) {
+      var children = buildTree(nodes[n].guid);
+      nodes[n].children = children;
+      nodes[n].hasChildren = children.length > 0;
+    }
+    return nodes;
+  }
+
+  return buildTree(rootGuid);
 }
 
 /**
