@@ -70,7 +70,7 @@ function findOverviewSheet() {
  */
 function pullBOM(itemNumber) {
   try {
-    var client = new ArenaAPIClient();
+    var client = getArenaClient();
 
     // Find the item by number
     var searchResults = client.searchItems(itemNumber);

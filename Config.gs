@@ -21,15 +21,7 @@ var SHEET_NAMES = {
 };
 SHEET_NAMES.HISTORY = 'Rack History'; // History tracking tab
 
-// PropertiesService keys — single source of truth
-var PROPERTY_KEYS = {
-  ARENA_CREDENTIALS: 'arenaCredentials',
-  ARENA_SESSION:     'arenaSession',
-  WORKSPACE_CONFIG:  'workspaceConfig',
-  TYPE_SYSTEM:       'typeSystemConfig',
-  FAVORITES:         'categoryFavorites',
-  COLUMN_CONFIG:     'columnConfig'
-};
+// PropertiesService keys are defined in Authorization.gs (PROPERTY_KEYS) — do not re-declare here.
 
 var CACHE_6H_SECONDS = 6 * 60 * 60; // 6 hours — used for CacheService TTL values
 
