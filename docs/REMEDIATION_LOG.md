@@ -105,24 +105,37 @@
 |----------|-------|-------|----------|------|
 | Security | 8 | 7 | 1 | 0 |
 | Performance | 11 | 9 | 2 | 0 |
-| Code Quality | 15 | 12 | 3 | 0 |
-| Arena API / UX | 13 | 6 | 7 | 0 |
-| **Total** | **65+** | **~34** | **~13** | **0** |
+| Code Quality | 15 | 13 | 2 | 0 |
+| Arena API / UX | 13 | 9 | 4 | 0 |
+| **Total** | **65+** | **~42** | **~8** | **0** |
 
-### Fixed (34)
-SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-11 · QA-01, QA-02, QA-04, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · API-02, API-05, UX-02, UX-03, UX-04, UX-08
+> **Post-Phase-3 hotfixes also applied (2026-02-25):**
+> - Removed duplicate `PROPERTY_KEYS` declaration from Config.gs (critical collision with Authorization.gs)
+> - Converted all remaining `new ArenaAPIClient()` call sites (28 across 7 files) to `getArenaClient()` singleton
+> - QA-05, UX-05, API-03, API-04, PERF-09 addressed (see final-fixes section below)
 
-### Deferred
+### Phase Final — Post-review fixes + deferred items (2026-02-25)
+
+| Fix | Finding | Description |
+|-----|---------|-------------|
+| — | critical | Removed duplicate `PROPERTY_KEYS` var from Config.gs that clobbered Authorization.gs's credential key definitions |
+| — | API-02 | Completed singleton sweep: 28 remaining `new ArenaAPIClient()` across BOMBuilder.gs×10, Code.gs×6, CategoryManager.gs×5, RackCloneManager.gs×4, BOMConfiguration.gs×2, StatusManager.gs×1, RackConfigManager.gs×1 |
+| — | QA-05 | `onOpen()` refactored into 3-line caller + `_buildArenaMenu()` + `_checkFirstRunAsync()` sub-functions |
+| — | PERF-09 | Confirmed no duplicate `getActiveSpreadsheet()` calls remain after QA-05 refactor |
+| — | UX-05 | Added `_isValidArenaItemNumber()` (NNN-NNNN regex) + validation guard in `createNewRackConfiguration()` |
+| — | API-03 | `pushBOM()`: replaced `searchItems()` partial match with exact `getItemByNumber()` validation before any BOM create/update |
+| — | API-04 | Added `normalizeArenaItem()` helper to ArenaAPI.gs; applied at `getItem()`, `getItemByNumber()`, `searchItems()` return boundaries |
+
+### Fixed (~42 total)
+SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-11 · QA-01, QA-02, QA-04, QA-05, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · API-02, API-03, API-04, API-05, UX-02, UX-03, UX-04, UX-05, UX-08
+
+### Deferred (by design)
 | Finding | Reason |
 |---------|--------|
 | API-01 | DomainApi layer refactor — major architectural change touching all files, deferred to dedicated sprint |
 | SEC-02 | PropertiesService is the correct GAS pattern for secret storage; no better option exists natively |
-| QA-03 | Extracting HTML string-building to templates requires significant refactor; low security risk now that SEC-03 is fixed |
-| QA-05 | `onOpen()` split into sub-functions — safe refactor but out of scope for this session |
-| QA-06 | Duplicate item field extraction — complex DataMapper refactor; deferred |
-| API-03 | Metadata-first validation in BOMBuilder CREATE/UPDATE — needs Arena API schema review |
-| API-04 | Response field normalization — cross-file change; deferred to API layer refactor |
-| PERF-09 | `getActiveSpreadsheet()` repeated calls — addressed indirectly via singleton; full audit deferred |
+| QA-03 | Extracting HTML string-building to templates — low security risk now SEC-03 is fixed; deferred |
+| QA-06 | Duplicate item field extraction in DataMapper — complex refactor; deferred |
 | PERF-10 | Loading progress UI feedback — frontend feature work |
 | UX-01 | Loading spinners in modals — frontend work |
 | UX-05 | Item number input validation in RackConfigManager — needs Arena item number format spec |
