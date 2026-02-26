@@ -2320,6 +2320,7 @@ function preparePODWizardDataForModal() {
   Logger.log('Found ' + allRackNumbers.length + ' unique racks in overview: ' + allRackNumbers.join(', '));
 
   // Build rack config map (scan sheets ONCE)
+  var sheets = ss.getSheets();
   var rackConfigMap = {};
   sheets.forEach(function(sheet) {
     var metadata = getRackConfigMetadata(sheet);
