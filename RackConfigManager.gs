@@ -554,7 +554,8 @@ function getRackConfigChildren(sheet) {
     return [];  // No data rows
   }
 
-  var dataRange = sheet.getRange(DATA_START_ROW, 1, lastRow - HEADER_ROW, 5);  // Get first 5 columns
+  // Sheet columns: Item Number | Name | Description | Category | Lifecycle | Qty | [custom attrs...]
+  var dataRange = sheet.getRange(DATA_START_ROW, 1, lastRow - HEADER_ROW, 6);  // Get first 6 columns
   var values = dataRange.getValues();
 
   var children = [];
@@ -564,7 +565,8 @@ function getRackConfigChildren(sheet) {
     var itemName = row[1];
     var description = row[2];
     var category = row[3];
-    var qty = row[4];
+    // row[4] = Lifecycle (skip); row[5] = Qty
+    var qty = row[5];
 
     // Skip empty rows and instruction row
     if (!itemNumber || typeof itemNumber !== 'string') {
