@@ -698,7 +698,8 @@ function buildConsolidatedBOM() {
 
     // Write BOM data
     var rowData = [];
-    bomData.lines.forEach(function(line) {
+    var rackHeaderIndices = [];
+    bomData.lines.forEach(function(line, idx) {
       rowData.push([
         line.level,
         line.itemNumber,
@@ -707,13 +708,17 @@ function buildConsolidatedBOM() {
         line.quantity,
         line.category
       ]);
+      if (line.isRackHeader) {
+        rackHeaderIndices.push(idx);
+      }
     });
 
     if (rowData.length > 0) {
       newSheet.getRange(8, 1, rowData.length, headers.length).setValues(rowData);
 
-      // Apply category colors
+      // Apply category colors to non-rack-header rows only
       for (var i = 0; i < rowData.length; i++) {
+        if (rackHeaderIndices.indexOf(i) !== -1) continue;
         var category = rowData[i][5];
         var color = getCategoryColor(category);
         if (color) {
@@ -721,13 +726,19 @@ function buildConsolidatedBOM() {
         }
       }
 
-      // Format level column with indentation
+      // Apply dark header style to rack header rows
+      rackHeaderIndices.forEach(function(i) {
+        newSheet.getRange(i + 8, 1, 1, headers.length)
+          .setBackground('#37474f')
+          .setFontColor('#ffffff')
+          .setFontWeight('bold');
+      });
+
+      // Indent child rows (non-rack-headers) by one level
       for (var i = 0; i < rowData.length; i++) {
-        var level = rowData[i][0];
+        if (rackHeaderIndices.indexOf(i) !== -1) continue;
         var itemNumberCell = newSheet.getRange(i + 8, 2);
-        var currentValue = itemNumberCell.getValue();
-        var indent = '  '.repeat(level);
-        itemNumberCell.setValue(indent + currentValue);
+        itemNumberCell.setValue('  ' + itemNumberCell.getValue());
       }
     }
 
@@ -816,116 +827,107 @@ function buildConsolidatedBOMFromOverview(overviewSheet) {
     throw new Error('No rack items found in overview sheet');
   }
 
-  // Step 2: For each unique rack, get its configuration and children
-  Logger.log('Step 2: Loading rack configurations and children...');
-  var consolidatedItems = {};  // Map: itemNumber => {item data, total quantity}
+  // Step 2: Pre-warm item cache before fetching Arena details
+  Logger.log('Step 2: Pre-warming item cache...');
+  try {
+    if (!CacheService.getScriptCache().get(ITEM_CACHE_KEY)) {
+      arenaClient.refreshItemCache();
+      Logger.log('Cache refreshed successfully');
+    } else {
+      Logger.log('Cache already warm');
+    }
+  } catch (_cacheErr) {
+    Logger.log('Cache pre-warm failed: ' + _cacheErr.message);
+  }
+
+  // Step 3: Build per-rack-type sections (rack header + its children)
+  // Each rack type gets its own section so quantities are visible per rack.
+  Logger.log('Step 3: Building per-rack-type BOM sections...');
+  var bomLines = [];
+  var uniqueItemNumbers = {};
 
   for (var rackItemNumber in rackPlacements) {
     var rackCount = rackPlacements[rackItemNumber];
     Logger.log('Processing rack: ' + rackItemNumber + ' (count: ' + rackCount + ')');
 
-    // Find rack config tab
     var rackConfigSheet = findRackConfigTab(rackItemNumber);
-
     if (!rackConfigSheet) {
       Logger.log('WARNING: No rack config found for ' + rackItemNumber + ', skipping');
       continue;
     }
 
-    // Get all children from rack config
+    var rackMetadata = getRackConfigMetadata(rackConfigSheet);
+
+    // Try to fetch rack category from Arena
+    var rackCategory = '';
+    try {
+      var rackArenaItem = arenaClient.getItemByNumber(rackItemNumber);
+      if (rackArenaItem) {
+        var catObj = rackArenaItem.category || rackArenaItem.Category || {};
+        rackCategory = catObj.name || catObj.Name || '';
+      }
+    } catch (e) {
+      Logger.log('Could not fetch rack from Arena: ' + e.message);
+    }
+
+    var rackLevel = getBOMLevelForCategory(rackCategory, hierarchy) || 2;
+
+    // Rack header row (visually distinct in the sheet)
+    bomLines.push({
+      itemNumber: rackItemNumber,
+      name: rackMetadata ? rackMetadata.itemName : rackItemNumber,
+      description: rackMetadata ? rackMetadata.description : '',
+      category: rackCategory,
+      quantity: rackCount,
+      level: rackLevel,
+      isRackHeader: true
+    });
+    uniqueItemNumbers[rackItemNumber] = true;
+
+    // Children — quantities multiplied by rack instance count
     var children = getRackConfigChildren(rackConfigSheet);
     Logger.log('  Found ' + children.length + ' children in rack config');
 
-    // Add rack itself to consolidated BOM
-    var rackMetadata = getRackConfigMetadata(rackConfigSheet);
-    if (!consolidatedItems[rackItemNumber]) {
-      consolidatedItems[rackItemNumber] = {
-        itemNumber: rackItemNumber,
-        name: rackMetadata.itemName,
-        description: rackMetadata.description,
-        category: '', // Will fetch from Arena
-        quantity: 0,
-        level: 2  // Rack level (will be adjusted based on hierarchy config)
-      };
-    }
-    consolidatedItems[rackItemNumber].quantity += rackCount;
-
-    // Add children with multiplied quantities
     children.forEach(function(child) {
       var totalChildQty = child.quantity * rackCount;
+      var childCategory = child.category || '';
 
-      if (!consolidatedItems[child.itemNumber]) {
-        consolidatedItems[child.itemNumber] = {
-          itemNumber: child.itemNumber,
-          name: child.name,
-          description: child.description,
-          category: child.category,
-          quantity: 0,
-          level: 3  // Child level (will be adjusted)
-        };
+      // Fetch from Arena if category is missing
+      if (!childCategory) {
+        try {
+          var arenaItem = arenaClient.getItemByNumber(child.itemNumber);
+          if (arenaItem) {
+            var cObj = arenaItem.category || arenaItem.Category || {};
+            childCategory = cObj.name || cObj.Name || '';
+            if (!child.name) child.name = arenaItem.name || arenaItem.Name || '';
+            if (!child.description) child.description = arenaItem.description || arenaItem.Description || '';
+          }
+        } catch (e) {
+          Logger.log('Could not fetch child item from Arena: ' + e.message);
+        }
       }
 
-      consolidatedItems[child.itemNumber].quantity += totalChildQty;
+      var childLevel = getBOMLevelForCategory(childCategory, hierarchy) || 3;
+
+      bomLines.push({
+        itemNumber: child.itemNumber,
+        name: child.name || '',
+        description: child.description || '',
+        category: childCategory,
+        quantity: totalChildQty,
+        level: childLevel,
+        isRackHeader: false
+      });
+      uniqueItemNumbers[child.itemNumber] = true;
     });
   }
 
-  // Step 3: Fetch additional details from Arena and apply hierarchy levels
-  Logger.log('Step 3: Fetching item details from Arena and applying hierarchy...');
-
-  // Pre-warm item cache before BOM consolidation loop
-  Logger.log('BOM consolidation: Pre-warming item cache...');
-  try {
-    if (!CacheService.getScriptCache().get(ITEM_CACHE_KEY)) {
-      arenaClient.refreshItemCache();
-      Logger.log('BOM consolidation: Cache refreshed successfully');
-    } else {
-      Logger.log('BOM consolidation: Cache already warm');
-    }
-  } catch (_cacheErr) {
-    Logger.log('BOM consolidation: Cache pre-warm failed: ' + _cacheErr.message);
-  }
-
-  var bomLines = [];
-
-  for (var itemNumber in consolidatedItems) {
-    var item = consolidatedItems[itemNumber];
-
-    // Fetch from Arena if category not set
-    if (!item.category) {
-      try {
-        var arenaItem = arenaClient.getItemByNumber(itemNumber);
-        if (arenaItem) {
-          var categoryObj = arenaItem.category || arenaItem.Category || {};
-          item.category = categoryObj.name || categoryObj.Name || '';
-          if (!item.name) item.name = arenaItem.name || arenaItem.Name || '';
-          if (!item.description) item.description = arenaItem.description || arenaItem.Description || '';
-        }
-      } catch (error) {
-        Logger.log('Could not fetch details for ' + itemNumber + ': ' + error.message);
-      }
-    }
-
-    // Determine BOM level based on category → level mapping
-    var bomLevel = getBOMLevelForCategory(item.category, hierarchy);
-    if (bomLevel !== null) {
-      item.level = bomLevel;
-    }
-
-    bomLines.push(item);
-  }
-
-  // Step 4: Sort by level, then category, then item number
-  bomLines.sort(function(a, b) {
-    if (a.level !== b.level) return a.level - b.level;
-    if (a.category !== b.category) return a.category.localeCompare(b.category);
-    return a.itemNumber.localeCompare(b.itemNumber);
-  });
-
-  Logger.log('Built consolidated BOM with ' + bomLines.length + ' unique items');
+  Logger.log('Built consolidated BOM: ' + bomLines.length + ' rows, ' +
+    Object.keys(uniqueItemNumbers).length + ' unique items');
 
   return {
     lines: bomLines,
-    totalUniqueItems: bomLines.length,
+    totalUniqueItems: Object.keys(uniqueItemNumbers).length,
     totalRacks: getTotalRackCount(rackPlacements),
     sourceSheet: overviewSheet.getName()
   };
