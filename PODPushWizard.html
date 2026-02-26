@@ -381,7 +381,7 @@
     .loading {
       display: none;
       text-align: center;
-      padding: 40px;
+      padding: 40px 40px 32px;
     }
 
     .loading.active {
@@ -401,6 +401,47 @@
     @keyframes spin {
       0% { transform: rotate(0deg); }
       100% { transform: rotate(360deg); }
+    }
+
+    .push-timer {
+      display: none;
+      margin-top: 20px;
+      font-size: 13px;
+      color: #5f6368;
+    }
+
+    .push-timer.active {
+      display: block;
+    }
+
+    .push-timer-value {
+      font-weight: 600;
+      font-family: monospace;
+      font-size: 15px;
+      color: #202124;
+    }
+
+    .push-progress-wrap {
+      margin-top: 10px;
+      background: #e8eaed;
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+    }
+
+    .push-progress-bar {
+      height: 100%;
+      background: #1a73e8;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .push-progress-label {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #5f6368;
+      min-height: 16px;
     }
 
     .error-message {
@@ -683,6 +724,13 @@
     <div class="loading" id="loadingIndicator">
       <div class="spinner"></div>
       <div id="loadingText">Loading...</div>
+      <div class="push-timer" id="pushTimerPanel">
+        Elapsed: <span class="push-timer-value" id="pushTimerDisplay">0:00</span>
+        <div class="push-progress-wrap">
+          <div class="push-progress-bar" id="pushProgressBar"></div>
+        </div>
+        <div class="push-progress-label" id="pushProgressLabel"></div>
+      </div>
     </div>
 
     <!-- Stage 1: Racks -->
@@ -1405,6 +1453,32 @@
       document.getElementById('loadingText').textContent = 'Creating structure in Arena...';
       document.querySelector('.wizard-content').style.display = 'none';
 
+      // Show timer + progress panel
+      document.getElementById('pushTimerPanel').classList.add('active');
+      var pushStartTime = new Date();
+      var pushTimerInterval = setInterval(function() {
+        var elapsed = Math.floor((new Date() - pushStartTime) / 1000);
+        var m = Math.floor(elapsed / 60);
+        var s = elapsed % 60;
+        document.getElementById('pushTimerDisplay').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+      }, 1000);
+
+      // Poll server for progress every 1.5 seconds
+      var pushPollInterval = setInterval(function() {
+        google.script.run
+          .withSuccessHandler(function(progress) {
+            if (!progress) return;
+            var pct = progress.total > 0 ? Math.round((progress.step / progress.total) * 100) : 0;
+            document.getElementById('pushProgressBar').style.width = pct + '%';
+            document.getElementById('pushProgressLabel').textContent = progress.message || '';
+          })
+          .getPushProgress();
+      }, 1500);
+
+      // Store interval IDs for cleanup
+      window._pushTimerInterval = pushTimerInterval;
+      window._pushPollInterval = pushPollInterval;
+
       // Send to server
       google.script.run
         .withSuccessHandler(onCreateSuccess)
@@ -1412,8 +1486,14 @@
         .executePODPush(wizardData);
     }
 
+    function _stopPushIntervals() {
+      if (window._pushTimerInterval) { clearInterval(window._pushTimerInterval); window._pushTimerInterval = null; }
+      if (window._pushPollInterval)  { clearInterval(window._pushPollInterval);  window._pushPollInterval  = null; }
+    }
+
     // Success handler
     function onCreateSuccess(result) {
+      _stopPushIntervals();
       // Queue up showing completion modal (async, starts immediately)
       google.script.run.showPODPushCompletionModal();
 
@@ -1424,6 +1504,7 @@
 
     // Error handlers
     function onCreateError(error) {
+      _stopPushIntervals();
       // Re-enable button on error
       const createBtn = document.getElementById('btnCreate');
       createBtn.disabled = false;
@@ -1433,6 +1514,7 @@
 
       // Hide loading, show wizard content
       document.getElementById('loadingIndicator').classList.remove('active');
+      document.getElementById('pushTimerPanel').classList.remove('active');
       document.querySelector('.wizard-content').style.display = 'block';
 
       // Show error with special handling for lock errors

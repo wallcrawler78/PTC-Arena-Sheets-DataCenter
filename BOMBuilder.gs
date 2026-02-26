@@ -2585,6 +2585,30 @@ function transitionToWizard(wizardData) {
  * Executes the batch POD push with data from the wizard
  * This is called by the wizard after user fills in all data
  */
+/**
+ * Writes current push progress to UserProperties for client polling.
+ * @param {number} step - Current step index (0-based)
+ * @param {number} total - Total steps
+ * @param {string} message - Human-readable progress message
+ */
+function _setPushProgress(step, total, message) {
+  PropertiesService.getUserProperties().setProperty('podPush_progress', JSON.stringify({
+    step: step,
+    total: total,
+    message: message,
+    ts: new Date().getTime()
+  }));
+}
+
+/**
+ * Returns the current POD push progress for client polling.
+ * @return {Object} Progress object {step, total, message, ts}
+ */
+function getPushProgress() {
+  var json = PropertiesService.getUserProperties().getProperty('podPush_progress');
+  return json ? JSON.parse(json) : { step: 0, total: 1, message: 'Starting...', ts: 0 };
+}
+
 function executePODPush(wizardData) {
   Logger.log('==========================================');
   Logger.log('EXECUTING BATCH POD PUSH');
@@ -2600,6 +2624,12 @@ function executePODPush(wizardData) {
   PropertiesService.getUserProperties().setProperty('podPush_lock', 'true');
   Logger.log('POD push lock acquired');
 
+  // Calculate total steps for progress bar: racks + rows + 1 POD
+  var totalSteps = (wizardData.racks ? wizardData.racks.length : 0) +
+                   (wizardData.rows ? wizardData.rows.length : 0) + 1;
+  var currentStep = 0;
+  _setPushProgress(0, totalSteps, 'Starting POD push...');
+
   var client = getArenaClient();
   var createdRacks = [];
   var createdRows = [];
@@ -2612,6 +2642,7 @@ function executePODPush(wizardData) {
       var rack = wizardData.racks[i];
 
       Logger.log('Creating rack: ' + rack.itemNumber);
+      _setPushProgress(currentStep, totalSteps, 'Creating rack ' + (i + 1) + ' of ' + wizardData.racks.length + ': ' + rack.itemNumber);
 
       // Create item in Arena (without number initially)
       var newItem = client.createItem({
@@ -2651,11 +2682,12 @@ function executePODPush(wizardData) {
 
       syncBOMToArena(client, newItemGuid, bomLines);
 
-      // Update rack status
-      updateRackSheetStatus(rack.sheet, RACK_STATUS.SYNCED, newItemGuid, {
+      // Update rack status — use rackSheet (already fetched); rack.sheet is not passed through the modal
+      updateRackSheetStatus(rackSheet, RACK_STATUS.SYNCED, newItemGuid, {
         changesSummary: 'Rack created in Arena via POD push',
         details: 'Created with ' + bomLines.length + ' BOM items'
       });
+      currentStep++;
 
       createdRacks.push({
         itemNumber: rack.itemNumber,
@@ -2672,6 +2704,8 @@ function executePODPush(wizardData) {
     for (var r = 0; r < wizardData.rows.length; r++) {
       var row = wizardData.rows[r];
       var rowItemGuid, rowItemNumber;
+
+      _setPushProgress(currentStep, totalSteps, 'Processing row ' + (r + 1) + ' of ' + wizardData.rows.length + ': ' + row.name);
 
       if (row.exists) {
         // Row already exists - just update its BOM
@@ -2691,7 +2725,8 @@ function executePODPush(wizardData) {
         });
 
         rowItemGuid = rowItem.guid || rowItem.Guid;
-        rowItemNumber = rowItem.number || rowItem.Number;
+        // Fall back to GUID if Arena doesn't return number in the create response
+        rowItemNumber = rowItem.number || rowItem.Number || rowItemGuid;
         Logger.log('✓ Created row: ' + rowItemNumber);
       }
 
@@ -2715,14 +2750,16 @@ function executePODPush(wizardData) {
       Logger.log('✓ Synced BOM for row ' + rowItemNumber + ' (' + rowBomLines.length + ' racks)');
 
       createdRows.push({
-        itemNumber: rowItemNumber,
+        itemNumber: rowItemNumber,  // may be GUID string if Arena didn't return number
         guid: rowItemGuid,
         name: row.name || row.rowItemNumber
       });
+      currentStep++;
     }
 
     // STEP 3: Create or update POD
     var podItemGuid, podItemNumber;
+    _setPushProgress(currentStep, totalSteps, 'Creating POD item...');
 
     if (wizardData.pod.exists) {
       // POD already exists - just update its BOM
@@ -2742,14 +2779,19 @@ function executePODPush(wizardData) {
       });
 
       podItemGuid = podItem.guid || podItem.Guid;
-      podItemNumber = podItem.number || podItem.Number;
+      // Fall back to GUID if Arena doesn't return number in the create response
+      podItemNumber = podItem.number || podItem.Number || podItemGuid;
       Logger.log('✓ Created POD: ' + podItemNumber);
     }
 
+    _setPushProgress(currentStep, totalSteps, 'Syncing POD BOM (' + createdRows.length + ' rows)...');
+
     // Create/Update BOM for POD (all rows)
+    // itemNumber may be a GUID string for rows created this session — that's OK,
+    // syncBOMToArena only uses itemGuid for the actual API call.
     var podBomLines = createdRows.map(function(row) {
       return {
-        itemNumber: row.itemNumber,
+        itemNumber: row.itemNumber || row.guid,
         itemGuid: row.guid,
         quantity: 1,
         level: 0
@@ -2758,6 +2800,8 @@ function executePODPush(wizardData) {
 
     syncBOMToArena(client, podItemGuid, podBomLines);
     Logger.log('✓ Synced BOM for POD ' + podItemNumber + ' (' + podBomLines.length + ' rows)');
+    currentStep++;
+    _setPushProgress(currentStep, totalSteps, 'Complete!');
 
     // Store results for completion modal
     PropertiesService.getUserProperties().setProperty('podPush_results', JSON.stringify({
@@ -2785,6 +2829,7 @@ function executePODPush(wizardData) {
 
   } catch (error) {
     Logger.log('ERROR in batch POD push: ' + error.message);
+    _setPushProgress(0, 1, 'Error: ' + error.message);
     throw error;
   } finally {
     // ALWAYS clear lock, even on error
