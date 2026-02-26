@@ -289,15 +289,13 @@ ArenaAPIClient.prototype.updateItem = function(itemId, itemData) {
     payload: itemData
   });
 
-  // Remove from shared cache so it gets refreshed on next access
-  var cache = CacheService.getScriptCache();
-  var cachedJson = cache.get(ITEM_CACHE_KEY);
-  if (cachedJson) {
-    var itemCache = JSON.parse(cachedJson);
-    var itemNumber = updatedItem.number || updatedItem.Number;
-    if (itemNumber && itemCache[itemNumber]) {
+  // Remove updated item from cache so next lookup fetches fresh data
+  var itemNumber = updatedItem.number || updatedItem.Number;
+  if (itemNumber) {
+    var itemCache = this._loadItemCache();
+    if (itemCache && itemCache[itemNumber]) {
       delete itemCache[itemNumber];
-      cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
+      this._saveItemCache(itemCache);
       Logger.log('Removed ' + itemNumber + ' from shared cache after update');
     }
   }
@@ -398,22 +396,11 @@ ArenaAPIClient.prototype.searchItems = function(query, options) {
  */
 ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
   try {
-    var cache = CacheService.getScriptCache();
-    var cachedJson = cache.get(ITEM_CACHE_KEY);
-
-    var itemCache;
-    if (cachedJson) {
-      try {
-        itemCache = JSON.parse(cachedJson);
-        if (typeof itemCache !== 'object' || Array.isArray(itemCache)) throw new Error('invalid shape');
-        Logger.log('Using shared cache (' + Object.keys(itemCache).length + ' items)');
-      } catch (parseErr) {
-        Logger.log('Item cache corrupted, refreshing: ' + parseErr.message);
-        CacheService.getScriptCache().remove(ITEM_CACHE_KEY);
-        itemCache = this.refreshItemCache();
-      }
+    var itemCache = this._loadItemCache();
+    if (itemCache) {
+      Logger.log('Using shared cache (' + Object.keys(itemCache).length + ' items)');
     } else {
-      // Cache miss - refresh
+      // Cache miss — refresh
       itemCache = this.refreshItemCache();
     }
 
@@ -442,6 +429,91 @@ ArenaAPIClient.prototype.getItemByNumber = function(itemNumber) {
 };
 
 /**
+ * Loads the item cache from CacheService.
+ * Handles both the legacy single-key format and the sharded format written by _saveItemCache.
+ * @return {Object|null} The merged item cache keyed by item number, or null on miss/error.
+ */
+ArenaAPIClient.prototype._loadItemCache = function() {
+  var cache = CacheService.getScriptCache();
+  var metaJson = cache.get(ITEM_CACHE_KEY);
+  if (!metaJson) return null;
+
+  try {
+    var data = JSON.parse(metaJson);
+
+    // Sharded format: main key stores {"shards": N, "count": M}
+    if (data && typeof data.shards === 'number' && data.shards > 0) {
+      var shardKeys = [];
+      for (var s = 0; s < data.shards; s++) {
+        shardKeys.push(ITEM_CACHE_KEY + '_' + s);
+      }
+      var shardValues = cache.getAll(shardKeys);
+      var merged = {};
+      for (var ms = 0; ms < shardKeys.length; ms++) {
+        var shardJson = shardValues[shardKeys[ms]];
+        if (shardJson) {
+          var shard = JSON.parse(shardJson);
+          for (var k in shard) merged[k] = shard[k];
+        }
+      }
+      return Object.keys(merged).length > 0 ? merged : null;
+    }
+
+    // Legacy single-key format: main key stores the full cache object directly
+    if (typeof data === 'object' && !Array.isArray(data) && !data.shards) {
+      return data;
+    }
+    return null;
+  } catch (e) {
+    Logger.log('_loadItemCache: parse error: ' + e.message);
+    return null;
+  }
+};
+
+/**
+ * Saves the item cache to CacheService, automatically sharding if the payload
+ * exceeds 90KB (CacheService enforces a 100KB-per-key hard limit).
+ * Writes shard keys as ITEM_CACHE_KEY_0, _1, … and overwrites ITEM_CACHE_KEY
+ * with a manifest object {shards: N, count: M}.
+ * @param {Object} itemCache - The item cache object keyed by item number.
+ */
+ArenaAPIClient.prototype._saveItemCache = function(itemCache) {
+  var cache = CacheService.getScriptCache();
+  var MAX_SHARD_BYTES = 90000; // Leaves 10KB headroom under CacheService's 100KB limit
+
+  var keys = Object.keys(itemCache);
+  var shards = [];
+  var currentShard = {};
+  var currentSize = 2; // opening/closing braces of {}
+
+  for (var i = 0; i < keys.length; i++) {
+    var k = keys[i];
+    // Estimate serialized size of this entry: "key":value,
+    var entrySize = k.length + JSON.stringify(itemCache[k]).length + 4;
+
+    if (currentSize + entrySize > MAX_SHARD_BYTES && Object.keys(currentShard).length > 0) {
+      shards.push(currentShard);
+      currentShard = {};
+      currentSize = 2;
+    }
+    currentShard[k] = itemCache[k];
+    currentSize += entrySize;
+  }
+  if (Object.keys(currentShard).length > 0) shards.push(currentShard);
+
+  // Write each shard
+  for (var s = 0; s < shards.length; s++) {
+    cache.put(ITEM_CACHE_KEY + '_' + s, JSON.stringify(shards[s]), ITEM_CACHE_TTL);
+  }
+
+  // Manifest key (overwrites legacy single-key cache)
+  cache.put(ITEM_CACHE_KEY, JSON.stringify({ shards: shards.length, count: keys.length }), ITEM_CACHE_TTL);
+
+  var totalKB = Math.round(JSON.stringify(itemCache).length / 1024);
+  Logger.log('✓ Item cache saved: ' + keys.length + ' items, ' + totalKB + 'KB across ' + shards.length + ' shard(s)');
+};
+
+/**
  * Refreshes the shared item cache by fetching all items from Arena
  * Cache is stored in CacheService for 6 hours and shared across all features
  * @return {Object} The item cache object (keyed by item number)
@@ -462,8 +534,9 @@ ArenaAPIClient.prototype.refreshItemCache = function() {
       // Trim to essential fields for BOM/POD operations
       var categoryObj = item.category || item.Category || {};
       var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
-      var urlObj = item.url || item.Url || {};
 
+      // url omitted — never read by callers, saves ~60KB on large workspaces
+      // category.guid / lifecyclePhase.guid omitted — only names used by display code
       itemCache[itemNumber] = {
         guid: item.guid || item.Guid,
         number: itemNumber,
@@ -473,40 +546,20 @@ ArenaAPIClient.prototype.refreshItemCache = function() {
         assemblyType: item.assemblyType || item.AssemblyType || '',
         isAssembly: item.isAssembly || item.IsAssembly || false,
         category: {
-          guid: categoryObj.guid || categoryObj.Guid || '',
           name: categoryObj.name || categoryObj.Name || ''
         },
         lifecyclePhase: {
-          guid: lifecycleObj.guid || lifecycleObj.Guid || '',
           name: lifecycleObj.name || lifecycleObj.Name || ''
-        },
-        url: {
-          api: urlObj.api || urlObj.Api || '',
-          app: urlObj.app || urlObj.App || ''
         }
       };
     }
   }
 
-  // Store in CacheService (shared across all features, 6 hour TTL)
-  var cache = CacheService.getScriptCache();
+  // Store via _saveItemCache — automatically shards across multiple keys if payload > 90KB
+  var elapsed = Date.now() - startTime;
   try {
-    var cacheJson = JSON.stringify(itemCache);
-
-    // PERF-11: Check payload size before storing (CacheService limit is 100KB per key)
-    if (cacheJson.length > 100000) {
-      Logger.log('Item cache payload too large (' + Math.round(cacheJson.length / 1024) + 'KB), storing first 500 items only');
-      var keys = Object.keys(itemCache);
-      var trimmedCache = {};
-      for (var t = 0; t < Math.min(500, keys.length); t++) {
-        trimmedCache[keys[t]] = itemCache[keys[t]];
-      }
-      cacheJson = JSON.stringify(trimmedCache);
-    }
-
-    cache.put(ITEM_CACHE_KEY, cacheJson, ITEM_CACHE_TTL);
-    var elapsed = Date.now() - startTime;
-    Logger.log('✓ Cached ' + allItems.length + ' items (' + Math.round(cacheJson.length / 1024) + ' KB) in ' + elapsed + 'ms (TTL: 6 hours)');
+    this._saveItemCache(itemCache);
+    Logger.log('refreshItemCache: ' + allItems.length + ' items fetched in ' + elapsed + 'ms');
   } catch (cacheError) {
     Logger.log('⚠️ Could not cache items: ' + cacheError.message);
   }
@@ -520,6 +573,18 @@ ArenaAPIClient.prototype.refreshItemCache = function() {
  */
 ArenaAPIClient.prototype.invalidateCache = function() {
   var cache = CacheService.getScriptCache();
+  // Read manifest to discover how many shards to clear
+  var metaJson = cache.get(ITEM_CACHE_KEY);
+  if (metaJson) {
+    try {
+      var meta = JSON.parse(metaJson);
+      if (meta && typeof meta.shards === 'number') {
+        for (var s = 0; s < meta.shards; s++) {
+          cache.remove(ITEM_CACHE_KEY + '_' + s);
+        }
+      }
+    } catch (e) { /* ignore parse errors */ }
+  }
   cache.remove(ITEM_CACHE_KEY);
   Logger.log('Shared item cache invalidated');
 };
@@ -530,44 +595,33 @@ ArenaAPIClient.prototype.invalidateCache = function() {
  * @param {Object} item - The item object to add to cache
  */
 ArenaAPIClient.prototype.addItemToCache = function(item) {
-  var cache = CacheService.getScriptCache();
-  var cachedJson = cache.get(ITEM_CACHE_KEY);
+  var itemCache = this._loadItemCache();
+  if (!itemCache) return; // Nothing cached yet — skip; next access will refresh
 
-  if (cachedJson) {
-    var itemCache = JSON.parse(cachedJson);
-    var itemNumber = item.number || item.Number;
-    if (itemNumber) {
-      // Store trimmed format consistent with refreshItemCache
-      var categoryObj = item.category || item.Category || {};
-      var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
-      var urlObj = item.url || item.Url || {};
+  var itemNumber = item.number || item.Number;
+  if (!itemNumber) return;
 
-      itemCache[itemNumber] = {
-        guid: item.guid || item.Guid,
-        number: itemNumber,
-        name: item.name || item.Name || '',
-        description: item.description || item.Description || '',
-        revisionNumber: item.revisionNumber || item.RevisionNumber || '',
-        assemblyType: item.assemblyType || item.AssemblyType || '',
-        isAssembly: item.isAssembly || item.IsAssembly || false,
-        category: {
-          guid: categoryObj.guid || categoryObj.Guid || '',
-          name: categoryObj.name || categoryObj.Name || ''
-        },
-        lifecyclePhase: {
-          guid: lifecycleObj.guid || lifecycleObj.Guid || '',
-          name: lifecycleObj.name || lifecycleObj.Name || ''
-        },
-        url: {
-          api: urlObj.api || urlObj.Api || '',
-          app: urlObj.app || urlObj.App || ''
-        }
-      };
+  var categoryObj = item.category || item.Category || {};
+  var lifecycleObj = item.lifecyclePhase || item.LifecyclePhase || {};
 
-      cache.put(ITEM_CACHE_KEY, JSON.stringify(itemCache), ITEM_CACHE_TTL);
-      Logger.log('Added ' + itemNumber + ' to shared cache');
+  itemCache[itemNumber] = {
+    guid: item.guid || item.Guid,
+    number: itemNumber,
+    name: item.name || item.Name || '',
+    description: item.description || item.Description || '',
+    revisionNumber: item.revisionNumber || item.RevisionNumber || '',
+    assemblyType: item.assemblyType || item.AssemblyType || '',
+    isAssembly: item.isAssembly || item.IsAssembly || false,
+    category: {
+      name: categoryObj.name || categoryObj.Name || ''
+    },
+    lifecyclePhase: {
+      name: lifecycleObj.name || lifecycleObj.Name || ''
     }
-  }
+  };
+
+  this._saveItemCache(itemCache);
+  Logger.log('Added ' + itemNumber + ' to shared cache');
 };
 
 /**
@@ -576,19 +630,12 @@ ArenaAPIClient.prototype.addItemToCache = function(item) {
  * @return {Array} Array of all cached item objects
  */
 ArenaAPIClient.prototype.getAllCachedItems = function() {
-  var cache = CacheService.getScriptCache();
-  var cachedJson = cache.get(ITEM_CACHE_KEY);
-
-  var itemCache;
-  if (cachedJson) {
-    itemCache = JSON.parse(cachedJson);
-    Logger.log('Returning ' + Object.keys(itemCache).length + ' items from shared cache');
-  } else {
-    // Cache miss - refresh
+  var itemCache = this._loadItemCache();
+  if (!itemCache) {
+    // Cache miss — refresh
     itemCache = this.refreshItemCache();
   }
-
-  // Convert object to array of items
+  Logger.log('Returning ' + Object.keys(itemCache).length + ' items from shared cache');
   return Object.values(itemCache);
 };
 
