@@ -2831,17 +2831,14 @@ function openPODInArena() {
       throw new Error('No POD GUID found in results');
     }
 
-    // Get Arena credentials to construct URL
-    var credentials = getArenaCredentials();
-    if (!credentials) {
-      throw new Error('Arena credentials not found');
-    }
-
-    // Construct Arena item URL
+    // Construct Arena item URL using individual accessors — no full credential bundle needed here
     // API base is like: https://api.arenasolutions.com/v1
     // Web URL is like: https://app.arenasolutions.com/workspace/{workspaceId}/item/{itemGuid}
-    var apiBase = credentials.apiBase;
-    var workspaceId = credentials.workspaceId;
+    var apiBase = getApiBase();
+    var workspaceId = getWorkspaceId();
+    if (!workspaceId) {
+      throw new Error('Arena credentials not found');
+    }
 
     // Extract domain from API base and convert to app domain
     var domain = apiBase.replace(/^https?:\/\/api\./, 'https://app.').replace(/\/v\d+$/, '');

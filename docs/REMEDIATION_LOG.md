@@ -173,7 +173,27 @@
 ### Fixed (~49 total)
 SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-11 · QA-01, QA-02, QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · **API-01**, API-02, API-03, API-04, API-05, UX-01, UX-02, UX-03, UX-04, UX-05, UX-08
 
-### Deferred (by design — 1 remaining)
-| Finding | Reason |
-|---------|--------|
-| SEC-02 | PropertiesService is the correct GAS pattern for credentials; no better native option in GAS |
+---
+
+## Phase 5 — Applied 2026-02-26 (SEC-02 Credential exposure minimization)
+
+**Finding:** SEC-02 — Credentials stored in plain text in PropertiesService (unavoidable in GAS); however, the password was unnecessarily included in the `getArenaCredentials()` return value and traveled to callers that never needed it.
+
+**What was done** (improvements within GAS platform constraints):
+
+| Change | File | Description |
+|--------|------|-------------|
+| Rename `getPassword()` → `_getPassword()` | Authorization.gs | Signals internal-only; removes it from the public API surface |
+| Remove `password`/`sessionId`/`sessionTs` from `getArenaCredentials()` return | Authorization.gs | Callers get only `apiBase`, `email`, `workspaceId`. Null guard still checks password exists. |
+| `loginToArena()` reads password directly via `_getPassword()` | Authorization.gs | Only function that legitimately needs the password; not pulled from a shared bundle |
+| Replace `getArenaCredentials()` with `getApiBase()` + `getWorkspaceId()` | BOMBuilder.gs | URL-construction helper had no need for any credential bundle at all |
+
+**What was NOT changed:** The underlying PropertiesService storage — it remains the correct GAS pattern and there is no better native option in the platform.
+
+---
+
+### Fixed (~50 total)
+SEC-01, **SEC-02**, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01 through PERF-11 · QA-01 through QA-15 · API-01, API-02, API-03, API-04, API-05 · UX-01, UX-02, UX-03, UX-04, UX-05, UX-08
+
+### Deferred (by design — 0 remaining)
+All findings from the 65-finding code review have been addressed.

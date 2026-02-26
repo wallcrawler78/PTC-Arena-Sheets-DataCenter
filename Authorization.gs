@@ -81,10 +81,12 @@ function getEmail() {
 }
 
 /**
- * Retrieves the Arena password
+ * Retrieves the Arena password.
+ * Internal use only — called exclusively by loginToArena().
+ * Prefixed with _ to signal it is not part of the public API.
  * @return {string|null} The password or null if not set
  */
-function getPassword() {
+function _getPassword() {
   return PropertiesService.getUserProperties().getProperty(PROPERTY_KEYS.PASSWORD);
 }
 
@@ -161,12 +163,16 @@ function isSessionValid() {
 }
 
 /**
- * Retrieves all Arena API credentials
- * @return {Object|null} Object containing all credentials or null if not configured
+ * Retrieves non-sensitive Arena API configuration fields.
+ * Does NOT return the password — loginToArena() calls _getPassword() directly
+ * to minimize how far the plaintext credential travels in memory.
+ * Returns null if any required field (including password) is missing so that
+ * isAuthorized() / isConfigured checks still work correctly.
+ * @return {Object|null} Object with apiBase, email, workspaceId — or null if not fully configured
  */
 function getArenaCredentials() {
   var email = getEmail();
-  var password = getPassword();
+  var password = _getPassword();   // checked for existence only, not returned
   var workspaceId = getWorkspaceId();
 
   if (!email || !password || !workspaceId) {
@@ -176,10 +182,7 @@ function getArenaCredentials() {
   return {
     apiBase: getApiBase(),
     email: email,
-    password: password,
-    workspaceId: workspaceId,
-    sessionId: getSessionId(),
-    sessionTs: getSessionTimestamp()
+    workspaceId: workspaceId
   };
 }
 
@@ -240,11 +243,18 @@ function loginToArena() {
     throw new Error('Credentials not configured');
   }
 
+  // Read password directly here — the only function that needs it.
+  // Not carried through the credentials bundle to minimize exposure.
+  var password = _getPassword();
+  if (!password) {
+    throw new Error('Credentials not configured');
+  }
+
   var url = credentials.apiBase + '/login';
 
   var payload = {
     email: credentials.email,
-    password: credentials.password,
+    password: password,
     workspaceId: credentials.workspaceId
   };
 
