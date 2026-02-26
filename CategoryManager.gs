@@ -142,7 +142,7 @@ function saveItemColumns(columns) {
 function getArenaCategories() {
   try {
     var client = getArenaClient();
-    var response = client.makeRequest('/settings/items/categories', { method: 'GET' });
+    var response = client.getCategories();
 
     var categories = response.results || response.Results || [];
 
@@ -167,7 +167,7 @@ function getArenaCategories() {
 function getArenaAttributes() {
   try {
     var client = getArenaClient();
-    var response = client.makeRequest('/settings/items/attributes', { method: 'GET' });
+    var response = client.getItemAttributeSettings();
 
     var attributes = response.results || response.Results || [];
 
@@ -312,7 +312,7 @@ function getItemsByCategory(categoryGuid, lifecyclePhase) {
     }
 
     var criteriaParam = encodeURIComponent(JSON.stringify(criteria));
-    var response = client.makeRequest('/items?criteria=' + criteriaParam, { method: 'GET' });
+    var response = client.getItemsByCriteria(criteriaParam);
 
     return response.results || response.Results || [];
   } catch (error) {
@@ -331,14 +331,7 @@ function searchItems(searchQuery, lifecyclePhase) {
   try {
     var client = getArenaClient();
 
-    var queryParams = ['searchQuery=' + encodeURIComponent(searchQuery)];
-
-    if (lifecyclePhase) {
-      queryParams.push('lifecyclePhase=' + encodeURIComponent(lifecyclePhase));
-    }
-
-    var endpoint = '/items/searches?' + queryParams.join('&');
-    var response = client.makeRequest(endpoint, { method: 'GET' });
+    var response = client.searchItemsFiltered(searchQuery, lifecyclePhase);
 
     return response.results || response.Results || [];
   } catch (error) {
@@ -354,7 +347,7 @@ function searchItems(searchQuery, lifecyclePhase) {
 function getLifecyclePhases() {
   try {
     var client = getArenaClient();
-    var response = client.makeRequest('/settings/items/lifecyclephases', { method: 'GET' });
+    var response = client.getLifecyclePhases();
 
     var phases = response.results || response.Results || [];
 

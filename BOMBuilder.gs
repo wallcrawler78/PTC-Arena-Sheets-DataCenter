@@ -86,8 +86,7 @@ function pullBOM(itemNumber) {
     Logger.log('Found item: ' + itemNumber + ' (GUID: ' + itemGuid + ')');
 
     // Get the BOM for this item
-    var bomData = client.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-    var bomLines = bomData.results || bomData.Results || [];
+    var bomLines = client.getBOMLines(itemGuid);
 
     Logger.log('Retrieved ' + bomLines.length + ' BOM lines');
 
@@ -2073,7 +2072,7 @@ function validatePreconditions(overviewSheet, customRacks) {
   Logger.log('1. Validating Arena connection...');
   try {
     client = getArenaClient();
-    var testEndpoint = client.makeRequest('/settings/items/attributes', { method: 'GET' });
+    var testEndpoint = client.getItemAttributeSettings();
     if (!testEndpoint) {
       errors.push('Arena connection test failed - no response from API');
     } else {

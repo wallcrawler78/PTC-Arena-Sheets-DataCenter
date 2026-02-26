@@ -196,8 +196,7 @@ function createRackFromArenaTemplate(arenaItemNumber, newRackNumber, newRackName
 
       Logger.log('Fetching BOM for item GUID: ' + itemGuid);
 
-      var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-      arenaBOM = bomResponse.results || bomResponse.Results || [];
+      arenaBOM = arenaClient.getBOMLines(itemGuid);
     }
 
     if (!arenaBOM || arenaBOM.length === 0) {
@@ -311,8 +310,7 @@ function getArenaTemplateBOMPreview(arenaItemNumber) {
     }
 
     // Fetch BOM
-    var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-    var arenaBOM = bomResponse.results || bomResponse.Results || [];
+    var arenaBOM = arenaClient.getBOMLines(itemGuid);
 
     if (arenaBOM.length === 0) {
       return {
@@ -1021,8 +1019,7 @@ function fetchBOMRecursive(arenaClient, itemGuid, itemData, level) {
   try {
     // Fetch BOM for this item
     Logger.log('Fetching BOM for level ' + level + ': ' + itemGuid);
-    var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-    var bomLines = bomResponse.results || bomResponse.Results || [];
+    var bomLines = arenaClient.getBOMLines(itemGuid);
 
     Logger.log('Found ' + bomLines.length + ' BOM lines at level ' + level);
 
@@ -1346,12 +1343,7 @@ function insertComponentsIntoCurrentRack(components) {
     if (guidsToFetch.length > 0) {
       Logger.log('Fetching full item details for ' + guidsToFetch.length + ' items...');
       var itemRequests = guidsToFetch.map(function(guid) {
-        return {
-          url: arenaClient.apiBase + '/items/' + encodeURIComponent(guid),
-          method: 'GET',
-          headers: { 'arena_session_id': arenaClient.sessionId, 'Content-Type': 'application/json' },
-          muteHttpExceptions: true
-        };
+        return arenaClient.itemFetchRequest(guid);
       });
       try {
         var itemResponses = UrlFetchApp.fetchAll(itemRequests);
@@ -1536,10 +1528,11 @@ function fetchItemAttributeValues(itemGuids, attributeGuids) {
       // Cache miss - fetch from Arena
       try {
         Logger.log('Fetching attributes from Arena for: ' + itemGuid);
-        var itemDetails = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
+        var itemDetails = arenaClient.getItem(itemGuid);
 
-        // Extract attribute values
-        var attributes = itemDetails.attributes || itemDetails.Attributes || {};
+        // Extract attribute values (getItem normalizes; raw fields are on ._raw)
+        var rawItem = itemDetails._raw || itemDetails;
+        var attributes = rawItem.attributes || rawItem.Attributes || {};
         var attributeData = {};
 
         attributeGuids.forEach(function(attrGuid) {

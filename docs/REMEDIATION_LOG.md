@@ -135,11 +135,45 @@
 | — | UX-01 | Phase-specific loading messages in ItemPicker.html, RackPicker.html (7 states), BOMTreeModal.html. Text-only updates to existing elements. |
 | — | PERF-10 | Progress toasts (try/catch wrapped) added to `compareBOMs()`, `loadItemPickerData()`, `refreshCurrentRackBOM()`. Persistent toasts while running; auto-dismiss on completion. |
 
-### Fixed (~48 total)
-SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-11 · QA-01, QA-02, QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · API-02, API-03, API-04, API-05, UX-01, UX-02, UX-03, UX-04, UX-05, UX-08
+---
 
-### Deferred (by design — 2 remaining)
+## Phase 4 — Applied 2026-02-26 (API-01 DomainApi Layer)
+
+**Finding:** API-01 — 18 raw `makeRequest()` calls scattered across business-logic files bypassed the domain layer, coupling callers directly to URL patterns.
+
+**Approach:** Three-layer architecture completed (SessionManager → ApiClient → DomainApi).
+- Added 7 new named methods to `ArenaAPIClient` (Track A)
+- Replaced 18 raw `makeRequest()` call sites across 6 files (Track B)
+
+### Track A — ArenaAPI.gs: 7 new DomainApi methods
+| Method | Endpoint |
+|--------|----------|
+| `getBOMLines(itemGuid)` | GET /items/{guid}/bom — returns array directly |
+| `getItemAttributeSettings()` | GET /settings/items/attributes |
+| `getCategories()` | GET /settings/items/categories |
+| `getLifecyclePhases()` | GET /settings/items/lifecyclephases |
+| `getItemsByCriteria(criteriaParam)` | GET /items?criteria=... |
+| `searchItemsFiltered(query, lifecyclePhase)` | GET /items/searches?searchQuery=... |
+| `itemFetchRequest(itemGuid)` | UrlFetchApp request object for parallel fetchAll |
+
+### Track B — 18 call-site replacements
+| File | Changes |
+|------|---------|
+| Code.gs | 3 — `getItemAttributeSettings()`, `getBOMLines()` ×2 |
+| BOMBuilder.gs | 2 — `getBOMLines()`, `getItemAttributeSettings()` |
+| BOMRefresh.gs | 1 — `getItem()` |
+| CategoryManager.gs | 5 — `getCategories()`, `getItemAttributeSettings()`, `getItemsByCriteria()`, `searchItemsFiltered()`, `getLifecyclePhases()` |
+| RackCloneManager.gs | 5 — `getBOMLines()` ×3, `itemFetchRequest()`, `getItem()` |
+| RackConfigManager.gs | 2 — `getBOMLines()`, `getItem()` |
+
+**Note:** `fetchItemAttributeValues` (RackCloneManager) accesses raw attributes via `itemDetails._raw || itemDetails` after switching to `getItem()` (which normalizes the response).
+
+---
+
+### Fixed (~49 total)
+SEC-01, SEC-03, SEC-04, SEC-05, SEC-06, SEC-07, SEC-08 · PERF-01, PERF-02, PERF-03, PERF-04, PERF-05, PERF-06, PERF-07, PERF-08, PERF-09, PERF-10, PERF-11 · QA-01, QA-02, QA-03, QA-04, QA-05, QA-06, QA-07, QA-08, QA-09, QA-10, QA-11, QA-12, QA-13, QA-14, QA-15 · **API-01**, API-02, API-03, API-04, API-05, UX-01, UX-02, UX-03, UX-04, UX-05, UX-08
+
+### Deferred (by design — 1 remaining)
 | Finding | Reason |
 |---------|--------|
-| API-01 | DomainApi layer — major architectural change touching all files; requires dedicated sprint |
 | SEC-02 | PropertiesService is the correct GAS pattern for credentials; no better native option in GAS |

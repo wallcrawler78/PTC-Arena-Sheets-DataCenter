@@ -809,7 +809,7 @@ function getAvailableArenaAttributes() {
     // Fetch attribute definitions from Arena settings (not from a specific item)
     Logger.log('Fetching attribute definitions from /settings/items/attributes');
 
-    var response = arenaClient.makeRequest('/settings/items/attributes', { method: 'GET' });
+    var response = arenaClient.getItemAttributeSettings();
 
     // DEBUG: Log the response structure
     Logger.log('=== ARENA ATTRIBUTES API RESPONSE ===');
@@ -1406,8 +1406,7 @@ function refreshCurrentRackBOM() {
     // Fetch current BOM from Arena
     try { SpreadsheetApp.getActiveSpreadsheet().toast('Connecting to Arena...', 'BOM Refresh', -1); } catch(e) {}
     var arenaClient = getArenaClient();
-    var bomResponse = arenaClient.makeRequest('/items/' + arenaGuid + '/bom', { method: 'GET' });
-    var arenaBOM = bomResponse.results || bomResponse.Results || [];
+    var arenaBOM = arenaClient.getBOMLines(arenaGuid);
 
     if (!arenaBOM || !arenaBOM.length) {
       return {
@@ -2252,11 +2251,8 @@ function pullBOMForRack(sheet, itemNumber, itemGuid) {
     Logger.log('pullBOMForRack: Fetching BOM for item: ' + itemNumber + ' (GUID: ' + itemGuid + ')');
 
     // Get BOM from Arena
-    var bomData = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
+    var bomLines = arenaClient.getBOMLines(itemGuid);
     Logger.log('pullBOMForRack: BOM API response received');
-    Logger.log('pullBOMForRack: Response structure: ' + JSON.stringify(Object.keys(bomData || {})));
-
-    var bomLines = bomData.results || bomData.Results || [];
 
     Logger.log('pullBOMForRack: Retrieved ' + bomLines.length + ' BOM lines from Arena');
 

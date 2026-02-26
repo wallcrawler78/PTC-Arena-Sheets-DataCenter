@@ -880,6 +880,79 @@ ArenaAPIClient.prototype.bomFetchRequest = function(itemGuid) {
   };
 };
 
+/**
+ * Builds a UrlFetchApp-compatible request object for fetching one item (not BOM).
+ * Used with UrlFetchApp.fetchAll() to batch-fetch full item details in parallel.
+ * @param {string} itemGuid - Item GUID
+ * @return {Object} Request object compatible with UrlFetchApp.fetchAll
+ */
+ArenaAPIClient.prototype.itemFetchRequest = function(itemGuid) {
+  return {
+    url: this.apiBase + '/items/' + encodeURIComponent(itemGuid),
+    method: 'GET',
+    headers: { 'arena_session_id': this.sessionId, 'Content-Type': 'application/json' },
+    muteHttpExceptions: true
+  };
+};
+
+/**
+ * Fetches BOM lines for an item and returns the array directly.
+ * Callers no longer need to unwrap .results / .Results.
+ * @param {string} itemGuid - Item GUID
+ * @return {Array} Array of BOM line objects (empty array if none)
+ */
+ArenaAPIClient.prototype.getBOMLines = function(itemGuid) {
+  var data = this.makeRequest('/items/' + encodeURIComponent(itemGuid) + '/bom', { method: 'GET' });
+  return data.results || data.Results || [];
+};
+
+/**
+ * Fetches item attribute settings from Arena (GET /settings/items/attributes).
+ * @return {Object} Raw API response
+ */
+ArenaAPIClient.prototype.getItemAttributeSettings = function() {
+  return this.makeRequest('/settings/items/attributes', { method: 'GET' });
+};
+
+/**
+ * Fetches item categories from Arena (GET /settings/items/categories).
+ * @return {Object} Raw API response
+ */
+ArenaAPIClient.prototype.getCategories = function() {
+  return this.makeRequest('/settings/items/categories', { method: 'GET' });
+};
+
+/**
+ * Fetches item lifecycle phases from Arena (GET /settings/items/lifecyclephases).
+ * @return {Object} Raw API response
+ */
+ArenaAPIClient.prototype.getLifecyclePhases = function() {
+  return this.makeRequest('/settings/items/lifecyclephases', { method: 'GET' });
+};
+
+/**
+ * Fetches items matching pre-encoded criteria string (GET /items?criteria=...).
+ * The caller is responsible for building and encoding the criteria parameter.
+ * @param {string} criteriaParam - URI-encoded criteria JSON string
+ * @return {Object} Raw API response
+ */
+ArenaAPIClient.prototype.getItemsByCriteria = function(criteriaParam) {
+  return this.makeRequest('/items?criteria=' + criteriaParam, { method: 'GET' });
+};
+
+/**
+ * Searches items using GET /items/searches (distinct from searchItems POST).
+ * Hides URL construction so callers just pass the search parameters.
+ * @param {string} query - Search query string
+ * @param {string} [lifecyclePhase] - Optional lifecycle phase filter
+ * @return {Object} Raw API response
+ */
+ArenaAPIClient.prototype.searchItemsFiltered = function(query, lifecyclePhase) {
+  var endpoint = '/items/searches?searchQuery=' + encodeURIComponent(query || '');
+  if (lifecyclePhase) endpoint += '&lifecyclePhase=' + encodeURIComponent(lifecyclePhase);
+  return this.makeRequest(endpoint, { method: 'GET' });
+};
+
 // ═══════════════════════════════════════════════════════════════════════════
 // EXPORT API — Multi-level BOM fast path (alternative, kept for reference)
 // Uses POST /exports + run + poll + download ZIP instead of N recursive calls.

@@ -113,8 +113,7 @@ function createNewRackConfiguration() {
       if (itemGuid) {
         Logger.log('Fetching BOM for item ' + rackItemNumber + ' (GUID: ' + itemGuid + ')');
         try {
-          var bomResponse = arenaClient.makeRequest('/items/' + itemGuid + '/bom', { method: 'GET' });
-          arenaBOM = bomResponse.results || bomResponse.Results || [];
+          arenaBOM = arenaClient.getBOMLines(itemGuid);
           Logger.log('Fetched ' + arenaBOM.length + ' BOM lines from Arena');
         } catch (bomError) {
           Logger.log('Could not fetch BOM: ' + bomError.message);
@@ -697,7 +696,7 @@ function populateRackBOMFromArena(sheet, arenaBOMLines, arenaClient) {
       var fullItem = arenaClient.getItemByNumber(itemNumber);
       if (!fullItem && itemGuid) {
         try {
-          fullItem = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
+          fullItem = arenaClient.getItem(itemGuid);
         } catch (e) {
           Logger.log('populateRackBOMFromArena: Fallback API call failed for ' + itemNumber + ': ' + e.message);
           fullItem = bomItem;

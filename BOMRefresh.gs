@@ -101,7 +101,7 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
       if (!fullItem && itemGuid) {
         // Only hit API if item truly not in cache (shouldn't happen after warm-up)
         try {
-          fullItem = arenaClient.makeRequest('/items/' + itemGuid, { method: 'GET' });
+          fullItem = arenaClient.getItem(itemGuid);
         } catch (e) {
           Logger.log('compareBOMs: Fallback API call failed for ' + itemNumber + ': ' + e.message);
           fullItem = bomItem;
