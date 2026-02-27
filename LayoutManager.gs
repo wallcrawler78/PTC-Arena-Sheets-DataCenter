@@ -269,8 +269,9 @@ function createRackConfigSheet(rackName) {
  * @param {number} row - Row in overview grid
  * @param {number} col - Column in overview grid
  * @param {string} rackSheetName - Name of the rack sheet to link to
+ * @param {string} [displayText] - Optional display text for the hyperlink (defaults to rackSheetName)
  */
-function linkOverviewToRack(overviewSheetName, row, col, rackSheetName) {
+function linkOverviewToRack(overviewSheetName, row, col, rackSheetName, displayText) {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var overviewSheet = spreadsheet.getSheetByName(overviewSheetName);
 
@@ -278,14 +279,20 @@ function linkOverviewToRack(overviewSheetName, row, col, rackSheetName) {
     throw new Error('Overview sheet not found: ' + overviewSheetName);
   }
 
+  var rackSheet = spreadsheet.getSheetByName(rackSheetName);
+  if (!rackSheet) {
+    throw new Error('Rack sheet not found: ' + rackSheetName);
+  }
+
   var cell = overviewSheet.getRange(row, col);
 
-  // Create hyperlink formula
-  var sheetId = spreadsheet.getSheetByName(rackSheetName).getSheetId();
+  // Create hyperlink formula — display text defaults to sheet name but can be
+  // overridden (e.g. with item number) so scanOverviewByRow can match it later
+  var sheetId = rackSheet.getSheetId();
   var url = '#gid=' + sheetId;
+  var label = displayText || rackSheetName;
 
-  // Set formula with rack name
-  cell.setFormula('=HYPERLINK("' + url + '", "' + rackSheetName + '")');
+  cell.setFormula('=HYPERLINK("' + url + '", "' + label + '")');
   cell.setFontColor('#1a73e8')
     .setFontWeight('bold')
     .setHorizontalAlignment('center')
@@ -412,7 +419,6 @@ function createNewOverviewLayout() {
     try {
       var sheet = createOverviewLayout(name, rows, positions);
       if (sheet) {
-        var entitySingular = getTerminology('entity_singular');
         var entityPlural = getTerminology('entity_plural_lower');
         ui.alert('Success',
           'Overview layout "' + name + '" created!\n\n' +
@@ -465,19 +471,15 @@ function createNewRackConfig() {
  */
 function autoLinkRacksToOverview(overviewSheetName) {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  var allSheets = spreadsheet.getSheets();
+  var entityPlural = getTerminology('entity_plural_lower');
 
-  // Find all rack sheets
-  var rackSheets = [];
-  allSheets.forEach(function(sheet) {
-    var name = sheet.getName();
-    if (name.toLowerCase().indexOf('rack') !== -1 && name !== overviewSheetName) {
-      rackSheets.push(name);
-    }
-  });
+  // Find all rack config sheets using metadata detection (terminology-agnostic)
+  var rackConfigs = getAllRackConfigTabs();
 
-  if (rackSheets.length === 0) {
-    SpreadsheetApp.getUi().alert('No Racks', 'No rack sheets found to link', SpreadsheetApp.getUi().ButtonSet.OK);
+  if (rackConfigs.length === 0) {
+    SpreadsheetApp.getUi().alert('No ' + getTerminology('entity_plural'),
+      'No ' + entityPlural + ' found to link. Create some first.',
+      SpreadsheetApp.getUi().ButtonSet.OK);
     return;
   }
 
@@ -514,20 +516,21 @@ function autoLinkRacksToOverview(overviewSheetName) {
   }
 
   // Link racks to overview grid (arrange in grid pattern)
-  rackSheets.forEach(function(rackName, index) {
+  // Uses item number as display text so scanOverviewByRow can match it later
+  rackConfigs.forEach(function(config, index) {
     var row = startRow + Math.floor(index / maxCols);
     var col = startCol + (index % maxCols);
 
     try {
-      linkOverviewToRack(overviewSheetName, row, col, rackName);
+      linkOverviewToRack(overviewSheetName, row, col, config.sheetName, config.itemNumber);
     } catch (error) {
-      Logger.log('Error linking rack ' + rackName + ': ' + error.message);
+      Logger.log('Error linking rack ' + config.itemNumber + ': ' + error.message);
     }
   });
 
   SpreadsheetApp.getUi().alert(
     'Success',
-    'Linked ' + rackSheets.length + ' rack sheets to overview',
+    'Linked ' + rackConfigs.length + ' ' + entityPlural + ' to overview',
     SpreadsheetApp.getUi().ButtonSet.OK
   );
 }

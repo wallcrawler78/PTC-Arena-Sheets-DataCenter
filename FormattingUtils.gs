@@ -48,7 +48,7 @@ function applyTotalsFormatting(range) {
  * @param {string} rackType - The rack type identifier
  */
 function applyColorScheme(range, rackType) {
-  var color = getRackColor(rackType);
+  var color = getEntityTypeColor(rackType);
   range.setBackground(color);
 
   // Set font color based on background brightness

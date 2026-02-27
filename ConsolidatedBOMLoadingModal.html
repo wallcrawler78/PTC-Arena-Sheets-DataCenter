@@ -155,7 +155,7 @@
     }
 
     function onBuildError(error) {
-      // Close this loading modal - error will be shown by the main function
+      alert('Error building Consolidated BOM:\n\n' + (error.message || error));
       google.script.host.close();
     }
   </script>

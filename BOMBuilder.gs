@@ -661,7 +661,7 @@ function buildConsolidatedBOM() {
   var overviewSheet = findOverviewSheet();
 
   if (!overviewSheet) {
-    throw new Error('Could not find an Overview sheet. Please create an overview layout sheet first.\n\nOverview sheets are identified by having "Overview" in their title header (cell A1).');
+    throw new Error('Could not find an Overview sheet. Please create an overview layout sheet first.\n\nOverview sheets are identified by having "Overview" in the tab name or in cell A1.');
   }
 
   Logger.log('Using overview sheet: ' + overviewSheet.getName());
@@ -2625,14 +2625,25 @@ function executePODPush(wizardData) {
   Logger.log('EXECUTING BATCH POD PUSH');
   Logger.log('==========================================');
 
-  // Check for concurrent execution
-  var lock = PropertiesService.getUserProperties().getProperty('podPush_lock');
-  if (lock === 'true') {
-    throw new Error('Another POD push is already in progress. Please wait for it to complete.');
+  // Check for concurrent execution (with 10-minute auto-expiry to recover from stale locks)
+  var lockJson = PropertiesService.getUserProperties().getProperty('podPush_lock');
+  if (lockJson) {
+    try {
+      var lockData = JSON.parse(lockJson);
+      var lockAge = (new Date().getTime() - (lockData.ts || 0)) / 1000;
+      if (lockAge < 600) {  // 10 minutes
+        throw new Error('Another POD push is already in progress. Please wait for it to complete.');
+      }
+      Logger.log('Stale POD push lock detected (' + Math.round(lockAge) + 's old) — overriding');
+    } catch (parseErr) {
+      if (parseErr.message.indexOf('already in progress') !== -1) throw parseErr;
+      // Legacy string lock or corrupt data — override it
+      Logger.log('Corrupt POD push lock — overriding');
+    }
   }
 
-  // Set execution lock
-  PropertiesService.getUserProperties().setProperty('podPush_lock', 'true');
+  // Set execution lock with timestamp
+  PropertiesService.getUserProperties().setProperty('podPush_lock', JSON.stringify({ ts: new Date().getTime() }));
   Logger.log('POD push lock acquired');
 
   // Calculate total steps for progress bar: racks + rows + 1 POD

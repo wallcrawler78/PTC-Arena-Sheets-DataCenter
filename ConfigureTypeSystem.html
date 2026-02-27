@@ -1191,19 +1191,9 @@
     // Export configuration
     function exportConfig() {
       var json = JSON.stringify(config, null, 2);
-      var textarea = document.createElement('textarea');
-      textarea.value = json;
-      textarea.style.width = '100%';
-      textarea.style.height = '300px';
-      textarea.style.fontFamily = 'monospace';
-      textarea.style.fontSize = '12px';
-
-      var div = document.createElement('div');
-      div.innerHTML = '<h3>Configuration JSON (copy this)</h3>';
-      div.appendChild(textarea);
-
-      alert('Export feature: Copy the JSON from the console log');
-      console.log('Configuration Export:', json);
+      var textarea = prompt('Copy the configuration JSON below:', json);
+      // prompt() shows the text in an editable field the user can copy from
+      if (textarea === null) return; // User cancelled
     }
 
     // Import configuration
@@ -1225,19 +1215,24 @@
       if (confirm('Reset to default configuration? This will discard all changes.')) {
         google.script.run
           .withSuccessHandler(function(data) {
-            if (data.success) {
-              config = {
-                primaryEntity: data.primaryEntity,
-                typeDefinitions: data.typeDefinitions,
-                categoryClassifications: data.categoryClassifications,
-                layoutConfig: data.layoutConfig,
-                hierarchyLevels: data.hierarchyLevels
-              };
-              renderAllTabs();
-              showMessage('Reset to defaults', 'success');
-            }
+            config = {
+              primaryEntity: data.defaultPrimaryEntity || { singular: 'Configuration', plural: 'Configurations', verb: 'Configure' },
+              typeDefinitions: data.defaultTypeDefinitions || [],
+              categoryClassifications: data.defaultCategoryClassifications || [],
+              layoutConfig: data.defaultLayoutConfig || { gridType: 'OVERHEAD', rows: 4, positionsPerRow: 10, labelPrefix: 'Pos', cellHeight: 25, cellWidth: 120 },
+              hierarchyLevels: data.defaultHierarchyLevels || [
+                { level: 0, name: 'Assembly', attribute: null },
+                { level: 1, name: 'Sub-Assembly', attribute: null },
+                { level: 2, name: 'Configuration', attribute: null }
+              ]
+            };
+            renderAllTabs();
+            showMessage('Reset to defaults', 'success');
           })
-          .loadTypeSystemConfigForUI();
+          .withFailureHandler(function(error) {
+            showMessage('Error loading defaults: ' + error.message, 'error');
+          })
+          .loadSetupWizardData();
       }
     }
 

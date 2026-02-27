@@ -308,11 +308,11 @@ function addOverheadLegend(sheet) {
 
   // Add each rack type with color
   var rackTypes = [
-    { name: SHEET_NAMES.FULL_RACK_A, color: getRackColor(SHEET_NAMES.FULL_RACK_A) },
-    { name: SHEET_NAMES.FULL_RACK_B, color: getRackColor(SHEET_NAMES.FULL_RACK_B) },
-    { name: SHEET_NAMES.FULL_RACK_C, color: getRackColor(SHEET_NAMES.FULL_RACK_C) },
-    { name: SHEET_NAMES.FULL_RACK_F, color: getRackColor(SHEET_NAMES.FULL_RACK_F) },
-    { name: SHEET_NAMES.FULL_RACK_G, color: getRackColor(SHEET_NAMES.FULL_RACK_G) }
+    { name: SHEET_NAMES.FULL_RACK_A, color: getEntityTypeColor(SHEET_NAMES.FULL_RACK_A) },
+    { name: SHEET_NAMES.FULL_RACK_B, color: getEntityTypeColor(SHEET_NAMES.FULL_RACK_B) },
+    { name: SHEET_NAMES.FULL_RACK_C, color: getEntityTypeColor(SHEET_NAMES.FULL_RACK_C) },
+    { name: SHEET_NAMES.FULL_RACK_F, color: getEntityTypeColor(SHEET_NAMES.FULL_RACK_F) },
+    { name: SHEET_NAMES.FULL_RACK_G, color: getEntityTypeColor(SHEET_NAMES.FULL_RACK_G) }
   ];
 
   rackTypes.forEach(function(rackType, index) {

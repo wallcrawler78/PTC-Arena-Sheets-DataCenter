@@ -1296,14 +1296,14 @@
             cards.forEach(function(card) {
               card.classList.remove('selected');
             });
-            button.textContent = '📍 Insert Selected Item';
+            button.textContent = 'Insert Item in Selected Cell';
             button.disabled = true;
           }, 2000);
         })
         .withFailureHandler(function(error) {
           console.error('Error inserting item:', error);
           alert('Error inserting item: ' + error.message);
-          button.textContent = '📍 Insert Selected Item';
+          button.textContent = 'Insert Item in Selected Cell';
           button.disabled = false;
         })
         .insertSelectedItem();

@@ -130,7 +130,7 @@
     </div>
 
     <div class="buttons">
-      <button class="btn btn-secondary" onclick="close()">Close</button>
+      <button class="btn btn-secondary" onclick="closeModal()">Close</button>
       <button class="btn btn-primary" onclick="openInArena()">Open POD in Arena</button>
     </div>
   </div>
@@ -153,7 +153,7 @@
       })
       .getPODPushResults();
 
-    function close() {
+    function closeModal() {
       google.script.host.close();
     }
 

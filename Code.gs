@@ -415,11 +415,12 @@ function showConfigureColors() {
  * Shows the rack color configuration dialog
  */
 function showConfigureRackColors() {
+  var entitySingular = getTerminology('entity_singular');
   var html = HtmlService.createHtmlOutputFromFile('ConfigureRackColors')
     .setWidth(650)
     .setHeight(600)
-    .setTitle('Configure Rack Colors');
-  SpreadsheetApp.getUi().showModalDialog(html, 'Rack Colors');
+    .setTitle('Configure ' + entitySingular + ' Colors');
+  SpreadsheetApp.getUi().showModalDialog(html, entitySingular + ' Colors');
 }
 
 /**
@@ -1232,7 +1233,8 @@ function loadItemPickerData(forceRefresh) {
         categoryGuid: categoryObj.guid || categoryObj.Guid || '',
         categoryName: categoryObj.name || categoryObj.Name || '',
         lifecyclePhase: lifecycleObj.name || lifecycleObj.Name || '',
-        arenaWebURL: arenaWebURL
+        arenaWebURL: arenaWebURL,
+        hasPendingChanges: hasPendingChanges
       };
     });
 

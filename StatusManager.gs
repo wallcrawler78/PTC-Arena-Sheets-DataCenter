@@ -578,23 +578,26 @@ function getCurrentRackBOMData(sheet) {
  * Useful if user knows status is incorrect
  */
 function markCurrentRackAsSynced() {
+  var ui = SpreadsheetApp.getUi();
+  var entitySingular = getTerminology('entity_singular');
+  var entitySingularLower = getTerminology('entity_singular_lower');
   var sheet = SpreadsheetApp.getActiveSpreadsheet().getActiveSheet();
 
   if (!isRackConfigSheet(sheet)) {
-    SpreadsheetApp.getUi().alert('Error', 'Current sheet is not a rack configuration sheet.', SpreadsheetApp.getUi().ButtonSet.OK);
+    ui.alert('Error', 'Current sheet is not a ' + entitySingularLower + ' configuration sheet.', ui.ButtonSet.OK);
     return;
   }
 
   var metadata = getRackConfigMetadata(sheet);
   if (!metadata) {
-    SpreadsheetApp.getUi().alert('Error', 'Could not read rack metadata.', SpreadsheetApp.getUi().ButtonSet.OK);
+    ui.alert('Error', 'Could not read ' + entitySingularLower + ' metadata.', ui.ButtonSet.OK);
     return;
   }
 
   // REFACTORED: Read GUID from History tab
   var arenaGuid = getRackArenaGuidFromHistory(metadata.itemNumber);
   if (!arenaGuid) {
-    SpreadsheetApp.getUi().alert('Error', 'This rack has no Arena GUID. Cannot mark as synced.', SpreadsheetApp.getUi().ButtonSet.OK);
+    ui.alert('Error', 'This ' + entitySingularLower + ' has no Arena GUID. Cannot mark as synced.', ui.ButtonSet.OK);
     return;
   }
 
@@ -608,11 +611,11 @@ function markCurrentRackAsSynced() {
 
   // Log manual sync event
   addRackHistoryEvent(metadata.itemNumber, HISTORY_EVENT.MANUAL_SYNC, {
-    details: 'User manually marked rack as synced',
+    details: 'User manually marked ' + entitySingularLower + ' as synced',
     statusAfter: RACK_STATUS.SYNCED
   });
 
-  SpreadsheetApp.getUi().alert('Success', 'Rack marked as synced with Arena.', SpreadsheetApp.getUi().ButtonSet.OK);
+  ui.alert('Success', entitySingular + ' marked as synced with Arena.', ui.ButtonSet.OK);
 }
 
 /**

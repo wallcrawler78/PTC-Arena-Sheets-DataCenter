@@ -1327,6 +1327,29 @@
       .withFailureHandler(showError)
       .getAllRackConfigurationsForPicker();
 
+    // Check if we were opened in a specific mode (clone/template) and auto-switch tab
+    google.script.run
+      .withSuccessHandler(function(mode) {
+        if (mode === 'clone' || mode === 'template') {
+          // Auto-switch to Templates tab
+          var tabButtons = document.querySelectorAll('.tab-button');
+          tabButtons.forEach(function(btn) { btn.classList.remove('active'); });
+          // Templates is the 3rd tab button (index 2)
+          if (tabButtons[2]) tabButtons[2].classList.add('active');
+
+          var tabs = document.querySelectorAll('.tab-content');
+          tabs.forEach(function(tab) { tab.classList.remove('active'); });
+          document.getElementById('templatesTab').classList.add('active');
+
+          // Load the templates tab and switch to the correct sub-mode
+          switchTemplateMode(mode);
+        }
+      })
+      .withFailureHandler(function(error) {
+        console.log('No special mode set:', error);
+      })
+      .getProperty('rack_picker_mode');
+
     /**
      * Updates all UI text to use dynamic terminology
      */
@@ -1746,12 +1769,11 @@
       }
 
       // Show loading state
-      document.getElementById('templateItemList').innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          <div id="templateLoadingMessage">Loading templates from Arena...</div>
-        </div>
-      `;
+      document.getElementById('templateItemList').innerHTML =
+        '<div class="loading">' +
+          '<div class="spinner"></div>' +
+          '<div id="templateLoadingMessage">Loading templates from Arena...</div>' +
+        '</div>';
 
       google.script.run
         .withSuccessHandler(function(data) {
@@ -2096,9 +2118,6 @@
 
     /**
      * Opens the BOM tree modal for an item
-     */
-    /**
-     * Opens the BOM tree modal for an item
      * Now opens as full-width dialog over spreadsheet
      */
     function openBomTreeModal(itemNumber) {
@@ -2322,8 +2341,8 @@
             closeBomTreeModal();
             alert('✓ Success!\n\n' + result.message);
 
-            // Optionally refresh the sheet
-            google.script.run.refresh();
+            // Refresh rack list to reflect new components
+            refreshRackList();
           } else {
             alert('✗ Insert failed:\n\n' + result.message);
           }
@@ -2386,12 +2405,11 @@
       console.log('🔄 Refreshing rack configurations...');
 
       // Show loading state
-      document.getElementById('rackList').innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          <div>Refreshing rack configurations...</div>
-        </div>
-      `;
+      document.getElementById('rackList').innerHTML =
+        '<div class="loading">' +
+          '<div class="spinner"></div>' +
+          '<div>Refreshing rack configurations...</div>' +
+        '</div>';
 
       // Reload rack configurations
       google.script.run
@@ -2410,19 +2428,19 @@
       allRacks = racks;
 
       if (racks.length === 0) {
-        var entity = terminology.entity_singular_lower;
-        document.getElementById('rackList').innerHTML = `
-          <div class="empty-state">
-            <div class="empty-state-icon">
-              <svg class="icon" style="width: 48px; height: 48px; opacity: 0.3;"><use href="#icon-server"></use></svg>
-            </div>
-            <div><strong>No ` + entity + ` configurations found</strong></div>
-            <div style="margin-top: 8px; font-size: 12px;">
-              Create ` + entity + ` configurations using:<br>
-              Create Layout → New ` + terminology.entity_singular + ` Configuration
-            </div>
-          </div>
-        `;
+        var entity = escapeHtml(terminology.entity_singular_lower);
+        var entitySingular = escapeHtml(terminology.entity_singular);
+        document.getElementById('rackList').innerHTML =
+          '<div class="empty-state">' +
+            '<div class="empty-state-icon">' +
+              '<svg class="icon" style="width: 48px; height: 48px; opacity: 0.3;"><use href="#icon-server"></use></svg>' +
+            '</div>' +
+            '<div><strong>No ' + entity + ' configurations found</strong></div>' +
+            '<div style="margin-top: 8px; font-size: 12px;">' +
+              'Create ' + entity + ' configurations using:<br>' +
+              'Create Layout &rarr; New ' + entitySingular + ' Configuration' +
+            '</div>' +
+          '</div>';
         return;
       }
 
@@ -2436,34 +2454,38 @@
         var childCount = rack.childItemCount || 0;
         var childText = childCount === 1 ? '1 item' : childCount + ' items';
 
-        // Escape quotes for attributes
-        var escapedItemNumber = rack.itemNumber.replace(/'/g, "\\'");
-        var escapedItemName = (rack.itemName || 'Unnamed Rack').replace(/'/g, "\\'");
-        var escapedDescription = (rack.description || '').replace(/'/g, "\\'");
+        // Escape for safe HTML rendering and attribute contexts
+        var safeItemNumber = escapeHtml(rack.itemNumber);
+        var safeItemName = escapeHtml(rack.itemName || 'Unnamed Rack');
+        var safeDescription = escapeHtml(rack.description || '');
+        var safeSheetName = escapeHtml(rack.sheetName || '');
 
-        html += `
-          <div class="rack-item" onclick="selectRack('${escapedItemNumber}')">
-            <div class="rack-item-header">
-              <div class="rack-item-content">
-                <div class="rack-number">${rack.itemNumber}</div>
-                <div class="rack-name">${rack.itemName || 'Unnamed Rack'}</div>
-                ${rack.description ? '<div class="rack-description">' + rack.description + '</div>' : ''}
-                <div class="rack-stats">
-                  <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>${childText}</span>
-                  <span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-document"></use></svg>${rack.sheetName}</span>
-                </div>
-              </div>
-              <div class="rack-item-actions">
-                <button class="rack-action-btn" onclick="openCloneDialog('${escapedItemNumber}'); event.stopPropagation();" title="Clone this rack">
-                  <svg><use href="#icon-clone"></use></svg>
-                </button>
-                <button class="rack-action-btn" onclick="showRenameDialog('${escapedItemNumber}', '${escapedItemName}', '${escapedDescription}'); event.stopPropagation();" title="Rename rack configuration">
-                  <svg><use href="#icon-pencil"></use></svg>
-                </button>
-              </div>
-            </div>
-          </div>
-        `;
+        // Escape for JS string attribute contexts (onclick)
+        var jsItemNumber = rack.itemNumber.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        var jsItemName = (rack.itemName || 'Unnamed Rack').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+        var jsDescription = (rack.description || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+        html += '<div class="rack-item" onclick="selectRack(\'' + jsItemNumber + '\')">' +
+            '<div class="rack-item-header">' +
+              '<div class="rack-item-content">' +
+                '<div class="rack-number">' + safeItemNumber + '</div>' +
+                '<div class="rack-name">' + safeItemName + '</div>' +
+                (rack.description ? '<div class="rack-description">' + safeDescription + '</div>' : '') +
+                '<div class="rack-stats">' +
+                  '<span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>' + childText + '</span>' +
+                  '<span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-document"></use></svg>' + safeSheetName + '</span>' +
+                '</div>' +
+              '</div>' +
+              '<div class="rack-item-actions">' +
+                '<button class="rack-action-btn" onclick="openCloneDialog(\'' + jsItemNumber + '\'); event.stopPropagation();" title="Clone this rack">' +
+                  '<svg><use href="#icon-clone"></use></svg>' +
+                '</button>' +
+                '<button class="rack-action-btn" onclick="showRenameDialog(\'' + jsItemNumber + '\', \'' + jsItemName + '\', \'' + jsDescription + '\'); event.stopPropagation();" title="Rename rack configuration">' +
+                  '<svg><use href="#icon-pencil"></use></svg>' +
+                '</button>' +
+              '</div>' +
+            '</div>' +
+          '</div>';
       });
 
       document.getElementById('rackList').innerHTML = html;
@@ -2530,15 +2552,14 @@
 
     function showError(error) {
       var entities = terminology.entity_plural_lower;
-      document.getElementById('rackList').innerHTML = `
-        <div class="empty-state">
-          <div class="empty-state-icon">⚠️</div>
-          <div><strong>Error loading ` + entities + `</strong></div>
-          <div style="margin-top: 8px; font-size: 12px; color: #d93025;">
-            ${error.message}
-          </div>
-        </div>
-      `;
+      document.getElementById('rackList').innerHTML =
+        '<div class="empty-state">' +
+          '<div class="empty-state-icon"><svg class="icon" style="width: 48px; height: 48px; opacity: 0.3;"><use href="#icon-help"></use></svg></div>' +
+          '<div><strong>Error loading ' + escapeHtml(entities) + '</strong></div>' +
+          '<div style="margin-top: 8px; font-size: 12px; color: #d93025;">' +
+            escapeHtml(error.message) +
+          '</div>' +
+        '</div>';
     }
 
     function showToast(message) {
@@ -2637,12 +2658,11 @@
         return;
       }
 
-      document.getElementById('arenaItemList').innerHTML = `
-        <div class="loading">
-          <div class="spinner"></div>
-          <div id="arenaLoadingMessage">Fetching items from Arena...</div>
-        </div>
-      `;
+      document.getElementById('arenaItemList').innerHTML =
+        '<div class="loading">' +
+          '<div class="spinner"></div>' +
+          '<div id="arenaLoadingMessage">Fetching items from Arena...</div>' +
+        '</div>';
 
       google.script.run
         .withSuccessHandler(function(data) {
@@ -2665,15 +2685,14 @@
           renderArenaItems(filteredArenaItems);
         })
         .withFailureHandler(function(error) {
-          document.getElementById('arenaItemList').innerHTML = `
-            <div class="empty-state">
-              <div class="empty-state-icon">⚠️</div>
-              <div><strong>Error loading Arena items</strong></div>
-              <div style="margin-top: 8px; font-size: 12px; color: #d93025;">
-                ${error.message}
-              </div>
-            </div>
-          `;
+          document.getElementById('arenaItemList').innerHTML =
+            '<div class="empty-state">' +
+              '<div class="empty-state-icon"><svg class="icon" style="width: 48px; height: 48px; opacity: 0.3;"><use href="#icon-help"></use></svg></div>' +
+              '<div><strong>Error loading Arena items</strong></div>' +
+              '<div style="margin-top: 8px; font-size: 12px; color: #d93025;">' +
+                escapeHtml(error.message) +
+              '</div>' +
+            '</div>';
         })
         .loadItemPickerData();
     }
@@ -2682,15 +2701,11 @@
       var html = '';
 
       if (items.length === 0) {
-        html = `
-          <div class="empty-state">
-            <div class="empty-state-icon">🔍</div>
-            <div><strong>No items found</strong></div>
-            <div style="margin-top: 8px; font-size: 12px;">
-              Try adjusting your search
-            </div>
-          </div>
-        `;
+        html = '<div class="empty-state">' +
+            '<div class="empty-state-icon"><svg class="icon" style="width: 48px; height: 48px; opacity: 0.3;"><use href="#icon-search"></use></svg></div>' +
+            '<div><strong>No items found</strong></div>' +
+            '<div style="margin-top: 8px; font-size: 12px;">Try adjusting your search</div>' +
+          '</div>';
       } else {
         items.forEach(function(item) {
           var itemNumber = item.number || item.Number || '';
@@ -2699,17 +2714,17 @@
           var categoryName = item.categoryName || '';
           var lifecyclePhase = item.lifecyclePhase || '';
 
-          html += `
-            <div class="rack-item" onclick="selectArenaItem('${itemNumber}')">
-              <div class="rack-number">${itemNumber}</div>
-              <div class="rack-name">${itemName}</div>
-              ${description ? '<div class="rack-description">' + description + '</div>' : ''}
-              <div class="rack-stats">
-                ${categoryName ? '<span>📁 ' + categoryName + '</span>' : ''}
-                ${lifecyclePhase ? '<span>🔄 ' + lifecyclePhase + '</span>' : ''}
-              </div>
-            </div>
-          `;
+          var jsItemNumber = itemNumber.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+
+          html += '<div class="rack-item" onclick="selectArenaItem(\'' + jsItemNumber + '\')">' +
+              '<div class="rack-number">' + escapeHtml(itemNumber) + '</div>' +
+              '<div class="rack-name">' + escapeHtml(itemName) + '</div>' +
+              (description ? '<div class="rack-description">' + escapeHtml(description) + '</div>' : '') +
+              '<div class="rack-stats">' +
+                (categoryName ? '<span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-package"></use></svg>' + escapeHtml(categoryName) + '</span>' : '') +
+                (lifecyclePhase ? '<span><svg class="icon icon-sm" style="margin-right: 4px;"><use href="#icon-refresh"></use></svg>' + escapeHtml(lifecyclePhase) + '</span>' : '') +
+              '</div>' +
+            '</div>';
         });
       }
 
@@ -2803,9 +2818,9 @@
       // Update button states
       var buttons = document.querySelectorAll('.scope-btn');
       buttons.forEach(function(btn) {
-        btn.classList.remove('show');
+        btn.classList.remove('active');
         if (btn.dataset.scope === scope) {
-          btn.classList.add('show');
+          btn.classList.add('active');
         }
       });
 

@@ -157,7 +157,7 @@ var OVERHEAD_CONFIG = {
  * @param {string} entityType - The entity type name
  * @return {string} Color hex code
  */
-function getRackColor(entityType) {
+function getEntityTypeColor(entityType) {
   // Try to get color from dynamic configuration
   var typeDefinitions = getTypeDefinitions();
   for (var i = 0; i < typeDefinitions.length; i++) {

@@ -1045,11 +1045,39 @@ function protectHistoryTab(sheet) {
 }
 
 /**
- * Validates History tab data integrity
+ * Menu action: Validates History tab data integrity and shows results to user
+ */
+function validateHistoryTabIntegrity() {
+  var ui = SpreadsheetApp.getUi();
+  var result = _validateHistoryTabIntegrity();
+
+  if (result.success && result.warnings.length === 0) {
+    ui.alert('History Integrity OK', 'No issues found! History tab is healthy.', ui.ButtonSet.OK);
+    return result;
+  }
+
+  var message = '';
+  if (result.errors.length > 0) {
+    message += 'ERRORS:\n';
+    result.errors.forEach(function(err) { message += '  - ' + err + '\n'; });
+    message += '\n';
+  }
+  if (result.warnings.length > 0) {
+    message += 'WARNINGS:\n';
+    result.warnings.forEach(function(warn) { message += '  - ' + warn + '\n'; });
+  }
+
+  message += '\nUse "Repair History Issues" to fix automatically.';
+  ui.alert('History Integrity Issues', message, ui.ButtonSet.OK);
+  return result;
+}
+
+/**
+ * Internal: Validates History tab data integrity
  * Checks for missing data, invalid statuses, orphaned events
  * @return {Object} Validation results with warnings
  */
-function validateHistoryTabIntegrity() {
+function _validateHistoryTabIntegrity() {
   var warnings = [];
   var errors = [];
 
@@ -1086,6 +1114,13 @@ function validateHistoryTabIntegrity() {
     }
 
     // Check 3: Validate status values
+    if (lastRow < 2) {
+      return {
+        success: errors.length === 0,
+        warnings: warnings,
+        errors: errors
+      };
+    }
     var statusRange = historySheet.getRange(2, HIST_SUMMARY_STATUS_COL, lastRow - 1, 1);
     var statusValues = statusRange.getValues();
 
@@ -1123,7 +1158,7 @@ function validateHistoryTabIntegrity() {
  */
 function repairHistoryTabIntegrity() {
   var ui = SpreadsheetApp.getUi();
-  var validation = validateHistoryTabIntegrity();
+  var validation = _validateHistoryTabIntegrity();
 
   if (validation.success && validation.warnings.length === 0) {
     ui.alert('No Issues Found', 'History tab integrity is good!', ui.ButtonSet.OK);

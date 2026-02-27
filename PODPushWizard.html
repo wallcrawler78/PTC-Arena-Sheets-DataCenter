@@ -1585,9 +1585,10 @@
           }
         }
       } else if (currentStage === 2) {
-        // Validate rows
+        // Validate rows — only new rows need name & category; existing rows are already in Arena
         for (let i = 0; i < wizardData.rows.length; i++) {
           const row = wizardData.rows[i];
+          if (row.exists) continue;  // skip existing Arena rows
           if (!row.name) {
             errorContent.textContent = `Row ${row.rowNumber}: Name is required`;
             errorMsg.classList.add('active');

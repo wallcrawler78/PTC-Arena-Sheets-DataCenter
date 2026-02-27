@@ -153,38 +153,17 @@ function loadRackColorData() {
   var allSheets = spreadsheet.getSheets();
   var racks = [];
 
-  // Find all rack configuration sheets
+  // Find all rack configuration sheets using the proper detection function
   allSheets.forEach(function(sheet) {
-    var sheetName = sheet.getName().toLowerCase();
-
-    // Skip non-rack sheets
-    if (sheetName.indexOf('overview') !== -1 ||
-        sheetName.indexOf('legend') !== -1 ||
-        sheetName.indexOf('config') !== -1 ||
-        sheetName.indexOf('bom') !== -1) {
+    if (!isRackConfigSheet(sheet)) {
       return;
     }
 
-    // Match Arena-style item numbers: 3 digits, hyphen, 4 digits (e.g., "100-0042")
-    var match = sheet.getName().match(/(\d{3}-\d{4})/);
-    if (match) {
-      var itemNumber = match[1];
-
-      // Try to get item name from sheet
-      var itemName = '';
-      try {
-        var nameCell = sheet.getRange('B1');
-        var nameValue = nameCell.getValue();
-        if (nameValue && typeof nameValue === 'string') {
-          itemName = nameValue.replace(/^Name:\s*/i, '').trim();
-        }
-      } catch (e) {
-        // Ignore errors reading name
-      }
-
+    var metadata = getRackConfigMetadata(sheet);
+    if (metadata) {
       racks.push({
-        itemNumber: itemNumber,
-        itemName: itemName,
+        itemNumber: metadata.itemNumber || '',
+        itemName: metadata.itemName || '',
         sheetName: sheet.getName()
       });
     }
@@ -192,7 +171,7 @@ function loadRackColorData() {
 
   // Sort racks by item number
   racks.sort(function(a, b) {
-    return a.itemNumber.localeCompare(b.itemNumber);
+    return (a.itemNumber || '').localeCompare(b.itemNumber || '');
   });
 
   return {

@@ -2,6 +2,7 @@
 <html>
 <head>
   <base target="_top">
+  <title>Arena Data Center Manager - Help Guide</title>
   <!-- SVG Icon Definitions -->
   <svg style="display: none;" xmlns="http://www.w3.org/2000/svg">
     <defs>
@@ -381,13 +382,13 @@
     }
 
     .status-local {
-      background: #fce8e6;
-      color: #c5221f;
+      background: #e8f0fe;
+      color: #1967d2;
     }
 
     .status-placeholder {
-      background: #fce8e6;
-      color: #c5221f;
+      background: #f1f3f4;
+      color: #5f6368;
     }
 
     .status-error {
@@ -509,7 +510,7 @@
     }
 
     .menu-item-title:before {
-      content: "▸";
+      content: "\25B8";
       color: #1a73e8;
       margin-right: 8px;
       font-weight: bold;
@@ -562,13 +563,26 @@
       font-size: 14px;
       line-height: 1.6;
     }
+
+    /* Hierarchy diagram */
+    .hierarchy-diagram {
+      background: #f8f9fa;
+      border: 1px solid #dadce0;
+      border-radius: 8px;
+      padding: 24px;
+      margin: 20px 0;
+      font-family: 'Roboto Mono', 'Courier New', monospace;
+      font-size: 14px;
+      color: #202124;
+      line-height: 1.8;
+    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="header">
-      <h1 id="headerTitle">Arena PLM Integration - Help Guide</h1>
-      <p id="headerSubtitle">Your complete guide to managing configurations with Arena PLM</p>
+      <h1 id="headerTitle">Arena Data Center Manager - Help Guide</h1>
+      <p id="headerSubtitle">Your complete guide to managing datacenter layouts with Arena PLM</p>
     </div>
 
     <div class="tabs">
@@ -581,773 +595,877 @@
       <button class="tab" onclick="showTab(6)">About</button>
     </div>
 
-    <!-- Tab 1: Getting Started -->
+    <!-- ===== Tab 0: Getting Started ===== -->
     <div class="tab-content active">
-      <h2>Welcome! Let's Get You Started</h2>
+      <h2><svg class="icon icon-lg"><use href="#icon-rocket"></use></svg> Welcome! Let's Get You Started</h2>
 
-      <p>Welcome! This tool helps you design layouts, manage configurations, and sync everything with Arena PLM. Let's get you up and running!</p>
+      <p>Arena Data Center Manager turns a Google Sheet into a full datacenter layout design tool connected to Arena PLM. The spreadsheet <strong>is</strong> the layout: each rack gets its own sheet tab, an overview sheet is the floor-plan grid, and everything syncs bidirectionally with Arena PLM records.</p>
 
+      <h3>The Three-Level Hierarchy</h3>
+      <div class="hierarchy-diagram">
+        POD (Level 0) &mdash; The datacenter hall or zone &mdash; top-level Arena item<br>
+        &nbsp;&nbsp;&boxvr;&mdash; Row (Level 1) &mdash; A physical row of racks &mdash; child of POD in Arena BOM<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&boxvr;&mdash; Rack (Level 2) &mdash; An individual rack config sheet &mdash; child of Row in Arena BOM
+      </div>
+
+      <div class="info-box">
+        <strong>Terminology is configurable!</strong> "POD" could be "Hall", "Row" could be "Aisle", "Rack" could be "Cabinet" &mdash; whatever fits your organization. Configure this via <code>Setup &rarr; Configuration &rarr; Configure Type System</code>.
+      </div>
+
+      <!-- Step 1 -->
       <h3>Step 1: Connect to Arena</h3>
       <div class="step-box">
         <span class="step-number">1</span>
-        <strong>Open the configuration menu</strong>
-        <div class="menu-path">Arena → Setup → Configuration → Configure Arena Connection</div>
+        <strong>Open the connection dialog</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Arena Connection</div>
+        <p>Enter your Arena email, password, and workspace ID. The dialog auto-tests your credentials on save and shows success or error.</p>
       </div>
 
       <div class="step-box">
         <span class="step-number">2</span>
-        <strong>Enter your Arena credentials</strong>
-        <ul>
-          <li><strong>Arena URL:</strong> Your Arena workspace URL (e.g., https://yourcompany.arenasolutions.com)</li>
-          <li><strong>Email:</strong> Your Arena login email</li>
-          <li><strong>Password:</strong> Your Arena password</li>
-          <li><strong>Workspace ID:</strong> Your Arena workspace ID (found in Arena settings)</li>
-        </ul>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Test the connection</strong>
-        <div class="menu-path">Arena → Setup → Configuration → Test Connection</div>
-        <p>Verify everything is working correctly before proceeding.</p>
+        <strong>Verify the connection</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Test Connection</div>
+        <p>A successful test shows your workspace info, item count, and category count along with a welcome message.</p>
       </div>
 
       <div class="tip-box">
-        <strong>Pro Tip:</strong> Your credentials are stored securely in Google's property service and are only accessible by this spreadsheet.
+        <strong>Tip:</strong> Your credentials are stored securely in Google's UserProperties service and are only accessible by this spreadsheet. They are never shared.
+      </div>
+
+      <!-- Step 2 -->
+      <h3>Step 2: Run Quick Setup or Customize</h3>
+      <div class="step-box">
+        <span class="step-number">3</span>
+        <strong>Apply defaults or customize</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Quick Setup (Default Config)</div>
+        <p>Quick Setup applies neutral defaults and offers to open the full configuration wizard if you want to customize terminology, colors, columns, and BOM levels.</p>
+      </div>
+
+      <!-- Step 3 -->
+      <h3>Step 3: Create Your First Overview Layout</h3>
+      <div class="step-box">
+        <span class="step-number">4</span>
+        <strong>Create an overview grid</strong>
+        <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Overview Layout</div>
+        <p>You'll be asked for a name, the number of rows (1-50), and positions per row (1-50). This creates a grid sheet representing your datacenter floor plan.</p>
+      </div>
+
+      <!-- Step 4 -->
+      <h3>Step 4: Create Rack Configurations</h3>
+      <div class="step-box">
+        <span class="step-number">5</span>
+        <strong>Create rack config sheets</strong>
+        <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Rack Configuration</div>
+        <p>Give each rack a name, then choose to link it to an existing Arena item (fetching its BOM) or start with a placeholder. Use the Item Picker sidebar to add components to its BOM.</p>
+      </div>
+
+      <!-- Step 5 -->
+      <h3>Step 5: Place Racks in the Overview</h3>
+      <div class="step-box">
+        <span class="step-number">6</span>
+        <strong>Link racks to the overview grid</strong>
+        <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Autolink Racks to Overview</div>
+        <p>Automatically populates your overview grid with clickable hyperlinks to all rack config sheets. Or use the Rack Picker sidebar to place racks one at a time.</p>
+      </div>
+
+      <!-- Step 6 -->
+      <h3>Step 6: Push to Arena</h3>
+      <div class="step-box">
+        <span class="step-number">7</span>
+        <strong>Publish the full POD structure</strong>
+        <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Push POD Structure to Arena</div>
+        <p>The 3-step wizard creates the complete POD &rarr; Row &rarr; Rack hierarchy in Arena PLM. See the <strong>Publishing</strong> tab for full details.</p>
       </div>
 
       <h3>What This Tool Does</h3>
       <div class="feature-grid">
         <div class="feature-card">
-          <h4>Configuration Management</h4>
-          <p>Create and configure item BOMs with components from Arena</p>
+          <h4><svg class="icon icon-md"><use href="#icon-office"></use></svg> Layout Design</h4>
+          <p>Design datacenter floors with grid-based overview sheets and individual rack config tabs</p>
         </div>
         <div class="feature-card">
-          <h4>Layout Design</h4>
-          <p>Design layouts with visual item placement in grid positions</p>
+          <h4><svg class="icon icon-md"><use href="#icon-search"></use></svg> Item Browsing</h4>
+          <p>Browse, search, and filter Arena items with the Item Picker and Rack Picker sidebars</p>
         </div>
         <div class="feature-card">
-          <h4>BOM Automation</h4>
-          <p>Automatically generate consolidated BOMs from your layouts</p>
+          <h4><svg class="icon icon-md"><use href="#icon-package"></use></svg> BOM Management</h4>
+          <p>Build rack BOMs from Arena components, clone racks, and generate consolidated BOMs</p>
         </div>
         <div class="feature-card">
-          <h4>Arena Sync</h4>
-          <p>Push hierarchical structures directly to Arena PLM</p>
+          <h4><svg class="icon icon-md"><use href="#icon-rocket"></use></svg> Arena Sync</h4>
+          <p>Push complete POD/Row/Rack hierarchies to Arena PLM with a guided wizard</p>
         </div>
         <div class="feature-card">
-          <h4>Status Tracking</h4>
-          <p>Visual indicators show sync status for all configurations</p>
+          <h4><svg class="icon icon-md"><use href="#icon-target"></use></svg> Status Tracking</h4>
+          <p>Color-coded sync status for every rack: Synced, Arena Modified, Locally Modified, Placeholder</p>
         </div>
         <div class="feature-card">
-          <h4>History Logging</h4>
-          <p>Complete audit trail of all changes and events</p>
+          <h4><svg class="icon icon-md"><use href="#icon-history"></use></svg> Audit History</h4>
+          <p>Full event log of all changes with filtering, validation, and repair tools</p>
         </div>
       </div>
     </div>
 
-    <!-- Tab 2: Menu Reference -->
+    <!-- ===== Tab 1: Menu Reference ===== -->
     <div class="tab-content">
-      <h2>Complete Menu Reference</h2>
+      <h2><svg class="icon icon-lg"><use href="#icon-document"></use></svg> Complete Menu Reference</h2>
 
-      <p>This guide explains every menu item in the Arena menu and how they work together in your workflow.</p>
+      <p>Every menu item under <strong>Arena POD</strong> is documented below with its exact menu path, what it does, and when to use it.</p>
 
       <div class="workflow-box">
-        <h4><svg class="icon icon-md"><use href="#icon-refresh"></use></svg>Typical Workflow</h4>
+        <h4><svg class="icon icon-md"><use href="#icon-refresh"></use></svg> Typical End-to-End Workflow</h4>
         <div class="workflow-step">
           <div class="workflow-step-num">1</div>
-          <div class="workflow-step-text"><strong>Setup:</strong> Configure Arena Connection → Configure Type System → Set up columns and colors</div>
+          <div class="workflow-step-text"><strong>Setup:</strong> Configure Arena Connection &rarr; Quick Setup or Configure Type System &rarr; Configure Item Columns &rarr; Configure Colors</div>
         </div>
         <div class="workflow-step">
           <div class="workflow-step-num">2</div>
-          <div class="workflow-step-text"><strong>Design:</strong> Create Overview Layout → Create configurations using Item Picker → Build BOMs</div>
+          <div class="workflow-step-text"><strong>Design:</strong> New Overview Layout &rarr; New Rack Configurations &rarr; Populate BOMs with Item Picker &rarr; Autolink Racks to Overview</div>
         </div>
         <div class="workflow-step">
           <div class="workflow-step-num">3</div>
-          <div class="workflow-step-text"><strong>Review:</strong> Check Status → View History → Create Consolidated BOM</div>
+          <div class="workflow-step-text"><strong>Review:</strong> Check All Rack Status &rarr; View Rack History &rarr; Create Consolidated BOM</div>
         </div>
         <div class="workflow-step">
           <div class="workflow-step-num">4</div>
-          <div class="workflow-step-text"><strong>Publish:</strong> Push Structure to Arena → Verify in Arena PLM</div>
+          <div class="workflow-step-text"><strong>Publish:</strong> Push POD Structure to Arena &rarr; Verify in Arena PLM &rarr; Track ongoing changes</div>
         </div>
       </div>
 
       <!-- Create Layout Section -->
       <div class="menu-section">
-        <h3>📐 Create Layout</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-office"></use></svg> Create Layout</h3>
 
         <div class="menu-item">
-          <div class="menu-item-title">New Configuration</div>
-          <p class="menu-item-desc">Creates a new configuration sheet for designing your product structure. Each configuration represents a unique assembly with its own bill of materials (BOM). You can build multiple configurations and then place them in overview layouts.</p>
+          <div class="menu-item-title">New Rack Configuration</div>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Rack Configuration</div>
+          <p class="menu-item-desc">Creates a brand-new rack configuration sheet. Prompts for a name, then asks whether to link to an existing Arena item or use a placeholder. If linking to Arena, you enter an item number which is validated and fetched via the API, optionally pulling its BOM. The new sheet includes a metadata row (PARENT_ITEM), header row, and BOM data. It is registered in the History tab and given a blue cascading tab color.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">New Overview Layout</div>
-          <p class="menu-item-desc">Creates a visual grid layout where you can arrange multiple configurations. Think of this as your master layout plan - it shows how all your configurations are organized spatially. Perfect for data center floor plans, production line layouts, or warehouse shelving arrangements.</p>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Overview Layout</div>
+          <p class="menu-item-desc">Creates an overview grid sheet representing a datacenter floor plan. Prompts for a name, number of rows (1-50), and positions per row (1-50). The sheet is structured with a blue title bar, "Row Item" column, and position headers (Pos 1, Pos 2, ...). The tab gets a green color. This is the bird's-eye view of your layout.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Clone Existing Rack ⧉</div>
-          <p class="menu-item-desc"><strong>NEW!</strong> Duplicate an existing rack configuration to create variants. Opens Rack Picker in clone mode where you can search for a rack to copy. Perfect for creating "Type A" → "Type B" variants without rebuilding from scratch. All BOM data and formatting are preserved. Creates a PLACEHOLDER rack ready for customization.</p>
+          <div class="menu-item-title">Clone Existing Rack</div>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Clone Existing Rack</div>
+          <p class="menu-item-desc">Opens the Rack Picker sidebar in "clone" mode. Browse or search existing rack config sheets, select one to clone, and provide a new item number and name. The cloned sheet is a full copy including all BOM rows, created as a PLACEHOLDER ready for customization.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Load Arena Item as Template 🌐</div>
-          <p class="menu-item-desc"><strong>NEW!</strong> Load a comprehensive Arena BOM as a template for customization (the "150% configuration" approach). Opens Rack Picker in template mode where you can browse Arena items, preview their BOMs, and load all components. Ideal when Arena has an item with 50 options and you want to trim down to 15 needed components. Creates a PLACEHOLDER rack with an instruction row reminding you to trim before pushing.</p>
+          <div class="menu-item-title">Load Arena Item as Template</div>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Load Arena Item as Template</div>
+          <p class="menu-item-desc">Opens the Rack Picker sidebar in "template" mode for the "150% BOM" workflow. Fetch an Arena item's full BOM, preview all components, and select which ones to include. Creates a new PLACEHOLDER rack with a yellow reminder row prompting you to trim down before pushing.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Clone This Rack ⧉</div>
-          <p class="menu-item-desc"><strong>NEW!</strong> Quick clone shortcut! This context-sensitive menu item appears ONLY when viewing a rack configuration sheet. Prompts for new item number and name, then instantly creates a clone of the current rack. Fastest way to duplicate the rack you're currently viewing.</p>
+          <div class="menu-item-title">Clone This Rack</div>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Clone This Rack</div>
+          <p class="menu-item-desc">Context-sensitive shortcut that only appears when you are viewing a rack config sheet. Instantly clones the current rack after prompting for a new item number and name. Fastest way to duplicate the rack you're already looking at.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Autolink to Overview</div>
-          <p class="menu-item-desc">Automatically links existing configurations to cells in your overview layout. Scans your overview sheet and matches item numbers to configuration sheets, creating clickable links. Saves time when you have many configurations to connect.</p>
+          <div class="menu-item-title">Autolink Racks to Overview</div>
+          <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Autolink Racks to Overview</div>
+          <p class="menu-item-desc">Populates the overview grid with clickable hyperlinks to all rack config sheets in the spreadsheet. Each cell displays the rack's Arena part number (e.g., "100-0042") as the link text so the POD push wizard can match racks by number. Run this after creating your rack sheets to fill in the overview grid automatically.</p>
         </div>
       </div>
 
       <!-- Item Pickers Section -->
       <div class="menu-section">
-        <h3><svg class="icon icon-md"><use href="#icon-search"></use></svg>Item Pickers</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-search"></use></svg> Item &amp; Rack Pickers</h3>
 
         <div class="menu-item">
           <div class="menu-item-title">Show Item Picker</div>
-          <p class="menu-item-desc">Opens a searchable dialog to browse ALL items from Arena PLM. Search by item number, name, or description. Use this to find components to add to BOMs. Features infinite scroll, 6-hour caching for performance, and shows item details including category and lifecycle.</p>
+          <div class="menu-path">Arena POD &rarr; Show Item Picker</div>
+          <p class="menu-item-desc">Opens a sidebar with 3 tabs: <strong>Items</strong> (browse/search all Arena items with infinite scroll), <strong>Filters</strong> (filter by category, lifecycle phase, favorite categories), and <strong>Quantities</strong> (view item usage counts across sheets). On a rack config sheet, inserting an item writes a full BOM row (qty, number, name, category, notes). On other sheets it inserts the item number as a hyperlink. Items with pending change orders show a red ECO badge.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Show Configuration Picker</div>
-          <p class="menu-item-desc">Opens a specialized picker showing ONLY your top-level configuration items (filtered by type classification). Perfect for placing configurations in overview layouts or creating hierarchies. Shows item details with color-coded types for easy identification. <strong>TIP:</strong> The <strong>Templates tab</strong> in Rack Picker lets you clone existing racks or load Arena items as templates - look for the clone icon ⧉ next to each rack!</p>
+          <div class="menu-item-title">Show Rack Picker</div>
+          <div class="menu-path">Arena POD &rarr; Show Rack Picker</div>
+          <p class="menu-item-desc">Opens a sidebar with 4 tabs: <strong>Racks</strong> (browse all rack config sheets, place as hyperlinks in overview), <strong>From Arena</strong> (browse Arena items and auto-create rack sheets with BOM), <strong>Templates</strong> (clone existing racks or load Arena item BOMs as templates), and <strong>Quantities</strong> (view rack placement counts by scope). Use this to populate your overview grid or create new racks from Arena data.</p>
         </div>
       </div>
 
       <!-- BOM Operations Section -->
       <div class="menu-section">
-        <h3><svg class="icon icon-md"><use href="#icon-package"></use></svg>BOM Operations</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-package"></use></svg> BOM Operations</h3>
 
         <div class="menu-item">
           <div class="menu-item-title">Create Consolidated BOM</div>
-          <p class="menu-item-desc">Generates a comprehensive bill of materials by combining all configurations in your overview layout. Automatically calculates total quantities across all positions, groups by component, and creates a master parts list. Essential for procurement and costing.</p>
+          <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Create Consolidated BOM</div>
+          <p class="menu-item-desc">Scans the overview sheet for all rack placements, gathers each rack's BOM, and generates a "Consolidated BOM" sheet with all items aggregated by total quantity. Shows an animated loading modal during the build. The sheet is recreated fresh each time (not incremental). Use this for procurement planning and cost estimation.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Push Structure to Arena</div>
-          <p class="menu-item-desc">THE BIG ONE! Publishes your entire hierarchical structure to Arena PLM. Creates top-level assemblies, mid-level groupings, and individual configuration items with full BOMs. Includes pre-flight validation, automatic item creation for placeholders, and rollback protection. This is how you get everything into Arena.</p>
+          <div class="menu-item-title">Push POD Structure to Arena</div>
+          <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Push POD Structure to Arena</div>
+          <p class="menu-item-desc">The main publishing workflow: a 3-stage wizard that creates the complete POD &rarr; Row &rarr; Rack hierarchy in Arena PLM. Stage 1 handles racks, Stage 2 handles rows, Stage 3 is POD creation and final review. Includes animated progress, live step logging, and a completion screen with an "Open POD in Arena" button. See the <strong>Publishing</strong> tab for full details.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Check All Status</div>
-          <p class="menu-item-desc">Compares all your local configurations against Arena PLM to detect differences. Shows which are synced (green), modified locally (orange), or only exist in Arena (yellow). Helps you understand what needs to be updated before pushing changes.</p>
+          <div class="menu-item-title">Check All Rack Status (vs. PDM)</div>
+          <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Check All Rack Status (vs. PDM)</div>
+          <p class="menu-item-desc">Compares every local rack BOM against Arena's current BOM data. Updates each rack's status: <span class="status-indicator status-synced">Synced</span> <span class="status-indicator status-arena">Arena Modified</span> <span class="status-indicator status-local">Locally Modified</span> <span class="status-indicator status-placeholder">Placeholder</span> <span class="status-indicator status-error">Error</span>. Shows a summary dialog with counts by status.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">View History</div>
-          <p class="menu-item-desc">Opens a filterable history log showing all events: configuration creations, BOM modifications, Arena sync events, and status changes. Perfect for auditing, troubleshooting, and understanding what happened when. Includes date filters and export capabilities.</p>
+          <div class="menu-item-title">View Rack History</div>
+          <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; View Rack History</div>
+          <p class="menu-item-desc">Navigates to (or creates) the Rack History tab and opens the History Filter sidebar. Shows all historical sync events with filtering by rack, status, and date range. The History tab is a protected audit trail of every rack creation, status change, sync, and push event.</p>
         </div>
       </div>
 
       <!-- Setup > Configuration Section -->
       <div class="menu-section">
-        <h3><svg class="icon icon-md"><use href="#icon-settings"></use></svg>Setup → Configuration</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-settings"></use></svg> Setup &rarr; Configuration</h3>
 
         <div class="menu-item">
           <div class="menu-item-title">Configure Arena Connection</div>
-          <p class="menu-item-desc">Sets up your Arena PLM credentials (URL, email, password). This is REQUIRED before using any Arena features. Credentials are stored securely in Google's PropertiesService.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Arena Connection</div>
+          <p class="menu-item-desc">Modal dialog for Arena API credentials: email, password, and workspace ID. Saves to UserProperties, auto-tests the login on save, and shows success or error. Loads existing config values when opened.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Test Connection</div>
-          <p class="menu-item-desc">Validates your Arena credentials by making a test API call. Shows success/failure and helps troubleshoot connection issues. Run this after configuring credentials or if you're experiencing sync problems.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Test Connection</div>
+          <p class="menu-item-desc">Tests the Arena API connection. On success, shows workspace info, total item count, category count, and a randomized welcome message. On failure, shows the specific error for troubleshooting.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Clear Credentials</div>
-          <p class="menu-item-desc">Removes stored Arena credentials from the system. Useful when switching Arena workspaces or troubleshooting authentication issues.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Clear Credentials</div>
+          <p class="menu-item-desc">Shows a confirmation prompt, then deletes all stored Arena credentials and session data. Use when switching workspaces or decommissioning a spreadsheet.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Configure Type System</div>
-          <p class="menu-item-desc">THE CUSTOMIZATION CENTER! Configure entity terminology (what you call your main items), type classifications with keywords and colors, category classifications, layout grid settings, and hierarchy level names. Makes the tool work for ANY industry - data centers, manufacturing, warehouses, food service, etc.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Type System</div>
+          <p class="menu-item-desc">The central customization hub. A tabbed dialog where you configure: entity terminology (singular/plural/verb forms), type classifications with keywords and colors, category classifications, layout grid settings, and BOM hierarchy levels. This makes the tool work for any industry, not just datacenters.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Quick Setup (Default Config)</div>
-          <p class="menu-item-desc">Applies a sensible default configuration if you don't want to customize everything. Good for getting started quickly or resetting to a known-good state.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Quick Setup (Default Config)</div>
+          <p class="menu-item-desc">Applies neutral default configuration with "Configuration" terminology. After applying, offers to open the full wizard if you want further customization. Best for first-time setup.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Run Auto-Migration (Datacenter)</div>
-          <p class="menu-item-desc">Converts legacy datacenter-specific configurations to the new generic Type System v2.0. Only needed if you were using an older version of this tool. Preserves all your data while upgrading to the flexible system.</p>
+          <div class="menu-item-title">Run Auto-Migration</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Run Auto-Migration</div>
+          <p class="menu-item-desc">For legacy datacenter spreadsheets only. Migrates V1 hardcoded configuration to the configurable type system. Guards against accidental double-migration. Only needed if upgrading from an older version.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Configure Item Columns</div>
-          <p class="menu-item-desc">Customizes which Arena attributes appear as columns in configuration sheets. Show/hide item number, revision, description, category, lifecycle, and custom attributes. Lets you see exactly the data you need.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Item Columns</div>
+          <p class="menu-item-desc">Choose which Arena item attributes appear as columns in rack BOM sheets. Loads available attributes from Arena, supports attribute groups (save/load presets), and lets you set custom column headers. Controls exactly what data you see for each BOM component.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Configure Category Colors</div>
-          <p class="menu-item-desc">Assigns colors to Arena categories for visual identification in your sheets. Makes it easy to spot different component types at a glance (e.g., Electrical = Yellow, Mechanical = Blue).</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Category Colors</div>
+          <p class="menu-item-desc">Assigns background colors to Arena categories. These colors appear on Item Picker cards and rack cell backgrounds, making it easy to visually distinguish component types (e.g., Networking = blue, Power = yellow). Supports a favorites filter.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Configure Configuration Colors</div>
-          <p class="menu-item-desc">Assigns colors to your configuration types for visual identification. Works with the type classification system to color-code different configuration types in overview layouts and pickers.</p>
+          <div class="menu-item-title">Configure Rack Colors</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Rack Colors</div>
+          <p class="menu-item-desc">Assigns colors to rack configurations in the overview grid. Auto-generates unique pastel colors for each rack. Shows all rack config sheets with search. Makes the overview grid visually distinctive and easy to scan.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Configure BOM Levels</div>
-          <p class="menu-item-desc">Defines which Arena BOM levels to include when syncing. Some organizations use multi-level BOMs in Arena - this lets you control which levels get pulled into your configurations.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure BOM Levels</div>
+          <p class="menu-item-desc">Defines the BOM hierarchy by assigning Arena categories to levels. Level 0 = POD type, Level 1 = Row type, Level 2 = Rack type. This tells the push wizard which categories to use when creating POD, row, and rack items in Arena.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Location Propagation</div>
-          <p class="menu-item-desc">Configures position/location tracking for components within hierarchies. When enabled, tracks which specific positions (e.g., "Pos 1, Pos 3, Pos 8") each component occupies. Essential for spatial tracking and location-aware BOMs.</p>
+          <div class="menu-item-title">Configure BOM Tree Columns</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure BOM Tree Columns</div>
+          <p class="menu-item-desc">Selects which Arena custom attributes appear as columns in the BOM tree viewer modal. Useful for seeing attributes like Power Consumption, U Spaces, or Weight when exploring BOM hierarchies.</p>
+        </div>
+
+        <div class="menu-item">
+          <div class="menu-item-title">Rack Location Propagation</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Rack Location Propagation</div>
+          <p class="menu-item-desc">Configures which BOM attribute stores position info (e.g., "Pos 1, Pos 3, Pos 8") when pushing rack structures to Arena. Select a BOM attribute from the dropdown and configure the position format. This is optional and can be disabled.</p>
         </div>
       </div>
 
       <!-- Setup > Advanced Section -->
       <div class="menu-section">
-        <h3>🔧 Setup → Advanced</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-tool"></use></svg> Setup &rarr; Advanced</h3>
 
         <div class="menu-item">
-          <div class="menu-item-title">Mark Current as Synced</div>
-          <p class="menu-item-desc">Manually marks the active configuration sheet as synced with Arena. Use with caution! This tells the system "this matches Arena" without actually checking. Useful for fixing status after manual fixes or import/export operations.</p>
+          <div class="menu-item-title">Mark Current Rack as Synced</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced &rarr; Mark Current Rack as Synced</div>
+          <p class="menu-item-desc">Manually overrides the current rack's status to SYNCED. Logs a MANUAL_SYNC event in the History tab. Use with caution &mdash; this tells the system "this rack matches Arena" without actually verifying. Useful after manual corrections or import/export operations.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Validate History Integrity</div>
-          <p class="menu-item-desc">Checks your history log for data integrity issues: missing required fields, invalid formats, orphaned records. Provides a detailed report of any problems found. Run this if history seems corrupted or you're seeing weird behavior.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced &rarr; Validate History Integrity</div>
+          <p class="menu-item-desc">Checks the History tab for data integrity issues: verifies all racks have summary rows, checks for orphaned rows, and validates status values. Shows a results dialog with any problems found.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Repair History Issues</div>
-          <p class="menu-item-desc">Attempts to automatically fix problems found by validation. Removes invalid entries, fixes formatting issues, and rebuilds indexes. Always run validation first to see what will be fixed.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced &rarr; Repair History Issues</div>
+          <p class="menu-item-desc">Runs validation first, shows discovered issues, asks for confirmation, then creates missing summary rows and fixes common problems. Always run Validate first to see what will be repaired.</p>
         </div>
 
         <div class="menu-item">
-          <div class="menu-item-title">Export Configuration</div>
-          <p class="menu-item-desc">Exports your complete Type System configuration to JSON format. Perfect for backing up settings, sharing configuration with team members, or migrating to a new spreadsheet. Includes all terminology, type definitions, colors, and settings.</p>
-        </div>
-
-        <div class="menu-item">
-          <div class="menu-item-title">Import Configuration</div>
-          <p class="menu-item-desc">Imports a Type System configuration from JSON. Lets you restore from backup, apply a colleague's configuration, or set up a new spreadsheet to match existing standards. Validates the import before applying.</p>
+          <div class="menu-item-title">Export / Import Configuration</div>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced &rarr; Export Configuration</div>
+          <p class="menu-item-desc"><strong>Export:</strong> Copies your complete type system config as JSON to a copyable dialog. <strong>Import:</strong> Paste JSON from another spreadsheet to restore or share configuration. Perfect for backing up settings, sharing with colleagues, or migrating to a new spreadsheet.</p>
         </div>
 
         <div class="menu-item">
           <div class="menu-item-title">Reset Configuration</div>
-          <p class="menu-item-desc">Resets Type System configuration back to factory defaults. DESTRUCTIVE! This wipes all custom terminology, type definitions, and colors. Use when you want to start fresh or fix a badly corrupted configuration.</p>
+          <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced &rarr; Reset Configuration</div>
+          <p class="menu-item-desc">Resets all type system configuration to factory defaults. Does NOT affect your sheet data, rack configs, or overview layouts &mdash; only the type system settings (terminology, colors, classifications). Use when you want a fresh start on configuration.</p>
         </div>
       </div>
 
       <!-- Help Section -->
       <div class="menu-section">
-        <h3><svg class="icon icon-md"><use href="#icon-help"></use></svg>Help</h3>
+        <h3><svg class="icon icon-md"><use href="#icon-help"></use></svg> Help</h3>
 
         <div class="menu-item">
           <div class="menu-item-title">Help and Documentation</div>
-          <p class="menu-item-desc">Opens this help guide! Comprehensive documentation covering getting started, configuration, workflows, menu reference, and more. Your complete reference for using the tool effectively.</p>
+          <div class="menu-path">Arena POD &rarr; Help and Documentation</div>
+          <p class="menu-item-desc">Opens this help guide! Comprehensive documentation covering getting started, every menu item, configuration, content creation workflows, status tracking, and publishing to Arena.</p>
         </div>
-      </div>
-
-      <div class="tip-box">
-        <strong>Pro Tip:</strong> Most workflows follow this pattern: <strong>Setup → Design → Review → Publish</strong>. The menu is organized to support this natural progression!
-      </div>
-
-      <div class="info-box">
-        <strong>Need Help?</strong> Each menu item is designed to work together. If you're unsure where to start, check the "Getting Started" tab for a step-by-step walkthrough, or use the workflow guide at the top of this page!
       </div>
     </div>
 
-    <!-- Tab 3: Configuration -->
+    <!-- ===== Tab 2: Configuration ===== -->
     <div class="tab-content">
-      <h2>Configuration Setup</h2>
+      <h2><svg class="icon icon-lg"><use href="#icon-settings"></use></svg> Configuration Setup</h2>
 
-      <p>Before you start creating racks and layouts, let's configure Arena and customize the tool to match your workflow.</p>
+      <p>Before you start creating racks and layouts, configure Arena credentials and customize the tool to match your workflow. All configuration is under <code>Arena POD &rarr; Setup &rarr; Configuration</code>.</p>
 
-      <h3>Menu Structure</h3>
-      <p>The Arena menu is organized into logical sections:</p>
+      <!-- Arena Connection -->
+      <h3>Arena Connection</h3>
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Configure Arena Connection</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Arena Connection</div>
+        <p>Enter your Arena email, password, and workspace ID. Credentials are saved to Google's UserProperties (private to you) and auto-tested on save.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Test Connection</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Test Connection</div>
+        <p>Confirms your credentials work. Shows workspace name, total items, and category count on success.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">3</span>
+        <strong>Clear Credentials (optional)</strong>
+        <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Clear Credentials</div>
+        <p>Removes all stored Arena credentials and session data. Use when switching workspaces.</p>
+      </div>
+
+      <!-- Type System -->
+      <h3>Configure Type System</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Type System</div>
+      <p>This is the central customization hub. It opens a tabbed dialog with the following sections:</p>
+
       <ul>
-        <li><strong>Create Layout</strong> - Create new configurations and overview layouts</li>
-        <li><strong>Show Item Picker / Configuration Picker</strong> - Browse and select Arena items</li>
-        <li><strong>BOM Operations</strong> - Generate BOMs, push to Arena, check status, view history</li>
-        <li><strong>Setup</strong> - Configuration settings and advanced tools</li>
-        <li><strong>Help and Documentation</strong> - This help system</li>
+        <li><strong>Entity Terminology:</strong> Define what you call your items &mdash; singular, plural, and verb forms (e.g., "Rack" / "Racks" / "Racking")</li>
+        <li><strong>Type Classifications:</strong> Define type categories with keywords and associated colors for visual identification</li>
+        <li><strong>Category Classifications:</strong> Map Arena categories to your local classification scheme</li>
+        <li><strong>Layout Grid Settings:</strong> Configure grid dimensions and display options for overview sheets</li>
+        <li><strong>BOM Hierarchy Levels:</strong> Assign which Arena categories correspond to Level 0 (POD), Level 1 (Row), and Level 2 (Rack)</li>
       </ul>
 
-      <h3>Configure Category Colors</h3>
-      <p>Make your sheets more readable by assigning colors to Arena categories.</p>
-      <div class="menu-path">Arena → Setup → Configuration → Configure Category Colors</div>
-      <p>This helps you visually identify different component types at a glance!</p>
+      <div class="tip-box">
+        <strong>Tip:</strong> Use <strong>Quick Setup (Default Config)</strong> for a sensible starting point, then fine-tune individual settings as needed.
+      </div>
 
-      <h3>Configure Item Colors</h3>
-      <p>Assign colors to different item types in your overview layouts.</p>
-      <div class="menu-path">Arena → Setup → Configuration → Configure Item Colors</div>
-      <p>Makes it easy to distinguish different configuration types in your layout.</p>
-
-      <h3>Configure BOM Levels</h3>
-      <p>Set up which categories appear at which BOM levels (hierarchy).</p>
-      <div class="menu-path">Arena → Setup → Configuration → Configure BOM Levels</div>
-      <p>This determines how items are organized in consolidated BOMs.</p>
-
+      <!-- Item Columns -->
       <h3>Configure Item Columns</h3>
-      <p>Choose which Arena attributes to display as columns in your rack configurations.</p>
-      <div class="menu-path">Arena → Setup → Configuration → Configure Item Columns</div>
-      <p>Customize what information you see for each component.</p>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Item Columns</div>
+      <p>Choose which Arena item attributes appear as columns in rack BOM sheets. The dialog loads all available attributes from Arena and lets you:</p>
+      <ul>
+        <li>Toggle individual attributes on/off</li>
+        <li>Set custom column header names</li>
+        <li>Save and load attribute groups as presets for different workflows</li>
+      </ul>
 
-      <h3>BOM Location Propagation</h3>
-      <p>Enable automatic position tracking for items in BOM hierarchies - similar to reference designators for electrical components.</p>
-      <div class="menu-path">Arena → Setup → Configuration → BOM Location Setting</div>
+      <!-- Category Colors -->
+      <h3>Configure Category Colors</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Category Colors</div>
+      <p>Assign background colors to Arena categories. These colors appear on:</p>
+      <ul>
+        <li>Item Picker cards &mdash; instantly identify component types</li>
+        <li>Rack BOM cell backgrounds &mdash; visual scanning of BOMs</li>
+      </ul>
+      <p>Supports a favorites filter so you can star the categories you use most often.</p>
+
+      <!-- Rack Colors -->
+      <h3>Configure Rack Colors</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure Rack Colors</div>
+      <p>Assign colors to rack configurations in the overview grid. Auto-generates unique pastel colors for each rack. Includes a search box to find specific rack config sheets. Makes your overview grid visually distinctive and easy to scan at a glance.</p>
+
+      <!-- BOM Levels -->
+      <h3>Configure BOM Levels</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure BOM Levels</div>
+      <p>Defines the BOM hierarchy by mapping Arena categories to levels:</p>
+      <ul>
+        <li><strong>Level 0 (POD type):</strong> The category used when creating the top-level POD item in Arena</li>
+        <li><strong>Level 1 (Row type):</strong> The category used when creating row items in Arena</li>
+        <li><strong>Level 2 (Rack type):</strong> The category used when creating rack items in Arena</li>
+      </ul>
+
+      <div class="warning-box">
+        <strong>Important:</strong> BOM Levels must be configured before using Push POD Structure to Arena. The wizard uses these settings to assign the correct Arena category to each created item.
+      </div>
+
+      <!-- BOM Tree Columns -->
+      <h3>Configure BOM Tree Columns</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Configure BOM Tree Columns</div>
+      <p>Select which Arena custom attributes appear as extra columns in the BOM tree viewer. Use "Load Available Attributes" to see all custom attributes from your Arena workspace, search and check the ones you want. Values are lazy-loaded and cached for performance.</p>
+
+      <div class="tip-box">
+        <strong>Use cases:</strong> Add "Power Consumption (W)" for power planning, "U Spaces Required" for space planning, or "Geo Usage" for compliance filtering.
+      </div>
+
+      <!-- Rack Location Propagation -->
+      <h3>Rack Location Propagation</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Configuration &rarr; Rack Location Propagation</div>
+      <p>Configures automatic position tracking when pushing structures to Arena. When enabled, each rack on a row's BOM is tagged with its grid positions (e.g., "Pos 1, Pos 3, Pos 8").</p>
 
       <div class="step-box">
         <span class="step-number">1</span>
-        <strong>Create BOM attribute in Arena first</strong>
-        <ul>
-          <li>In Arena, go to Settings → BOM Attributes (or Item Attributes)</li>
-          <li>Create a new attribute (e.g., "Item Positions")</li>
-          <li>Type: <code>SINGLE_LINE_TEXT</code></li>
-          <li>Apply to categories that will have BOMs</li>
-        </ul>
+        <strong>Create a BOM attribute in Arena first</strong>
+        <p>In Arena, go to Settings &rarr; BOM Attributes. Create a new <code>SINGLE_LINE_TEXT</code> attribute (e.g., "Item Positions") and apply it to relevant categories.</p>
       </div>
 
       <div class="step-box">
         <span class="step-number">2</span>
         <strong>Configure in the spreadsheet</strong>
-        <ul>
-          <li>Open the Rack Location Propagation configuration dialog</li>
-          <li>Select your Arena BOM attribute from the dropdown</li>
-          <li>Optionally adjust the position format (default: "Pos {n}")</li>
-          <li>Click Save</li>
-        </ul>
-      </div>
-
-      <p><strong>What this does:</strong> When you push a structure to Arena, each item on a parent's BOM will be automatically tagged with its specific positions.</p>
-
-      <p><strong>Example:</strong> If an item appears in Pos 1, Pos 3, and Pos 8, the BOM line will have the position attribute set to "Pos 1, Pos 3, Pos 8"</p>
-
-      <div class="tip-box">
-        <strong>Pro Tip:</strong> This feature is optional! To disable it, select "No position tracking (disabled)" in the configuration dialog.
-      </div>
-    </div>
-
-    <!-- Tab 3: Creating Content -->
-    <div class="tab-content">
-      <h2>Creating Racks and Layouts</h2>
-
-      <p>Now for the fun part! Let's build some rack configurations and design your data center layout.</p>
-
-      <h3>Option A: Use Existing Racks from Arena</h3>
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Open Rack Picker</strong>
-        <div class="menu-path">Arena → Show Rack Picker</div>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Browse and filter racks</strong>
-        <p>Use category filters, search, and favorites to find the rack you want.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Select a rack</strong>
-        <p>Click on a rack card to select it, then click a cell in your overview to place it.</p>
-      </div>
-
-      <h3>Option B: Create Custom Rack Configurations</h3>
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Create new rack configuration</strong>
-        <div class="menu-path">Arena → Create Layout → New Rack Configuration</div>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Name your rack</strong>
-        <p>You can link to an existing Arena item or create a placeholder for later.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Add components using Item Picker</strong>
-        <div class="menu-path">Arena → Show Item Picker</div>
-        <p>Browse Arena items, select components, and click rows to add them to your rack BOM.</p>
-      </div>
-
-      <div class="tip-box">
-        <strong>Tip:</strong> Use favorites in Item Picker to quickly access your most-used categories and components!
-      </div>
-
-      <h3>Option C: Clone or Load Templates</h3>
-      <p>Save time by cloning existing racks or loading Arena items as templates! Perfect for creating variants or using the "150% BOM" approach.</p>
-
-      <div class="info-box" style="margin-bottom: 20px;">
-        <strong>💡 What is the "150% BOM" Workflow?</strong>
-        <p>Load a comprehensive Arena item containing ALL possible options (e.g., 50 component variants), then trim it down to your actual needs (15 components). This is faster than adding components one-by-one!</p>
-      </div>
-
-      <h4>Clone Existing Rack</h4>
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Open Rack Picker Templates Tab</strong>
-        <div class="menu-path">Arena → Show Rack Picker → Templates Tab</div>
-        <p>Or use: <span class="menu-path">Arena → Create Layout → Clone Existing Rack</span></p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Find rack to clone</strong>
-        <p>Browse existing racks or use the search box to find "Server Type A". Click the <strong>clone icon ⧉</strong> next to the rack name.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Enter new rack details</strong>
-        <p>Provide a new rack number and name (e.g., "Type B"). The clone modal shows you how many components will be copied.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">4</span>
-        <strong>Edit the cloned rack</strong>
-        <p>New rack is created as <strong>PLACEHOLDER</strong> (red status). Modify components as needed, then push to Arena when ready.</p>
-      </div>
-
-      <h4>Load Arena Template (150% BOM)</h4>
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Switch to Arena Template mode</strong>
-        <div class="menu-path">Rack Picker → Templates Tab → Arena Template</div>
-        <p>Or use: <span class="menu-path">Arena → Create Layout → Load Arena Item as Template</span></p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Search for comprehensive item</strong>
-        <p>Find an Arena item with ALL component options (e.g., "SERVER-ALL-OPTIONS" with 50 components including 5 storage options, 5 RAM types, etc.)</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Preview BOM before loading</strong>
-        <p>Click "Load as Template" to see a preview showing component count and categories. Click "Confirm" to create the rack.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">4</span>
-        <strong>Trim down to desired config</strong>
-        <p>Delete unwanted rows (35 of 50), keeping only what you need (15 components). Then push to Arena as your custom configuration.</p>
-      </div>
-
-      <div class="tip-box">
-        <strong>Quick Clone Tip:</strong> When viewing a rack sheet, use <span class="menu-path">Arena → Create Layout → Clone This Rack</span> for instant duplication!
-      </div>
-
-      <h3>BOM Tree Viewer - Add Components Intelligently</h3>
-      <p>Browse Arena BOMs in a hierarchical tree view and selectively insert components into your rack configurations.</p>
-
-      <h4>Opening the BOM Tree</h4>
-      <p>From Item Picker or Rack Picker, click the <strong>tree icon 🌳</strong> next to any item to view its complete BOM structure.</p>
-
-      <h4>Key Features</h4>
-      <ul>
-        <li><strong>Hierarchical View:</strong> Expand/collapse nodes to explore multi-level BOMs (up to 10 levels deep)</li>
-        <li><strong>Selective Insert:</strong> Check boxes next to components you want, then click "Insert Selected"</li>
-        <li><strong>Resizable Columns:</strong> Drag column dividers to resize Item Number, Name, Qty, Revision, Description</li>
-        <li><strong>Custom Attributes:</strong> Add Arena attribute columns like "Power Consumption", "U Spaces", "Geo Usage" (see below)</li>
-        <li><strong>Fast Performance:</strong> Optimized to load BOMs in 3-5 seconds without extra API calls</li>
-      </ul>
-
-      <h4>Using Custom Attribute Columns</h4>
-      <p>Display Arena custom attributes as columns to make better component selection decisions:</p>
-
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Configure available attributes</strong>
-        <div class="menu-path">Arena → Setup → Configuration → Configure BOM Tree Columns</div>
-        <p>Click "Load Available Attributes" to see all 85+ custom attributes defined in your Arena workspace.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Search and select attributes</strong>
-        <p>Use the search box to find attributes like "power", "spaces", or "weight". Check the boxes for attributes you want as columns.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Save configuration</strong>
-        <p>Click "Save Configuration". Your selected attributes (e.g., Power Consumption, U Spaces Required) now appear as columns in the BOM Tree viewer.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">4</span>
-        <strong>View attributes in BOM Tree</strong>
-        <p>Open any BOM Tree - your custom columns appear after the default columns. Values are lazy-loaded and cached for performance.</p>
+        <p>Open Rack Location Propagation, select your Arena BOM attribute from the dropdown, optionally adjust the position format (default: "Pos {n}"), and click Save.</p>
       </div>
 
       <div class="info-box">
-        <strong>Performance Note:</strong> Attribute values are fetched only for <em>visible</em> nodes and cached for 1 hour. This keeps the BOM Tree fast even with many custom columns!
+        <strong>This feature is optional.</strong> To disable it, select "No position tracking (disabled)" in the configuration dialog.
       </div>
 
-      <div class="tip-box">
-        <strong>Use Cases:</strong>
-        <ul style="margin-top: 8px;">
-          <li><strong>Power Planning:</strong> Add "Power Consumption (W)" to calculate total rack power</li>
-          <li><strong>Space Planning:</strong> Add "U Spaces Required" to ensure components fit</li>
-          <li><strong>Compliance:</strong> Add "Geo Usage" to filter components by region</li>
-          <li><strong>Lifecycle:</strong> Add custom lifecycle fields to track component phases</li>
-        </ul>
-      </div>
+      <!-- Export / Import / Reset -->
+      <h3>Export, Import, and Reset Configuration</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced</div>
+      <ul>
+        <li><strong>Export Configuration:</strong> Copies your complete type system config as JSON. Share with colleagues or back up your settings.</li>
+        <li><strong>Import Configuration:</strong> Paste JSON from another spreadsheet to restore or share a configuration.</li>
+        <li><strong>Reset Configuration:</strong> Resets all type system settings to defaults. Does NOT affect your sheet data &mdash; only configuration (terminology, colors, classifications).</li>
+      </ul>
+    </div>
 
+    <!-- ===== Tab 3: Creating Content ===== -->
+    <div class="tab-content">
+      <h2><svg class="icon icon-lg"><use href="#icon-office"></use></svg> Creating Racks and Layouts</h2>
+
+      <p>This section covers the complete workflow for building a datacenter layout: creating overview grids, building rack configurations, populating BOMs, and linking everything together.</p>
+
+      <!-- Creating an Overview -->
       <h3>Creating an Overview Layout</h3>
+      <p>The overview is a grid sheet representing your datacenter floor plan. Each cell can hold a rack placement.</p>
+
       <div class="step-box">
         <span class="step-number">1</span>
-        <strong>Create new overview layout</strong>
-        <div class="menu-path">Arena → Create Layout → New Overview Layout</div>
+        <strong>Create the overview</strong>
+        <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Overview Layout</div>
+        <p>Enter a name (e.g., "DC-East Floor 2"), number of rows (1-50), and positions per row (1-50).</p>
       </div>
 
       <div class="step-box">
         <span class="step-number">2</span>
-        <strong>Specify dimensions</strong>
-        <p>Set the number of rows and positions (columns) for your data center layout.</p>
+        <strong>Understand the grid structure</strong>
+        <ul>
+          <li>Row 1: Blue title bar with the overview name (merged across all columns)</li>
+          <li>Row 2: Blank spacer</li>
+          <li>Row 3: Headers &mdash; Column A is blank, Column B is "Row Item", Columns C+ are "Pos 1", "Pos 2", etc.</li>
+          <li>Data rows: Row numbers in Column A, Row Item links in Column B (filled after POD push), rack placements in Columns C+</li>
+        </ul>
+      </div>
+
+      <div class="info-box">
+        <strong>The overview tab gets a green color</strong> to distinguish it from rack config tabs (blue) in the sheet tab bar.
+      </div>
+
+      <!-- Creating Racks -->
+      <h3>Creating Rack Configurations</h3>
+      <p>There are four ways to create a rack config sheet. Choose the one that fits your workflow:</p>
+
+      <h4>Option A: New Rack from Scratch</h4>
+      <div class="menu-path">Arena POD &rarr; Create Layout &rarr; New Rack Configuration</div>
+      <ol>
+        <li>Enter a rack name</li>
+        <li>Choose to link to an existing Arena item number or start with a placeholder</li>
+        <li>If linking to Arena: enter the item number, the tool validates it via API and optionally fetches the item's BOM</li>
+        <li>A new sheet tab is created with metadata row, headers, and any imported BOM data</li>
+        <li>Use the Item Picker to add more components to the BOM</li>
+      </ol>
+
+      <h4>Option B: Clone an Existing Rack</h4>
+      <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Clone Existing Rack</div>
+      <ol>
+        <li>The Rack Picker sidebar opens in clone mode</li>
+        <li>Browse or search your existing rack config sheets</li>
+        <li>Select the source rack, enter a new item number and name</li>
+        <li>A full copy is created including all BOM rows, set as PLACEHOLDER status</li>
+        <li>Modify the clone as needed for your variant</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>Quick Clone:</strong> When you're already viewing a rack, use <code>Arena POD &rarr; Create Layout &rarr; Clone This Rack</code> for instant duplication without opening the Rack Picker.
+      </div>
+
+      <h4>Option C: Load Arena Item as Template (150% BOM)</h4>
+      <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Load Arena Item as Template</div>
+      <ol>
+        <li>The Rack Picker sidebar opens in template mode</li>
+        <li>Browse Arena items, find one with a comprehensive BOM (all possible options)</li>
+        <li>Preview the full component list and select which ones to include</li>
+        <li>A PLACEHOLDER rack is created with selected components and a yellow reminder row</li>
+        <li>Delete unwanted rows to trim down to your actual configuration</li>
+      </ol>
+
+      <div class="info-box">
+        <strong>What is the "150% BOM" workflow?</strong> Load an Arena item containing ALL possible options (e.g., 50 component variants), then trim it down to your actual needs (e.g., 15 components). Much faster than adding items one by one.
+      </div>
+
+      <h4>Option D: Create from Arena via Rack Picker</h4>
+      <div class="menu-path">Arena POD &rarr; Show Rack Picker &rarr; From Arena tab</div>
+      <ol>
+        <li>Browse Arena items in the "From Arena" tab</li>
+        <li>Click "Place Item (Auto-Create Rack)" to create a new rack config sheet from an Arena item</li>
+        <li>The tool creates the sheet and automatically pulls the item's BOM</li>
+      </ol>
+
+      <!-- Using the Item Picker -->
+      <h3>Using the Item Picker</h3>
+      <div class="menu-path">Arena POD &rarr; Show Item Picker</div>
+      <p>The Item Picker sidebar lets you browse all Arena items and add them to rack BOMs:</p>
+
+      <ul>
+        <li><strong>Items tab:</strong> Loads 50 items initially, scrolls to load 25 more at a time. Client-side search filtering by name, number, or description.</li>
+        <li><strong>Filters tab:</strong> Filter by Arena category and lifecycle phase. Star categories to mark as favorites for quick access.</li>
+        <li><strong>Quantities tab:</strong> View how many times an item is used across the current sheet, overview, all racks, or all sheets. Scope selector buttons let you switch views.</li>
+      </ul>
+
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Open Item Picker and find your component</strong>
+        <p>Search by name or item number, or use category filters. Items with pending ECOs show a red badge.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Click the item card to select it</strong>
       </div>
 
       <div class="step-box">
         <span class="step-number">3</span>
-        <strong>Place racks in the grid</strong>
-        <p>Use Rack Picker to select and place racks in your layout positions.</p>
+        <strong>Click "Insert Item in Selected Cell"</strong>
+        <p>On a rack config sheet, this writes a full BOM row (quantity, item number, name, category, notes). On other sheets, it inserts the item number as a clickable hyperlink.</p>
       </div>
 
-      <h3>Auto-Linking Racks to Overview</h3>
-      <p>Automatically populate your overview with rack configurations already in your spreadsheet:</p>
-      <div class="menu-path">Arena → Create Layout → Autolink Racks to Overview</div>
-      <p>This saves time when you have multiple rack sheets and want to quickly build a layout!</p>
+      <!-- Using the Rack Picker -->
+      <h3>Using the Rack Picker</h3>
+      <div class="menu-path">Arena POD &rarr; Show Rack Picker</div>
+      <p>The Rack Picker sidebar is for placing racks in overview grids and managing rack sheets:</p>
 
-      <h3>Generate Consolidated BOM</h3>
-      <p>Once your layout is complete, generate a consolidated BOM to see all materials:</p>
-      <div class="menu-path">Arena → BOM Operations → Create Consolidated BOM</div>
-      <p>This creates a new sheet showing all components with aggregated quantities across all racks!</p>
+      <ul>
+        <li><strong>Racks tab:</strong> Lists all rack config sheets in the spreadsheet. Click "Place Rack in Selected Cell" to insert a hyperlink in the overview grid. Rename and clone buttons appear on each rack card.</li>
+        <li><strong>From Arena tab:</strong> Browse Arena items and click to auto-create a new rack config sheet with the item's BOM pulled automatically.</li>
+        <li><strong>Templates tab:</strong> Two modes &mdash; "Clone Existing" to duplicate a local rack, and "Arena Template" to fetch an Arena BOM and selectively include components.</li>
+        <li><strong>Quantities tab:</strong> See how many times each rack is placed in overview grids, with scope selection.</li>
+      </ul>
+
+      <!-- Linking Racks to Overview -->
+      <h3>Linking Racks to the Overview</h3>
+      <p>Once you have rack config sheets, connect them to the overview grid:</p>
+
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Option A &mdash; Autolink (batch)</strong>
+        <div class="menu-path">Arena POD &rarr; Create Layout &rarr; Autolink Racks to Overview</div>
+        <p>Scans all rack config tabs and populates the overview grid automatically. Each cell shows the Arena part number as a clickable link to the rack sheet.</p>
+      </div>
+
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Option B &mdash; Rack Picker (one at a time)</strong>
+        <div class="menu-path">Arena POD &rarr; Show Rack Picker &rarr; Racks tab</div>
+        <p>Select a rack, click an overview cell, then "Place Rack in Selected Cell" to insert a hyperlink. Best for precise placement.</p>
+      </div>
+
+      <!-- Generating Consolidated BOM -->
+      <h3>Generating a Consolidated BOM</h3>
+      <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Create Consolidated BOM</div>
+      <p>Once your overview is populated with racks, generate a consolidated BOM to see all materials aggregated:</p>
+      <ol>
+        <li>An animated loading modal shows progress as each rack's BOM is scanned</li>
+        <li>A new "Consolidated BOM" sheet is created (or replaced if one already exists)</li>
+        <li>A completion modal shows total item count and lets you jump to the new sheet</li>
+      </ol>
+
+      <div class="tip-box">
+        <strong>Tip:</strong> The Consolidated BOM is regenerated fresh each time. Run it again after any rack changes to get updated totals.
+      </div>
     </div>
 
-    <!-- Tab 4: Status & History -->
+    <!-- ===== Tab 4: Status & History ===== -->
     <div class="tab-content">
-      <h2>Status Tracking & History Management</h2>
+      <h2><svg class="icon icon-lg"><use href="#icon-target"></use></svg> Status Tracking &amp; History</h2>
 
-      <p>The Arena Data Center tool provides comprehensive status tracking and history logging for all your rack configurations.</p>
+      <p>Every rack configuration has a sync status showing whether it matches Arena PLM. The tool provides comprehensive status checking and a full audit history of all events.</p>
 
-      <h3>Understanding Status Indicators</h3>
-      <p>Each rack tab displays an emoji indicator showing its current sync status with Arena:</p>
+      <!-- Status Indicators -->
+      <h3>Understanding Rack Status</h3>
+      <p>Each rack tab displays a color-coded status indicator:</p>
 
       <div style="margin: 20px 0;">
-        <div class="status-indicator status-synced">🟢 SYNCED - Matches Arena exactly</div>
-        <div class="status-indicator status-arena">🟡 ARENA_MODIFIED - Arena has changes not yet pulled</div>
-        <div class="status-indicator status-local">🟠 LOCAL_MODIFIED - Sheet has local edits not pushed to Arena</div>
-        <div class="status-indicator status-placeholder">🔴 PLACEHOLDER - Created locally, not yet in Arena</div>
-        <div class="status-indicator status-error"><svg class="icon icon-sm"><use href="#icon-close"></use></svg>ERROR - Last sync operation failed</div>
+        <div style="margin: 8px 0;">
+          <span class="status-indicator status-synced">SYNCED (Green)</span>
+          <span style="color: #5f6368; font-size: 14px; margin-left: 8px;">Local BOM matches Arena exactly. Everything is in sync.</span>
+        </div>
+        <div style="margin: 8px 0;">
+          <span class="status-indicator status-arena">ARENA MODIFIED (Orange)</span>
+          <span style="color: #5f6368; font-size: 14px; margin-left: 8px;">Someone changed the item in Arena since you last synced. Arena has newer data.</span>
+        </div>
+        <div style="margin: 8px 0;">
+          <span class="status-indicator status-local">LOCALLY MODIFIED (Blue)</span>
+          <span style="color: #5f6368; font-size: 14px; margin-left: 8px;">You've made local edits to this rack's BOM that haven't been pushed to Arena yet.</span>
+        </div>
+        <div style="margin: 8px 0;">
+          <span class="status-indicator status-placeholder">PLACEHOLDER (Grey)</span>
+          <span style="color: #5f6368; font-size: 14px; margin-left: 8px;">This rack was created locally and has never been synced with Arena. It will be created in Arena during the next POD push.</span>
+        </div>
+        <div style="margin: 8px 0;">
+          <span class="status-indicator status-error">ERROR (Red)</span>
+          <span style="color: #5f6368; font-size: 14px; margin-left: 8px;">The last sync operation for this rack failed. Check the History tab for error details.</span>
+        </div>
       </div>
 
+      <!-- Checking Status -->
       <h3>Checking Rack Status</h3>
-      <p>To check the sync status of all racks against Arena:</p>
-      <div class="menu-path">Arena → BOM Operations → Check all Rack Status (vs. PDM)</div>
+      <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Check All Rack Status (vs. PDM)</div>
 
-      <p>This will:</p>
-      <ul>
-        <li>Check each rack's BOM against Arena</li>
-        <li>Update tab indicators automatically</li>
-        <li>Show a summary of rack counts by status</li>
-        <li>Log the check event to History tab</li>
-      </ul>
+      <p>This operation compares every local rack BOM against Arena's current data:</p>
+      <ol>
+        <li>Each rack's BOM is fetched from Arena and compared with the local sheet data</li>
+        <li>Status indicators are updated on every rack tab</li>
+        <li>A summary dialog shows counts by status (e.g., "5 Synced, 2 Arena Modified, 1 Placeholder")</li>
+      </ol>
 
       <div class="info-box">
-        <strong>Smart Detection:</strong> The system can distinguish between local edits (you changed the sheet) and Arena changes (someone updated Arena) by comparing BOM checksums.
+        <strong>Smart Detection:</strong> The system distinguishes between local edits and Arena changes by comparing BOM checksums, so you always know which direction the change came from.
       </div>
 
+      <!-- Viewing History -->
       <h3>Viewing Rack History</h3>
-      <p>Access the centralized history tracking system:</p>
-      <div class="menu-path">Arena → BOM Operations → View Rack History</div>
+      <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; View Rack History</div>
 
-      <p>The History tab provides:</p>
+      <p>Navigates to (or creates) the Rack History tab and opens the History Filter sidebar. The History tab provides:</p>
       <ul>
-        <li><strong>Summary Section:</strong> Current status of all racks at a glance</li>
-        <li><strong>Detail Section:</strong> Chronological log of all events</li>
-        <li><strong>Filter Sidebar:</strong> Automatically opens to help you navigate</li>
-        <li><strong>Quick Stats:</strong> Count of racks by status</li>
+        <li><strong>Summary section:</strong> Current status of all racks at a glance with quick stats</li>
+        <li><strong>Detail section:</strong> Chronological log of all events across all racks</li>
+        <li><strong>Filter sidebar:</strong> Automatically opens to help you navigate by rack, status, or date</li>
       </ul>
 
       <h3>Using the History Filter</h3>
-      <p>The filter sidebar (auto-opens when viewing History tab) lets you:</p>
       <ol>
-        <li>Select a specific rack from the dropdown</li>
-        <li>Click "Apply Filter" to show only that rack's events</li>
-        <li>Click "Clear Filter" to show all events</li>
-        <li>View quick stats showing rack counts by status</li>
+        <li>Select a specific rack from the dropdown to show only that rack's events</li>
+        <li>Click "Apply Filter" to filter the view</li>
+        <li>Click "Clear Filter" to show all events again</li>
+        <li>View quick stats showing rack counts by status at any time</li>
       </ol>
 
-      <div class="tip-box">
-        <strong>Navigation Tip:</strong> Click the "<svg class="icon icon-sm"><use href="#icon-history"></use></svg>History" link in any rack sheet (cell D1) to jump directly to the History tab filtered for that rack!
-      </div>
-
+      <!-- Event Types -->
       <h3>Event Types Logged</h3>
-      <p>The History tab records the following events:</p>
+      <p>The History tab records these events automatically:</p>
       <ul>
-        <li><strong>Rack Created</strong> - New rack configuration created</li>
-        <li><strong>Status Change</strong> - Rack sync status updated</li>
-        <li><strong>Local Edit</strong> - User edited rack BOM</li>
-        <li><strong>Refresh Accepted/Declined</strong> - Arena BOM refresh decision</li>
-        <li><strong>POD Push</strong> - Rack included in push to Arena</li>
-        <li><strong>BOM Pull</strong> - BOM pulled from Arena</li>
-        <li><strong>Manual Sync</strong> - User manually marked as synced</li>
-        <li><strong>Batch Check</strong> - Status check operation</li>
-        <li><strong>Error</strong> - Operation failed</li>
-      </ul>
-
-      <h3>Handling Out-of-Sync Racks</h3>
-      <p>When a rack shows 🟡 (Arena Modified):</p>
-      <ol>
-        <li>Open the rack sheet</li>
-        <li>Right-click to access "Refresh BOM from Arena"</li>
-        <li>Review the proposed changes in the diff dialog</li>
-        <li>Accept to sync with Arena or decline to keep current BOM</li>
-        <li>Status updates to 🟢 SYNCED if you accept</li>
-      </ol>
-
-      <h3>Advanced Status Tools</h3>
-      <p>Power users can access advanced tools:</p>
-      <div class="menu-path">Arena → Setup → Advanced</div>
-
-      <ul>
-        <li><strong>Mark Current Rack as Synced:</strong> Manually override status (use with caution!)</li>
-        <li><strong>Validate History Integrity:</strong> Check for missing/orphaned/invalid data</li>
-        <li><strong>Repair History Issues:</strong> Auto-fix common problems</li>
+        <li><strong>Rack Created:</strong> New rack configuration was created</li>
+        <li><strong>Status Change:</strong> Rack sync status was updated</li>
+        <li><strong>Local Edit:</strong> User edited a rack BOM in the spreadsheet</li>
+        <li><strong>Refresh Accepted / Declined:</strong> User accepted or declined an Arena BOM refresh</li>
+        <li><strong>POD Push:</strong> Rack was included in a Push POD Structure operation</li>
+        <li><strong>BOM Pull:</strong> BOM data was pulled from Arena into the rack sheet</li>
+        <li><strong>Manual Sync:</strong> User manually marked rack as synced</li>
+        <li><strong>Batch Check:</strong> Status check operation was run</li>
+        <li><strong>Error:</strong> An operation failed</li>
       </ul>
 
       <div class="warning-box">
         <strong>Protected Data:</strong> The History tab is protected from manual editing to maintain data integrity. All updates are made automatically by the system.
       </div>
-    </div>
 
-    <!-- Tab 5: Publishing -->
-    <div class="tab-content">
-      <h2>Publishing to Arena</h2>
+      <!-- Advanced Status Tools -->
+      <h3>Advanced Status Tools</h3>
+      <div class="menu-path">Arena POD &rarr; Setup &rarr; Advanced</div>
 
-      <p>Ready to push your data center design to Arena? The "Push BOMs to Arena" feature creates a complete hierarchy in Arena.</p>
-
-      <h3>Understanding the POD Structure</h3>
-      <p>The system creates a three-level hierarchy in Arena:</p>
-      <ul>
-        <li><strong>POD (Point of Delivery):</strong> The top-level item representing your entire data center or section</li>
-        <li><strong>Row Items:</strong> One for each row in your overview, with Row Location attribute tracking positions</li>
-        <li><strong>Rack Items:</strong> Individual racks with their component BOMs</li>
-      </ul>
-
-      <h3>The Publishing Workflow</h3>
-      <div class="step-box">
-        <span class="step-number">1</span>
-        <strong>Start the publish process</strong>
-        <div class="menu-path">Arena → BOM Operations → Push BOMs to Arena</div>
+      <div class="menu-item">
+        <div class="menu-item-title">Mark Current Rack as Synced</div>
+        <p class="menu-item-desc">Manually sets the active rack's status to SYNCED and logs a MANUAL_SYNC event. Use when you've manually verified the rack matches Arena but the automatic check can't confirm it.</p>
       </div>
 
-      <div class="step-box">
-        <span class="step-number">2</span>
-        <strong>Pre-flight validation</strong>
-        <p>The system performs extensive validation before making any changes to Arena:</p>
-        <ul>
-          <li>Checks all rack configurations are valid</li>
-          <li>Verifies all Arena items exist</li>
-          <li>Validates BOM structure integrity</li>
-          <li>Shows preview of what will be created/updated</li>
-        </ul>
+      <div class="menu-item">
+        <div class="menu-item-title">Validate History Integrity</div>
+        <p class="menu-item-desc">Checks the History tab for structural issues: all racks have summary rows, no orphaned rows exist, all status values are valid. Shows a results dialog listing any problems found. Run this if history data seems corrupted.</p>
       </div>
 
-      <div class="step-box">
-        <span class="step-number">3</span>
-        <strong>Review and confirm</strong>
-        <p>Review the validation results and choose to proceed or cancel.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">4</span>
-        <strong>Custom rack creation (if needed)</strong>
-        <p>If you have PLACEHOLDER racks not yet in Arena, you'll be prompted to:</p>
-        <ul>
-          <li>Provide rack name and description</li>
-          <li>Select Arena category</li>
-          <li>Set lifecycle phase</li>
-        </ul>
-        <p>The system will create the Arena item and populate its BOM automatically!</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">5</span>
-        <strong>Choose: Update or Create New</strong>
-        <p>Decide whether to update existing POD/Row items or create fresh ones.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">6</span>
-        <strong>Name your items</strong>
-        <p>Provide names for Row items and the POD (e.g., "North Row A", "Data Center Pod A")</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">7</span>
-        <strong>Rollback protection</strong>
-        <p>If any errors occur during the push, the system can automatically rollback changes to maintain data integrity.</p>
-      </div>
-
-      <div class="step-box">
-        <span class="step-number">8</span>
-        <strong>Success!</strong>
-        <p>Your overview sheet is updated with:</p>
-        <ul>
-          <li>POD information at the top with Arena link</li>
-          <li>Row Item column with links to each row in Arena</li>
-          <li>Rack status indicators updated to 🟢 SYNCED</li>
-          <li>History events logged for audit trail</li>
-        </ul>
-      </div>
-
-      <h3>What Gets Created in Arena</h3>
-      <ul>
-        <li><strong>Placeholder Rack Items:</strong> Created with full BOMs from your configurations</li>
-        <li><strong>Row Items:</strong> Each with "Row Location" attribute (e.g., "Pos 1, Pos 3, Pos 5") and BOM showing all racks with correct quantities</li>
-        <li><strong>Rack Position Tracking (if configured):</strong> Each rack on a Row's BOM is tagged with its specific positions (e.g., "Pos 1, Pos 3, Pos 8")</li>
-        <li><strong>POD Item:</strong> Top-level assembly containing all rows</li>
-      </ul>
-
-      <div class="info-box">
-        <strong>New Features:</strong> The latest version includes pre-flight validation, rollback support, and comprehensive error handling to ensure safe Arena updates!
-      </div>
-
-      <div class="warning-box">
-        <strong>Note:</strong> The system creates Arena items in the correct order:
-        <ol>
-          <li>Placeholder racks first (so they exist for row BOMs)</li>
-          <li>Then row items (so they exist for POD BOM)</li>
-          <li>Finally the POD item at the top</li>
-        </ol>
+      <div class="menu-item">
+        <div class="menu-item-title">Repair History Issues</div>
+        <p class="menu-item-desc">Runs validation, shows discovered issues, asks for confirmation, then auto-fixes problems by creating missing summary rows and cleaning up orphaned data. Always run Validate first to see what will be changed.</p>
       </div>
 
       <div class="tip-box">
-        <strong>Pro Tip:</strong> After publishing, click the Arena links in your overview sheet to jump directly to those items in Arena PLM!
+        <strong>Tip:</strong> Run <strong>Validate History Integrity</strong> periodically, especially after importing racks or if the history tab seems incomplete.
+      </div>
+    </div>
+
+    <!-- ===== Tab 5: Publishing ===== -->
+    <div class="tab-content">
+      <h2><svg class="icon icon-lg"><use href="#icon-rocket"></use></svg> Publishing to Arena</h2>
+
+      <p>Publishing creates the complete POD &rarr; Row &rarr; Rack hierarchy in Arena PLM from your spreadsheet layout. This is the primary way to push your datacenter design into Arena.</p>
+
+      <!-- POD Structure -->
+      <h3>Understanding the POD Structure</h3>
+      <p>The push wizard creates a three-level hierarchy in Arena:</p>
+      <div class="hierarchy-diagram">
+        POD (Level 0) &mdash; Top-level item for the entire datacenter zone<br>
+        &nbsp;&nbsp;&boxvr;&mdash; Row 1 (Level 1) &mdash; Contains racks in that row as BOM children<br>
+        &nbsp;&nbsp;&vert;&nbsp;&nbsp;&nbsp;&boxvr;&mdash; Rack A (Level 2) &mdash; Individual rack with component BOM<br>
+        &nbsp;&nbsp;&vert;&nbsp;&nbsp;&nbsp;&boxur;&mdash; Rack B (Level 2) &mdash; Individual rack with component BOM<br>
+        &nbsp;&nbsp;&boxur;&mdash; Row 2 (Level 1) &mdash; Contains racks in that row as BOM children<br>
+        &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&boxur;&mdash; Rack C (Level 2) &mdash; Individual rack with component BOM
       </div>
 
-      <h3>Need Help?</h3>
-      <p>If you run into any issues:</p>
+      <!-- Push Workflow -->
+      <h3>The Push POD Structure Wizard</h3>
+      <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Push POD Structure to Arena</div>
+
+      <h4>Loading Screen</h4>
+      <p>The wizard starts by scanning your overview sheet and checking Arena for existing items (POD, rows, racks). This determines what needs to be created vs. what already exists.</p>
+
+      <h4>Stage 1: Racks</h4>
+      <div class="step-box">
+        <span class="step-number">1</span>
+        <strong>Review and configure racks</strong>
+        <ul>
+          <li><strong>Existing racks</strong> (already in Arena) are shown in green and are read-only &mdash; nothing to configure</li>
+          <li><strong>New/placeholder racks</strong> require you to enter a name, description, and Arena category</li>
+          <li>A "bulk apply category" button lets you set the same category for all new racks at once</li>
+        </ul>
+      </div>
+
+      <h4>Stage 2: Rows</h4>
+      <div class="step-box">
+        <span class="step-number">2</span>
+        <strong>Review and configure rows</strong>
+        <ul>
+          <li>Rows are auto-generated from your overview's row layout</li>
+          <li>Enter a name and category for each row</li>
+          <li>Existing rows (from a previous push) are shown in green and skip validation</li>
+        </ul>
+      </div>
+
+      <h4>Stage 3: POD &amp; Review</h4>
+      <div class="step-box">
+        <span class="step-number">3</span>
+        <strong>Configure the POD and review the full structure</strong>
+        <ul>
+          <li>Enter the POD name and select its Arena category</li>
+          <li>Review a full structure summary with a BOM tree preview showing all rows and racks</li>
+          <li>Click <strong>"Create in Arena"</strong> to begin the push</li>
+        </ul>
+      </div>
+
+      <h4>Creation in Progress</h4>
+      <p>During creation, you'll see:</p>
       <ul>
-        <li>Check that your Arena connection is working</li>
-        <li>Review the validation results carefully</li>
-        <li>Check the Apps Script logs for detailed error messages</li>
-        <li>Use "Validate History Integrity" to check for data issues</li>
-        <li>Verify all rack configurations have valid Arena items</li>
+        <li>An animated progress bar with elapsed timer</li>
+        <li>A live step log showing each item being created</li>
+        <li>Rotating status quotes to keep you entertained while it works</li>
+      </ul>
+
+      <div class="warning-box">
+        <strong>Do not close the dialog or navigate away</strong> during the creation process. The wizard is making live API calls to Arena.
+      </div>
+
+      <h4>Completion</h4>
+      <p>When the push finishes, the completion screen shows:</p>
+      <ul>
+        <li>Total rack count and row count created</li>
+        <li>The POD item number assigned by Arena</li>
+        <li>An <strong>"Open POD in Arena"</strong> button that opens the Arena BOM viewer in a new tab</li>
+      </ul>
+
+      <!-- What Happens After Push -->
+      <h3>What Happens After a Push</h3>
+      <p>After a successful push, your spreadsheet is automatically updated:</p>
+      <ul>
+        <li><strong>Cell A1</strong> of the overview is updated with "POD: [name] ([NUMBER])"</li>
+        <li><strong>Row Item column</strong> (Column B) is filled with clickable Arena part numbers for each row. The display text is the Arena part number and the link URL contains the item's GUID.</li>
+        <li><strong>Rack statuses</strong> are updated to reflect their synced state</li>
+        <li><strong>History events</strong> are logged for the push operation</li>
+      </ul>
+
+      <!-- Re-Pushes -->
+      <h3>Re-Pushing an Existing POD</h3>
+      <p>If you've already pushed and want to update the structure:</p>
+      <ul>
+        <li>The wizard detects existing POD, row, and rack items in Arena</li>
+        <li>Items that already exist are shown in green and skipped during creation</li>
+        <li>Only new or modified items are created/updated</li>
+        <li>This makes it safe to re-run the wizard after making changes to your layout</li>
+      </ul>
+
+      <div class="tip-box">
+        <strong>Tip:</strong> After pushing, click the Arena part number links in the overview's Row Item column to jump directly to those items in Arena PLM.
+      </div>
+
+      <!-- Consolidated BOM -->
+      <h3>Consolidated BOM</h3>
+      <div class="menu-path">Arena POD &rarr; BOM Operations &rarr; Create Consolidated BOM</div>
+
+      <p>While the POD push creates the hierarchy in Arena, the Consolidated BOM gives you a flat aggregated view of every component across all racks:</p>
+      <ol>
+        <li>Scans the overview sheet for all placed racks</li>
+        <li>Reads each rack's BOM and aggregates quantities</li>
+        <li>Creates a "Consolidated BOM" sheet with all items listed with total quantities</li>
+        <li>A loading modal shows progress; a completion modal shows stats and links to the new sheet</li>
+      </ol>
+
+      <div class="info-box">
+        <strong>Note:</strong> The Consolidated BOM sheet is recreated fresh each time (not updated incrementally). Run it again after any changes to get current totals.
+      </div>
+
+      <!-- Troubleshooting -->
+      <h3>Troubleshooting a Push</h3>
+      <p>If you run into issues during a push:</p>
+      <ul>
+        <li>Verify your Arena connection is working via <code>Test Connection</code></li>
+        <li>Ensure BOM Levels are configured (categories for POD, Row, Rack types)</li>
+        <li>Check that all placeholder racks have valid names and descriptions filled in</li>
+        <li>Check the History tab for error event details</li>
+        <li>Use <code>Validate History Integrity</code> if the History tab seems corrupted</li>
       </ul>
     </div>
 
-    <!-- Tab 6: About -->
+    <!-- ===== Tab 6: About ===== -->
     <div class="tab-content">
-      <h2>About This Tool</h2>
+      <h2><svg class="icon icon-lg"><use href="#icon-heart"></use></svg> About This Tool</h2>
 
       <div class="creator-card">
         <img class="creator-photo" src="https://media.licdn.com/dms/image/v2/D5603AQFVGXhMJl_YOQ/profile-displayphoto-shrink_800_800/profile-displayphoto-shrink_800_800/0/1708455515046?e=1742428800&v=beta&t=xQJxMJKxF7zDxP0FJKxJ0MJKxF7zDxP0FJKxJ0MJKxF"
@@ -1358,7 +1476,7 @@
         <p class="creator-title">PTC Arena PLM</p>
 
         <div class="creator-message">
-          <p>This tool was built to make Arena PLM integration seamless and powerful. Whether you're managing data center infrastructure, manufacturing assemblies, or any hierarchical product structure, this tool helps you design, track, and sync everything with Arena.</p>
+          <p>Arena Data Center Manager was built to bridge the gap between physical datacenter design and Arena PLM record-keeping. Whether you're planning a new facility, expanding an existing floor, or tracking ongoing changes, this tool keeps your spreadsheet layouts and Arena BOMs in perfect sync.</p>
 
           <p>If you find this tool helpful or have ideas for improvements, I'd love to hear from you!</p>
         </div>
@@ -1369,25 +1487,25 @@
       </div>
 
       <div class="info-box" style="text-align: center;">
-        <strong>Open Source & Collaboration</strong>
+        <strong>Open Source &amp; Collaboration</strong>
         <p style="margin-top: 10px;">This project is built with Google Apps Script and integrates with Arena PLM's REST API. Interested in contributing or have questions? Reach out on LinkedIn!</p>
       </div>
 
       <div class="tip-box" style="text-align: center;">
-        <strong>Made with</strong> <svg class="icon icon-sm"><use href="#icon-tool"></use></svg>Google Apps Script • <svg class="icon icon-sm"><use href="#icon-link"></use></svg>Arena PLM API • <svg class="icon icon-sm"><use href="#icon-heart"></use></svg>Passion for great tools
+        <strong>Made with</strong> <svg class="icon icon-sm"><use href="#icon-tool"></use></svg>Google Apps Script &bull; <svg class="icon icon-sm"><use href="#icon-link"></use></svg>Arena PLM API &bull; <svg class="icon icon-sm"><use href="#icon-heart"></use></svg>Passion for great tools
       </div>
     </div>
   </div>
 
   <script>
     var terminology = {
-      entity_singular: 'Configuration',
-      entity_plural: 'Configurations',
-      entity_singular_lower: 'configuration',
-      entity_plural_lower: 'configurations',
-      hierarchy_level_0: 'Assembly',
-      hierarchy_level_1: 'SubAssembly',
-      hierarchy_level_2: 'Configuration'
+      entity_singular: 'Rack',
+      entity_plural: 'Racks',
+      entity_singular_lower: 'rack',
+      entity_plural_lower: 'racks',
+      hierarchy_level_0: 'POD',
+      hierarchy_level_1: 'Row',
+      hierarchy_level_2: 'Rack'
     };
 
     // Load terminology from backend
@@ -1412,8 +1530,8 @@
       var level2 = terminology.hierarchy_level_2;
 
       // Update header
-      document.getElementById('headerTitle').textContent = 'Arena ' + entity + ' Manager - Help Guide';
-      document.getElementById('headerSubtitle').textContent = 'Your complete guide to managing ' + entityPluralLower + ' with Arena PLM';
+      document.getElementById('headerTitle').textContent = 'Arena Data Center Manager - Help Guide';
+      document.getElementById('headerSubtitle').textContent = 'Your complete guide to managing datacenter layouts with Arena PLM';
 
       // Replace terminology throughout the document
       replacePlaceholders();

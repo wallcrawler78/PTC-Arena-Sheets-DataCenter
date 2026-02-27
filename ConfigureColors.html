@@ -227,10 +227,10 @@
     </div>
 
     <div id="filtersSection" class="filters hidden">
-      <button class="filter-btn active" onclick="applyFilter('all')">All</button>
-      <button class="filter-btn" onclick="applyFilter('favorites')">⭐ Favorites</button>
-      <button class="filter-btn" onclick="applyFilter('hasColor')">🎨 Has Color</button>
-      <button class="filter-btn" onclick="applyFilter('noColor')">⚪ No Color</button>
+      <button class="filter-btn active" onclick="applyFilter('all', this)">All</button>
+      <button class="filter-btn" onclick="applyFilter('favorites', this)">⭐ Favorites</button>
+      <button class="filter-btn" onclick="applyFilter('hasColor', this)">🎨 Has Color</button>
+      <button class="filter-btn" onclick="applyFilter('noColor', this)">⚪ No Color</button>
     </div>
 
     <div id="categoryList" class="category-list hidden"></div>
@@ -270,15 +270,17 @@
       })
       .loadCategoryColorData();
 
-    function applyFilter(filter) {
+    function applyFilter(filter, btn) {
       currentFilter = filter;
 
       // Update button states
       var buttons = document.querySelectorAll('.filter-btn');
-      buttons.forEach(function(btn) {
-        btn.classList.remove('active');
+      buttons.forEach(function(b) {
+        b.classList.remove('active');
       });
-      event.currentTarget.classList.add('active');
+      if (btn) {
+        btn.classList.add('active');
+      }
 
       renderCategories();
     }
