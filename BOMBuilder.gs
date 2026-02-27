@@ -2630,11 +2630,10 @@ function executePODPush(wizardData) {
   var currentStep = 0;
   _setPushProgress(0, totalSteps, 'Starting POD push...');
 
-  var client = getArenaClient();
-  var createdRacks = [];
-  var createdRows = [];
+  var client, createdRacks = [], createdRows = [];
 
   try {
+    client = getArenaClient();
     // STEP 1: Create all placeholder racks (batch)
     Logger.log('Step 1: Creating ' + wizardData.racks.length + ' placeholder racks...');
 
