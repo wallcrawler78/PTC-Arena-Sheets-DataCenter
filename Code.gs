@@ -130,40 +130,34 @@ function _checkFirstRunAsync() {
 }
 
 /**
- * Runs when selection changes (e.g., clicking on a cell)
- * Auto-opens History Filter sidebar when navigating to Rack History tab
+ * Runs when selection changes (e.g., clicking on a cell or switching tabs)
+ * Auto-opens History Filter sidebar whenever the user navigates TO the Rack History tab.
+ * Uses a short UserProperties flag to avoid re-opening on every cell click within the tab —
+ * only fires once per tab visit (cleared when user leaves the tab).
  */
 function onSelectionChange(e) {
   try {
     var sheet = SpreadsheetApp.getActiveSheet();
+    var sheetName = sheet ? sheet.getName() : '';
+    var props = PropertiesService.getUserProperties();
+    var lastSheet = props.getProperty('lastActiveSheet') || '';
 
-    // Auto-open sidebar when History tab is activated
-    if (sheet && sheet.getName() === SHEET_NAMES.HISTORY) {
-      Logger.log('Rack History tab detected - opening sidebar');
+    var isHistoryTab = (sheetName === SHEET_NAMES.HISTORY);
+    var wasHistoryTab = (lastSheet === SHEET_NAMES.HISTORY);
 
-      // Check if sidebar already shown this session
-      var cache = CacheService.getScriptCache();
-      var shown = cache.get('history_sidebar_shown');
-
-      Logger.log('Cache check - shown: ' + shown);
-
-      if (!shown) {
-        Logger.log('Opening sidebar for first time this session');
-        showHistoryFilterSidebar();
-        // Set flag for 6 hours (cache expires after that)
-        cache.put('history_sidebar_shown', 'true', CACHE_6H_SECONDS);
-      } else {
-        Logger.log('Sidebar already shown this session - skipping auto-open');
-      }
+    // Track current sheet for next call
+    if (sheetName !== lastSheet) {
+      props.setProperty('lastActiveSheet', sheetName);
     }
+
+    // Open sidebar only when transitioning INTO the History tab (not on every cell click)
+    if (isHistoryTab && !wasHistoryTab) {
+      Logger.log('Navigated to Rack History tab — opening History Filter sidebar');
+      showHistoryFilterSidebar();
+    }
+
   } catch (error) {
     Logger.log('Error in onSelectionChange: ' + error.message);
-    Logger.log('Error stack: ' + error.stack);
-    try {
-      SpreadsheetApp.getActiveSpreadsheet().toast(
-        'History sidebar could not open: ' + error.message, 'Notice', 4
-      );
-    } catch (toastErr) { /* ignore if toast itself fails */ }
   }
 }
 
