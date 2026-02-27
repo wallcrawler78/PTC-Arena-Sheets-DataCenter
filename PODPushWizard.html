@@ -444,6 +444,107 @@
       min-height: 16px;
     }
 
+    /* ---- Creating / Progress Screen ---- */
+    .creating-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 32px 40px 20px;
+      min-height: 420px;
+    }
+    .creating-headline {
+      font-size: 22px;
+      font-weight: 700;
+      color: #202124;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .creating-subhead {
+      font-size: 13px;
+      color: #5f6368;
+      margin-bottom: 20px;
+      text-align: center;
+    }
+    .creating-timer-display {
+      font-size: 40px;
+      font-weight: 700;
+      font-family: monospace;
+      color: #1a73e8;
+      letter-spacing: 3px;
+      margin-bottom: 20px;
+    }
+    .creating-bar-outer {
+      width: 100%;
+      max-width: 580px;
+      background: #e8eaed;
+      border-radius: 8px;
+      height: 14px;
+      overflow: hidden;
+      margin-bottom: 6px;
+    }
+    .creating-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #1a73e8 0%, #34a853 100%);
+      border-radius: 8px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+    .creating-bar-pct {
+      font-size: 13px;
+      font-weight: 600;
+      color: #1a73e8;
+      margin-bottom: 4px;
+      text-align: center;
+    }
+    .creating-step-label {
+      font-size: 13px;
+      color: #5f6368;
+      min-height: 18px;
+      margin-bottom: 24px;
+      text-align: center;
+      max-width: 580px;
+    }
+    .creating-quote-box {
+      background: #fffde7;
+      border-left: 4px solid #fbbc04;
+      border-radius: 0 8px 8px 0;
+      padding: 14px 18px;
+      max-width: 580px;
+      width: 100%;
+      text-align: left;
+      margin-bottom: 20px;
+    }
+    .creating-quote-text {
+      font-size: 14px;
+      color: #3c4043;
+      font-style: italic;
+      line-height: 1.5;
+      margin-bottom: 6px;
+    }
+    .creating-quote-attr {
+      font-size: 12px;
+      color: #80868b;
+      font-weight: 500;
+    }
+    .creating-log {
+      width: 100%;
+      max-width: 580px;
+      font-size: 12px;
+      color: #5f6368;
+      text-align: left;
+      max-height: 90px;
+      overflow-y: auto;
+    }
+    .creating-log-item {
+      padding: 2px 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      animation: fadeIn 0.3s ease;
+    }
+    .log-check  { color: #34a853; }
+    .log-active { color: #1a73e8; }
+
     /* Bulk-apply category bar (Rows step) */
     .bulk-apply-bar {
       display: flex;
@@ -907,6 +1008,29 @@
         <div class="bom-tree" id="bomTreePreview">
           <!-- Populated dynamically -->
         </div>
+      </div>
+    </div>
+
+    <!-- Stage: Creating — shown while executePODPush runs server-side -->
+    <div class="stage-panel" id="creatingPanel">
+      <div class="creating-screen">
+        <div class="creating-headline">🚀 Pushing your structure to Arena…</div>
+        <div class="creating-subhead">Sit tight — this usually takes about a minute.</div>
+
+        <div class="creating-timer-display" id="creatingTimerDisplay">0:00</div>
+
+        <div class="creating-bar-outer">
+          <div class="creating-bar-fill" id="creatingBarFill"></div>
+        </div>
+        <div class="creating-bar-pct" id="creatingBarPct">0%</div>
+        <div class="creating-step-label" id="creatingStepLabel">Starting up…</div>
+
+        <div class="creating-quote-box" id="creatingQuoteBox">
+          <div class="creating-quote-text" id="creatingQuoteText">Loading wisdom…</div>
+          <div class="creating-quote-attr" id="creatingQuoteAttr"></div>
+        </div>
+
+        <div class="creating-log" id="creatingLog"></div>
       </div>
     </div>
   </div>
@@ -1516,6 +1640,104 @@
       preview.innerHTML = html;
     }
 
+    // ---- Creating-screen helpers ----
+    var _funnyQuotes = [
+      { text: "Sending your racks into the digital void… hoping they come back.",
+        attr: "— A Brave Engineer" },
+      { text: "BOM sync in progress. Please resist the urge to hit refresh 47 times.",
+        attr: "— The Voice of Reason" },
+      { text: "Technically, all data centers are just very expensive organized chaos.",
+        attr: "— Data Center Philosophy 101" },
+      { text: "Arena is thinking about your request. We can only respect that.",
+        attr: "— Seasoned PLM Professional" },
+      { text: "Fun fact: your data center has more cables than the average spaghetti dinner.",
+        attr: "— A Cabling Professional (probably)" },
+      { text: "Every rack pushed to Arena brings us one step closer to 'someone else's problem.'",
+        attr: "— Cloud Strategist" },
+      { text: "This is fine. Everything is fine. The BOM is syncing and everything is definitely fine.",
+        attr: "— The Dog in the Room" },
+      { text: "Working with the urgency of someone who knows coffee will be ready soon.",
+        attr: "— Caffeinated Developer" },
+      { text: "Items in Arena are like socks in a dryer: you put them in, you hope they all come out.",
+        attr: "— PLM Realist" },
+      { text: "Not all heroes wear capes. Some wear anti-static wristbands.",
+        attr: "— Electrical Safety Manual" },
+      { text: "Somewhere in a server rack, your data dreams of better bandwidth.",
+        attr: "— Data Poet" },
+      { text: "Pushing your BOM: the digital equivalent of convincing cats to walk in a straight line.",
+        attr: "— DevOps Manager" },
+      { text: "99 bottles of servers in the rack… take one down, open a ticket.",
+        attr: "— SRE Drinking Song, v2.0" },
+      { text: "Good things come to those who wait. So do Arena API responses.",
+        attr: "— Patience Advocate" },
+      { text: "Have you tried turning it off and on again? Asking for a friend.",
+        attr: "— IT Helpdesk, circa forever" },
+    ];
+    var _quoteRotateInterval = null;
+    var _quoteIdx = 0;
+    var _creatingLogItems = [];
+    var _lastProgressMsg = '';
+
+    function _startQuoteRotation() {
+      _quoteIdx = Math.floor(Math.random() * _funnyQuotes.length);
+      _showQuote(_quoteIdx);
+      _quoteRotateInterval = setInterval(function() {
+        _quoteIdx = (_quoteIdx + 1) % _funnyQuotes.length;
+        _showQuote(_quoteIdx);
+      }, 7000);
+    }
+
+    function _showQuote(idx) {
+      var q = _funnyQuotes[idx];
+      var box  = document.getElementById('creatingQuoteBox');
+      var text = document.getElementById('creatingQuoteText');
+      var attr = document.getElementById('creatingQuoteAttr');
+      if (!box) return;
+      // Re-trigger CSS fade animation
+      box.style.animation = 'none';
+      void box.offsetHeight;
+      box.style.animation = '';
+      text.textContent = '\u201c' + q.text + '\u201d';
+      attr.textContent = q.attr;
+    }
+
+    function _stopQuoteRotation() {
+      if (_quoteRotateInterval) { clearInterval(_quoteRotateInterval); _quoteRotateInterval = null; }
+    }
+
+    function _addCreatingLogItem(text, done) {
+      _creatingLogItems.push({ text: text, done: done });
+      if (_creatingLogItems.length > 5) _creatingLogItems.shift();
+      _renderCreatingLog();
+    }
+
+    function _renderCreatingLog() {
+      var log = document.getElementById('creatingLog');
+      if (!log) return;
+      log.innerHTML = _creatingLogItems.map(function(item) {
+        var icon = item.done
+          ? '<span class="log-check">✓</span>'
+          : '<span class="log-active">⟳</span>';
+        return '<div class="creating-log-item">' + icon + '<span>' + item.text + '</span></div>';
+      }).join('');
+      log.scrollTop = log.scrollHeight;
+    }
+
+    function _updateCreatingProgress(progress) {
+      if (!progress) return;
+      var pct = progress.total > 0 ? Math.round((progress.step / progress.total) * 100) : 0;
+      document.getElementById('creatingBarFill').style.width = pct + '%';
+      document.getElementById('creatingBarPct').textContent = pct + '%';
+      var msg = progress.message || '';
+      document.getElementById('creatingStepLabel').textContent = msg;
+      // Log completed + active steps
+      if (msg && msg !== _lastProgressMsg) {
+        if (_lastProgressMsg) _addCreatingLogItem(_lastProgressMsg, true);
+        _lastProgressMsg = msg;
+        _addCreatingLogItem(msg, false);
+      }
+    }
+
     // Create structure
     function createStructure() {
       // Update POD data
@@ -1543,32 +1765,38 @@
       createBtn.style.opacity = '0.6';
       createBtn.style.cursor = 'not-allowed';
 
-      // Show loading
-      document.getElementById('loadingIndicator').classList.add('active');
-      document.getElementById('loadingText').textContent = 'Creating structure in Arena...';
-      document.querySelector('.wizard-content').style.display = 'none';
+      // Swap stage3 for the creating panel (wizard-content stays visible)
+      document.getElementById('stage3').classList.remove('active');
+      document.getElementById('creatingPanel').classList.add('active');
+      document.getElementById('btnBack').style.display = 'none';
 
-      // Show timer + progress panel
-      document.getElementById('pushTimerPanel').classList.add('active');
+      // Reset creating-screen state
+      _creatingLogItems = [];
+      _lastProgressMsg = '';
+      document.getElementById('creatingLog').innerHTML = '';
+      document.getElementById('creatingBarFill').style.width = '0%';
+      document.getElementById('creatingBarPct').textContent = '0%';
+      document.getElementById('creatingStepLabel').textContent = 'Starting up\u2026';
+      document.getElementById('creatingTimerDisplay').textContent = '0:00';
+
+      // Start elapsed timer
       var pushStartTime = new Date();
       var pushTimerInterval = setInterval(function() {
         var elapsed = Math.floor((new Date() - pushStartTime) / 1000);
         var m = Math.floor(elapsed / 60);
         var s = elapsed % 60;
-        document.getElementById('pushTimerDisplay').textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        document.getElementById('creatingTimerDisplay').textContent = m + ':' + (s < 10 ? '0' : '') + s;
       }, 1000);
 
-      // Poll server for progress every 1.5 seconds
+      // Start quote rotation
+      _startQuoteRotation();
+
+      // Poll server for progress every 3 seconds
       var pushPollInterval = setInterval(function() {
         google.script.run
-          .withSuccessHandler(function(progress) {
-            if (!progress) return;
-            var pct = progress.total > 0 ? Math.round((progress.step / progress.total) * 100) : 0;
-            document.getElementById('pushProgressBar').style.width = pct + '%';
-            document.getElementById('pushProgressLabel').textContent = progress.message || '';
-          })
+          .withSuccessHandler(_updateCreatingProgress)
           .getPushProgress();
-      }, 3000); // 3s interval reduces concurrent GAS executions vs 1.5s
+      }, 3000);
 
       // Store interval IDs for cleanup
       window._pushTimerInterval = pushTimerInterval;
@@ -1584,6 +1812,7 @@
     function _stopPushIntervals() {
       if (window._pushTimerInterval) { clearInterval(window._pushTimerInterval); window._pushTimerInterval = null; }
       if (window._pushPollInterval)  { clearInterval(window._pushPollInterval);  window._pushPollInterval  = null; }
+      _stopQuoteRotation();
     }
 
     // Success handler
@@ -1607,10 +1836,10 @@
       createBtn.style.opacity = '1';
       createBtn.style.cursor = 'pointer';
 
-      // Hide loading, show wizard content
-      document.getElementById('loadingIndicator').classList.remove('active');
-      document.getElementById('pushTimerPanel').classList.remove('active');
-      document.querySelector('.wizard-content').style.display = 'block';
+      // Hide creating panel, restore stage3
+      document.getElementById('creatingPanel').classList.remove('active');
+      document.getElementById('stage3').classList.add('active');
+      document.getElementById('btnBack').style.display = 'inline-block';
 
       // Show error with special handling for lock errors
       const errorMsg = error.message || 'An error occurred';

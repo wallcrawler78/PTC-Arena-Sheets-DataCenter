@@ -136,12 +136,20 @@
   </div>
 
   <script>
+    var _podArenaUrl = '';
+
     // Get data from server
     google.script.run
       .withSuccessHandler(function(data) {
         document.getElementById('racksCreated').textContent = data.racksCreated;
         document.getElementById('rowsCreated').textContent = data.rowsCreated;
         document.getElementById('podItemNumber').textContent = data.podItemNumber;
+        // Store URL for the open-in-Arena button
+        _podArenaUrl = data.podArenaUrl || '';
+        if (!_podArenaUrl && data.podItemNumber) {
+          // Fallback: number-based search URL
+          _podArenaUrl = 'https://app.bom.com/search?query=' + encodeURIComponent(data.podItemNumber);
+        }
       })
       .getPODPushResults();
 
@@ -150,11 +158,12 @@
     }
 
     function openInArena() {
-      google.script.run
-        .withSuccessHandler(function() {
-          // Keep modal open so user can still close it manually
-        })
-        .openPODInArena();
+      if (_podArenaUrl) {
+        // window.open works correctly from a modal dialog in GAS
+        window.open(_podArenaUrl, '_blank');
+      } else {
+        window.open('https://app.bom.com', '_blank');
+      }
     }
   </script>
 </body>

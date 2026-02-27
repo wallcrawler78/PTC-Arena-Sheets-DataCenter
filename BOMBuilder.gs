@@ -2856,12 +2856,25 @@ function executePODPush(wizardData) {
     currentStep++;
     _setPushProgress(currentStep, totalSteps, 'Complete!');
 
+    // Build the Arena web URL for the "Open POD in Arena" button.
+    // Fetching the item gives us the itemId needed for the detail URL;
+    // fall back to a number-based search URL if the fetch fails.
+    var podArenaUrl = '';
+    try {
+      var podItemForUrl = client.getItem(podItemGuid);
+      podArenaUrl = buildArenaItemURLFromItem(podItemForUrl, podItemNumber);
+    } catch (urlErr) {
+      Logger.log('Could not build POD Arena URL: ' + urlErr.message);
+      podArenaUrl = 'https://app.bom.com/search?query=' + encodeURIComponent(podItemNumber || '');
+    }
+
     // Store results for completion modal
     PropertiesService.getUserProperties().setProperty('podPush_results', JSON.stringify({
       racksCreated: createdRacks.length,
       rowsCreated: createdRows.length,
       podItemNumber: podItemNumber,
-      podGuid: podItemGuid
+      podGuid: podItemGuid,
+      podArenaUrl: podArenaUrl
     }));
 
     Logger.log('==========================================');
@@ -2898,7 +2911,7 @@ function executePODPush(wizardData) {
  */
 function getPODPushResults() {
   var json = PropertiesService.getUserProperties().getProperty('podPush_results');
-  return json ? JSON.parse(json) : { racksCreated: 0, rowsCreated: 0, podItemNumber: '', podGuid: '' };
+  return json ? JSON.parse(json) : { racksCreated: 0, rowsCreated: 0, podItemNumber: '', podGuid: '', podArenaUrl: '' };
 }
 
 /**
