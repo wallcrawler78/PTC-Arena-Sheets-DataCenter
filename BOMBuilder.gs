@@ -2864,16 +2864,9 @@ function executePODPush(wizardData) {
     _setPushProgress(currentStep, totalSteps, 'Complete!');
 
     // Build the Arena web URL for the "Open POD in Arena" button.
-    // Fetching the item gives us the itemId needed for the detail URL;
-    // fall back to a number-based search URL if the fetch fails.
-    var podArenaUrl = '';
-    try {
-      var podItemForUrl = client.getItem(podItemGuid);
-      podArenaUrl = buildArenaItemURLFromItem(podItemForUrl, podItemNumber);
-    } catch (urlErr) {
-      Logger.log('Could not build POD Arena URL: ' + urlErr.message);
-      podArenaUrl = 'https://app.bom.com/search?query=' + encodeURIComponent(podItemNumber || '');
-    }
+    // The GUID we already have IS the item_id used by Arena's web UI — no
+    // extra API call needed.
+    var podArenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + encodeURIComponent(podItemGuid);
 
     // Store results for completion modal
     PropertiesService.getUserProperties().setProperty('podPush_results', JSON.stringify({
@@ -3465,9 +3458,14 @@ function buildArenaItemURLFromItem(item, itemNumber) {
       return 'https://app.bom.com/search?query=' + encodeURIComponent(itemNumber);
     }
 
-    // Extract item_id from Arena item
-    // Arena API may return these with different casing
-    var itemId = item.itemId || item.ItemId || item.id || item.Id;
+    // Extract item_id from Arena item.
+    // normalizeArenaItem maps the raw API response to a fixed schema (guid, number,
+    // name…) so item.id / item.itemId are absent after normalization.
+    // item.guid IS the same identifier Arena's web UI uses for item_id, so include
+    // it as a fallback.  _raw preserves the original response for edge cases.
+    var itemId = item.itemId || item.ItemId || item.id || item.Id
+              || item.guid   || item.Guid
+              || (item._raw && (item._raw.guid || item._raw.Guid));
 
     // Log the full item structure to understand what Arena returns
     Logger.log('Item object keys for ' + itemNumber + ': ' + Object.keys(item).join(', '));
