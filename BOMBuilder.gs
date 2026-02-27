@@ -2751,7 +2751,7 @@ function executePODPush(wizardData) {
 
     for (var r = 0; r < wizardData.rows.length; r++) {
       var row = wizardData.rows[r];
-      var rowItemGuid, rowItemNumber;
+      var rowItemGuid, rowItemNumber, rowNumericId = null, rowVersionId = null, rowDisplayName = '';
 
       _setPushProgress(currentStep, totalSteps, 'Processing row ' + (r + 1) + ' of ' + wizardData.rows.length + ': ' + row.name);
 
@@ -2760,6 +2760,8 @@ function executePODPush(wizardData) {
         Logger.log('Row ' + row.rowItemNumber + ' exists - updating BOM...');
         rowItemGuid = row.guid;
         rowItemNumber = row.rowItemNumber;
+        rowDisplayName = row.name || '';
+        // numericId will be fetched lazily in _writeRowItemNumbersToOverview if needed
       } else {
         // Create new row item
         Logger.log('Creating new row: ' + row.name);
@@ -2773,9 +2775,13 @@ function executePODPush(wizardData) {
         });
 
         rowItemGuid = rowItem.guid || rowItem.Guid;
-        // Fall back to GUID if Arena doesn't return number in the create response
-        rowItemNumber = rowItem.number || rowItem.Number || rowItemGuid;
-        Logger.log('✓ Created row: ' + rowItemNumber);
+        rowItemNumber = rowItem.number || rowItem.Number || '';
+        // Capture Arena's internal numeric item/version IDs for web app URLs.
+        // createItem() returns the raw API response so .id and .workingRevision are present.
+        rowNumericId = rowItem.id || null;
+        rowVersionId = (rowItem.workingRevision && rowItem.workingRevision.id) || null;
+        rowDisplayName = rowItem.name || rowItem.Name || row.name || '';
+        Logger.log('✓ Created row: ' + (rowItemNumber || rowItemGuid) + ' (numericId: ' + rowNumericId + ')');
       }
 
       // Create/Update BOM for row (all racks at positions)
@@ -2795,14 +2801,16 @@ function executePODPush(wizardData) {
       }
 
       syncBOMToArena(client, rowItemGuid, rowBomLines);
-      Logger.log('✓ Synced BOM for row ' + rowItemNumber + ' (' + rowBomLines.length + ' racks)');
+      Logger.log('✓ Synced BOM for row ' + (rowItemNumber || rowItemGuid) + ' (' + rowBomLines.length + ' racks)');
 
       createdRows.push({
-        itemNumber: rowItemNumber,  // may be GUID string if Arena didn't return number
+        itemNumber: rowItemNumber,  // Arena-assigned part number (may be empty if auto-number pending)
         guid: rowItemGuid,
-        name: row.name || row.rowItemNumber,
+        numericId: rowNumericId,    // Arena internal numeric ID for web URLs (new rows only)
+        versionId: rowVersionId,    // Arena version ID for web URLs (new rows only)
+        name: rowDisplayName,
         sheetRow: row.sheetRow,     // 1-based sheet row index from wizard data
-        wasNew: !row.exists          // true only for rows created in this push
+        wasNew: !row.exists
       });
       currentStep++;
     }
@@ -3134,8 +3142,10 @@ function _writeRowItemNumbersToOverview(overviewSheetName, createdRows) {
   }
 
   // Write item numbers (with clickable Arena hyperlinks) for all rows in this push.
-  // We already have the GUID and Arena-assigned part number from the push response —
-  // no extra API call needed.  The GUID lives only in the URL; users see the part number.
+  // Arena web URLs require numeric item_id (not GUID). For newly created rows the
+  // numeric id is captured from the raw createItem response. For existing rows it
+  // is fetched via getItem() so the link is always correct.
+  var client = getArenaClient();
   var written = 0;
   var colIdx1 = rowItemCol0 + 1;  // 1-based column index
 
@@ -3143,11 +3153,43 @@ function _writeRowItemNumbersToOverview(overviewSheetName, createdRows) {
     var cr = createdRows[r];
     if (!cr.sheetRow || !cr.guid) continue;
 
-    var sheetRowIdx = cr.sheetRow;    // Already 1-based
-    var displayText = cr.itemNumber || cr.guid;
-    var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + cr.guid;
-    var formula = '=HYPERLINK("' + arenaUrl + '","' + displayText + '")';
-    sheet.getRange(sheetRowIdx, colIdx1).setFormula(formula).setFontColor('#1a73e8');
+    var sheetRowIdx = cr.sheetRow;  // Already 1-based
+    var numericId = cr.numericId;
+    var versionId = cr.versionId;
+    // Prefer Arena part number; fall back to item name (better than a raw GUID)
+    var displayText = (cr.itemNumber && cr.itemNumber !== cr.guid) ? cr.itemNumber
+                    : (cr.name || cr.guid);
+
+    // If we don't have the numeric ID (existing rows), fetch it now
+    if (!numericId) {
+      try {
+        var fullItem = client.getItem(cr.guid);   // normalized with ._raw
+        var raw = fullItem && fullItem._raw;
+        if (raw) {
+          numericId = raw.id || null;
+          versionId = (raw.workingRevision && raw.workingRevision.id) || null;
+          // Also improve display text if part number came back
+          if (!cr.itemNumber || cr.itemNumber === cr.guid) {
+            displayText = fullItem.number || fullItem.name || cr.name || cr.guid;
+          }
+        }
+      } catch (e) {
+        Logger.log('Could not fetch numeric ID for row hyperlink (' + cr.guid + '): ' + e.message);
+      }
+    }
+
+    if (numericId) {
+      // Correct Arena web URL format: item_id=<numeric>&version_id=<numeric>
+      var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + numericId;
+      if (versionId) arenaUrl += '&version_id=' + versionId;
+      var safeDisplay = displayText.replace(/"/g, '""');
+      var formula = '=HYPERLINK("' + arenaUrl + '","' + safeDisplay + '")';
+      sheet.getRange(sheetRowIdx, colIdx1).setFormula(formula).setFontColor('#1a73e8');
+    } else {
+      // Could not obtain numeric ID — write plain text at minimum
+      Logger.log('⚠ No numeric ID for ' + cr.guid + ' — writing plain text');
+      sheet.getRange(sheetRowIdx, colIdx1).setValue(displayText);
+    }
     written++;
   }
 
