@@ -42,20 +42,27 @@ function findOverviewSheet() {
   var spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   var allSheets = spreadsheet.getSheets();
 
+  // Primary: match by tab name — reliable even after we write POD info to A1
+  for (var i = 0; i < allSheets.length; i++) {
+    var sheet = allSheets[i];
+    if (sheet.getName().toLowerCase().indexOf('overview') !== -1) {
+      Logger.log('Found overview sheet by name: ' + sheet.getName());
+      return sheet;
+    }
+  }
+
+  // Fallback: legacy A1-content check (original behaviour, kept for edge cases)
   for (var i = 0; i < allSheets.length; i++) {
     var sheet = allSheets[i];
     try {
-      // Check if cell A1 contains "Overview" (case-insensitive)
       var headerValue = sheet.getRange(1, 1).getValue();
       if (headerValue && typeof headerValue === 'string') {
-        var headerLower = headerValue.toLowerCase();
-        if (headerLower.indexOf('overview') !== -1) {
-          Logger.log('Found overview sheet: ' + sheet.getName() + ' (header: "' + headerValue + '")');
+        if (headerValue.toLowerCase().indexOf('overview') !== -1) {
+          Logger.log('Found overview sheet by A1 content: ' + sheet.getName() + ' (A1: "' + headerValue + '")');
           return sheet;
         }
       }
     } catch (e) {
-      // Skip sheets that can't be read
       continue;
     }
   }
