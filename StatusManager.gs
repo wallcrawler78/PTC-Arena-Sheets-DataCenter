@@ -223,17 +223,18 @@ function calculateBOMChecksum(sheet) {
       return ''; // No BOM data
     }
 
-    var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 6).getValues();
+    var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 7).getValues();
 
-    // Build checksum from item numbers and quantities
+    // Build checksum from item numbers, quantities, and revisions
     var checksumParts = [];
     data.forEach(function(row) {
       var itemNumber = row[0]; // Column A
-      var quantity = row[5];    // Column F (Qty)
+      var quantity = row[5];   // Column F (Qty)
+      var revision = row[6];   // Column G (Revision)
 
       if (itemNumber && itemNumber.toString().trim() !== '') {
-        // Format: "ITEM-NUMBER:QTY"
-        checksumParts.push(itemNumber + ':' + (quantity || 1));
+        // Format: "ITEM-NUMBER:QTY:REVISION"
+        checksumParts.push(itemNumber + ':' + (quantity || 1) + ':' + (revision || '—'));
       }
     });
 
@@ -549,7 +550,7 @@ function getCurrentRackBOMData(sheet) {
     return [];
   }
 
-  var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 6).getValues();
+  var data = sheet.getRange(DATA_START_ROW, 1, lastRow - DATA_START_ROW + 1, 7).getValues();
   var bomLines = [];
 
   data.forEach(function(row, index) {
@@ -565,7 +566,8 @@ function getCurrentRackBOMData(sheet) {
       description: row[2] || '',
       category: row[3] || '',
       lifecycle: row[4] || '',
-      quantity: row[5] || 1
+      quantity: row[5] || 1,
+      revision: row[6] || ''
     });
   });
 

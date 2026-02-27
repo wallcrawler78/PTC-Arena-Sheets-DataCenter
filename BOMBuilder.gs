@@ -442,51 +442,122 @@ function syncBOMToArena(client, parentGuid, bomLines, options) {
 
   Logger.log('✓ All BOM lines validated successfully');
 
-  // First, get existing BOM lines for this item
+  // === SMART DIFF SYNC ===
+  // Fetch existing Arena BOM lines and diff against local lines.
+  // Only DELETE lines removed from local, PUT lines with qty changes, POST new lines.
+  // This preserves Arena BOM line GUIDs and minimises API calls.
+
+  // Step 1: Fetch existing BOM from Arena
   var existingBOM = [];
   try {
     var bomData = client.makeRequest('/items/' + parentGuid + '/bom', { method: 'GET' });
     existingBOM = bomData.results || bomData.Results || [];
   } catch (error) {
-    Logger.log('No existing BOM found (this is OK for new items)');
+    Logger.log('No existing BOM found (new item) — will POST all lines');
   }
 
-  // Delete existing BOM lines
-  if (existingBOM.length > 0) {
-    Logger.log('Deleting ' + existingBOM.length + ' existing BOM lines...');
+  // Step 2: Build lookup maps
+  // existingLinesByItemGuid: { [itemGuid]: { lineGuid, quantity } }
+  var existingLinesByItemGuid = {};
+  existingBOM.forEach(function(line) {
+    var itemObj = line.item || line.Item || {};
+    var itemGuid = itemObj.guid || itemObj.Guid || '';
+    var lineGuid = line.guid || line.Guid || '';
+    if (itemGuid && lineGuid) {
+      existingLinesByItemGuid[itemGuid] = {
+        lineGuid: lineGuid,
+        quantity: line.quantity || line.Quantity || 1
+      };
+    }
+  });
 
-    existingBOM.forEach(function(line) {
-      var lineGuid = line.guid || line.Guid;
-      try {
-        client.makeRequest('/items/' + parentGuid + '/bom/' + lineGuid, { method: 'DELETE' });
-      } catch (deleteError) {
-        Logger.log('Error deleting BOM line: ' + deleteError.message);
-      }
-    });
-  }
-
-  // Add new BOM lines
-  Logger.log('Adding ' + bomLines.length + ' BOM lines...');
-
+  // localByItemGuid: { [itemGuid]: { quantity, level, lineNumber, itemNumber, bomAttributes } }
+  var localByItemGuid = {};
   bomLines.forEach(function(line, index) {
+    localByItemGuid[line.itemGuid] = {
+      quantity: line.quantity,
+      level: line.level,
+      lineNumber: index + 1,
+      itemNumber: line.itemNumber,
+      attrValue: bomAttributes[line.itemNumber] || null
+    };
+  });
+
+  // Step 3: Compute diff
+  var toRemove  = [];  // lineGuids of lines in Arena but not in local
+  var toAdd     = [];  // itemGuids of lines in local but not in Arena
+  var toUpdate  = [];  // itemGuids of lines in both where quantity differs
+
+  Object.keys(existingLinesByItemGuid).forEach(function(itemGuid) {
+    if (!localByItemGuid[itemGuid]) {
+      toRemove.push(existingLinesByItemGuid[itemGuid].lineGuid);
+    } else if (existingLinesByItemGuid[itemGuid].quantity !== localByItemGuid[itemGuid].quantity) {
+      toUpdate.push(itemGuid);
+    }
+  });
+
+  Object.keys(localByItemGuid).forEach(function(itemGuid) {
+    if (!existingLinesByItemGuid[itemGuid]) {
+      toAdd.push(itemGuid);
+    }
+  });
+
+  Logger.log('Smart sync diff — Remove: ' + toRemove.length + ', Update: ' + toUpdate.length + ', Add: ' + toAdd.length);
+
+  // Step 4: DELETE removed lines
+  toRemove.forEach(function(lineGuid) {
     try {
-      // All validation done at start - safe to proceed
-      // Create BOM line
+      client.makeRequest('/items/' + parentGuid + '/bom/' + lineGuid, { method: 'DELETE' });
+      Logger.log('✓ Deleted BOM line: ' + lineGuid);
+      Utilities.sleep(150);
+    } catch (deleteError) {
+      Logger.log('Error deleting BOM line ' + lineGuid + ': ' + deleteError.message);
+    }
+  });
+
+  // Step 5: PUT (update quantity) for changed lines, with DELETE+POST fallback on 405
+  toUpdate.forEach(function(itemGuid) {
+    var existing = existingLinesByItemGuid[itemGuid];
+    var local = localByItemGuid[itemGuid];
+    try {
+      client.makeRequest('/items/' + parentGuid + '/bom/' + existing.lineGuid, {
+        method: 'PUT',
+        payload: { quantity: local.quantity }
+      });
+      Logger.log('✓ Updated BOM line qty for item GUID ' + itemGuid + ' → ' + local.quantity);
+      Utilities.sleep(150);
+    } catch (putError) {
+      if (putError.message && putError.message.indexOf('405') !== -1) {
+        // Arena doesn't support PUT for this line — fallback to DELETE + POST
+        Logger.log('Warning: PUT returned 405 for ' + local.itemNumber + ', falling back to DELETE+POST');
+        try {
+          client.makeRequest('/items/' + parentGuid + '/bom/' + existing.lineGuid, { method: 'DELETE' });
+          Utilities.sleep(150);
+          toAdd.push(itemGuid);  // Will be handled in the POST loop below
+        } catch (fallbackError) {
+          Logger.log('Error in DELETE+POST fallback for ' + local.itemNumber + ': ' + fallbackError.message);
+        }
+      } else {
+        Logger.log('Error updating BOM line for ' + local.itemNumber + ': ' + putError.message);
+        throw putError;
+      }
+    }
+  });
+
+  // Step 6: POST new lines
+  toAdd.forEach(function(itemGuid) {
+    var local = localByItemGuid[itemGuid];
+    try {
       var bomLineData = {
-        item: {
-          guid: line.itemGuid
-        },
-        quantity: line.quantity,
-        level: line.level,
-        lineNumber: index + 1
+        item: { guid: itemGuid },
+        quantity: local.quantity,
+        level: local.level,
+        lineNumber: local.lineNumber
       };
 
-      // Add custom BOM attributes if provided
-      if (bomAttributes[line.itemNumber]) {
-        var attrValue = bomAttributes[line.itemNumber];
-        // additionalAttributes is how Arena accepts custom BOM-level attributes
-        bomLineData.additionalAttributes = attrValue;
-        Logger.log('Adding BOM attribute for ' + line.itemNumber + ': ' + JSON.stringify(attrValue));
+      if (local.attrValue) {
+        bomLineData.additionalAttributes = local.attrValue;
+        Logger.log('Adding BOM attribute for ' + local.itemNumber + ': ' + JSON.stringify(local.attrValue));
       }
 
       client.makeRequest('/items/' + parentGuid + '/bom', {
@@ -494,15 +565,12 @@ function syncBOMToArena(client, parentGuid, bomLines, options) {
         payload: bomLineData
       });
 
-      Logger.log('✓ Added BOM line ' + (index + 1) + ': ' + line.itemNumber + ' (GUID: ' + line.itemGuid + ')');
-
-      // Add delay to avoid rate limiting (250ms reduces bandwidth quota pressure)
+      Logger.log('✓ Added BOM line: ' + local.itemNumber + ' (GUID: ' + itemGuid + ')');
       Utilities.sleep(250);
 
     } catch (error) {
-      var errorMsg = 'Failed to add BOM line ' + (index + 1) + ' (' + line.itemNumber + '): ' + error.message;
+      var errorMsg = 'Failed to add BOM line (' + local.itemNumber + '): ' + error.message;
 
-      // Check if this is an attribute error and provide helpful guidance
       if (error.message && (error.message.indexOf('additional attribute') !== -1 ||
                            error.message.indexOf('additionalAttributes') !== -1)) {
         errorMsg += '\n\nThis error suggests the configured BOM attribute may not be valid. ' +
@@ -510,9 +578,11 @@ function syncBOMToArena(client, parentGuid, bomLines, options) {
       }
 
       Logger.log('ERROR: ' + errorMsg);
-      throw new Error(errorMsg);  // Fail loudly - don't continue with incomplete BOM
+      throw new Error(errorMsg);
     }
   });
+
+  Logger.log('✓ Smart BOM sync complete — removed ' + toRemove.length + ', updated ' + toUpdate.length + ', added ' + toAdd.length);
 }
 
 /**
@@ -1199,6 +1269,7 @@ function readBOMFromSheet(sheet) {
   var levelCol = headers.indexOf('Level');
   var itemNumberCol = headers.indexOf('Item Number');
   var qtyCol = headers.indexOf('Quantity');
+  var revisionCol = headers.indexOf('Revision');
 
   if (itemNumberCol === -1) {
     throw new Error('Could not find "Item Number" column');
@@ -1223,7 +1294,8 @@ function readBOMFromSheet(sheet) {
     bomLines.push({
       level: parseInt(level, 10),
       itemNumber: itemNumber,
-      quantity: parseFloat(quantity)
+      quantity: parseFloat(quantity),
+      revision: revisionCol >= 0 ? (row[revisionCol] || '') : ''
     });
   }
 
@@ -2295,6 +2367,80 @@ function pushPODStructureToArena() {
 }
 
 /**
+ * Computes BOM diff between local rack sheet and Arena BOM lines.
+ * Used by preparePODWizardDataForModal to build the Stage 3 visual diff.
+ * @param {Array} localBOM - Array of {itemNumber, name, quantity, revision} from getCurrentRackBOMData
+ * @param {Array} arenaBOMLines - Raw Arena BOM lines array from /items/{guid}/bom
+ * @return {Object} { added, modified, removed, summary }
+ */
+function _computeWizardBOMDiff(localBOM, arenaBOMLines) {
+  var diff = {
+    added:    [],
+    modified: [],
+    removed:  [],
+    summary:  { addCount: 0, changeCount: 0, removeCount: 0 }
+  };
+
+  // Build local lookup: itemNumber → {name, quantity, revision}
+  var localMap = {};
+  localBOM.forEach(function(item) {
+    localMap[item.itemNumber] = item;
+  });
+
+  // Build Arena lookup: itemNumber → {quantity}
+  var arenaMap = {};
+  arenaBOMLines.forEach(function(line) {
+    var bomItem = line.item || line.Item || {};
+    var itemNumber = bomItem.number || bomItem.Number || '';
+    if (itemNumber) {
+      arenaMap[itemNumber] = { quantity: line.quantity || line.Quantity || 1 };
+    }
+  });
+
+  // Local items vs Arena
+  Object.keys(localMap).forEach(function(itemNumber) {
+    if (!arenaMap[itemNumber]) {
+      // In local, not in Arena → will be added
+      diff.added.push({
+        itemNumber: itemNumber,
+        name: localMap[itemNumber].name || '',
+        quantity: localMap[itemNumber].quantity
+      });
+      diff.summary.addCount++;
+    } else {
+      var localQty = Number(localMap[itemNumber].quantity) || 1;
+      var arenaQty = Number(arenaMap[itemNumber].quantity) || 1;
+      if (localQty !== arenaQty) {
+        // Quantity changed
+        diff.modified.push({
+          itemNumber: itemNumber,
+          name: localMap[itemNumber].name || '',
+          oldQty: arenaQty,
+          newQty: localQty,
+          oldRevision: '',
+          newRevision: localMap[itemNumber].revision || ''
+        });
+        diff.summary.changeCount++;
+      }
+    }
+  });
+
+  // Arena items not in local → will be removed
+  Object.keys(arenaMap).forEach(function(itemNumber) {
+    if (!localMap[itemNumber]) {
+      diff.removed.push({
+        itemNumber: itemNumber,
+        name: '',
+        quantity: arenaMap[itemNumber].quantity
+      });
+      diff.summary.removeCount++;
+    }
+  });
+
+  return diff;
+}
+
+/**
  * Prepares all data for the POD push wizard by scanning sheets ONCE
  * Called from the loading modal, returns comprehensive data structure for the UI
  */
@@ -2405,21 +2551,49 @@ function preparePODWizardDataForModal() {
       }
 
       var position = rackPositionMap[itemNumber] || {};
+      var guid = arenaItem.guid || arenaItem.Guid;
+
+      // Compute BOM diff for Stage 3 visual preview
+      var rackDiff = { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
+      try {
+        var localBOM = getCurrentRackBOMData(rackConfig.sheet);
+        var arenaBOMData = client.makeRequest('/items/' + guid + '/bom', { method: 'GET' });
+        var arenaBOMLines = arenaBOMData.results || arenaBOMData.Results || [];
+        rackDiff = _computeWizardBOMDiff(localBOM, arenaBOMLines);
+        Logger.log('  Rack BOM diff: +' + rackDiff.summary.addCount + ' ~' + rackDiff.summary.changeCount + ' -' + rackDiff.summary.removeCount);
+      } catch (diffErr) {
+        Logger.log('Warning: Could not compute BOM diff for existing rack ' + itemNumber + ': ' + diffErr.message);
+      }
+
       existingRacks.push({
         itemNumber: itemNumber,
         name: arenaItem.name || arenaItem.Name || rackConfig.metadata.itemName,
         description: arenaItem.description || arenaItem.Description || rackConfig.metadata.description || '',
         category: categoryName,
         childCount: rackConfig.childCount,
-        guid: arenaItem.guid || arenaItem.Guid,
+        guid: guid,
         row: position.row,
-        position: position.position
+        position: position.position,
+        rackDiff: rackDiff
       });
       Logger.log('→ Added ' + itemNumber + ' to EXISTING racks list (category: ' + categoryName + ')');
     } else {
       // Doesn't exist in Arena - placeholder
       Logger.log('→ Adding ' + itemNumber + ' to PLACEHOLDER list');
       var position = rackPositionMap[itemNumber] || {};
+
+      // For placeholder racks, all local BOM items are "added" (new rack)
+      var placeholderDiff = { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
+      try {
+        var localBOM = getCurrentRackBOMData(rackConfig.sheet);
+        localBOM.forEach(function(item) {
+          placeholderDiff.added.push({ itemNumber: item.itemNumber, name: item.name || '', quantity: item.quantity });
+          placeholderDiff.summary.addCount++;
+        });
+      } catch (diffErr) {
+        Logger.log('Warning: Could not read local BOM for placeholder rack ' + itemNumber + ': ' + diffErr.message);
+      }
+
       placeholderRacks.push({
         itemNumber: itemNumber,
         name: rackConfig.metadata.itemName || '',
@@ -2428,7 +2602,8 @@ function preparePODWizardDataForModal() {
         childCount: rackConfig.childCount,
         sheetName: rackConfig.sheet.getName(),  // Store name, not object (can't pass through HTML modal)
         row: position.row,
-        position: position.position
+        position: position.position,
+        rackDiff: placeholderDiff
       });
     }
   });

@@ -276,32 +276,71 @@
       margin-top: 24px;
     }
 
-    .bom-tree {
-      font-family: 'Courier New', monospace;
+    /* Visual BOM diff styles */
+    .diff-section { margin-bottom: 20px; }
+
+    .diff-rack-header {
+      font-weight: 600;
+      padding: 8px 12px;
+      border-radius: 6px 6px 0 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
       font-size: 13px;
-      line-height: 1.8;
-      color: #202124;
+    }
+    .diff-rack-new { background: #e8f5e9; color: #1b5e20; }
+    .diff-rack-existing { background: #f5f5f5; color: #333; }
+
+    .diff-line {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 5px 12px;
+      font-size: 13px;
+      border-top: 1px solid rgba(0,0,0,0.06);
+    }
+    .diff-add    { background: #f1f8e9; }
+    .diff-change { background: #fffde7; }
+    .diff-remove { background: #fce4ec; text-decoration: line-through; color: #999; }
+    .diff-unchanged { background: #fafafa; color: #666; }
+
+    .diff-badge {
+      border-radius: 3px;
+      padding: 1px 6px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      flex-shrink: 0;
+    }
+    .badge-add    { background: #4caf50; color: white; }
+    .badge-change { background: #ff9800; color: white; }
+    .badge-remove { background: #f44336; color: white; }
+
+    .diff-summary { display: flex; gap: 8px; font-size: 12px; }
+    .diff-summary-add    { color: #4caf50; font-weight: 600; }
+    .diff-summary-change { color: #ff9800; font-weight: 600; }
+    .diff-summary-remove { color: #f44336; font-weight: 600; }
+
+    .diff-no-changes {
+      padding: 8px 12px;
+      font-size: 12px;
+      color: #888;
+      font-style: italic;
+      background: #fafafa;
+      border-top: 1px solid rgba(0,0,0,0.06);
     }
 
-    .bom-tree-item {
-      padding: 4px 0;
-    }
+    .diff-item-number { font-weight: 500; color: #333; min-width: 130px; }
+    .diff-item-name   { color: #555; flex: 1; }
+    .diff-item-qty    { color: #333; font-size: 12px; min-width: 60px; text-align: right; }
 
-    .bom-tree-pod {
+    .diff-row-header {
+      font-weight: 600;
+      font-size: 13px;
       color: #1a73e8;
-      font-weight: 600;
-    }
-
-    .bom-tree-row {
-      color: #34a853;
-      font-weight: 600;
-      margin-left: 24px;
-    }
-
-    .bom-tree-rack {
-      color: #ea4335;
-      font-weight: 500;
-      margin-left: 48px;
+      padding: 12px 0 6px 0;
+      border-bottom: 1px solid #e0e0e0;
+      margin-bottom: 8px;
     }
 
     .wizard-footer {
@@ -1004,9 +1043,9 @@
       </div>
 
       <div class="bom-visualization">
-        <div class="summary-card-title" style="margin-bottom: 16px;">🌳 BOM Structure Preview</div>
-        <div class="bom-tree" id="bomTreePreview">
-          <!-- Populated dynamically -->
+        <div class="summary-card-title" style="margin-bottom: 16px;">📋 BOM Change Preview</div>
+        <div id="bomDiffPreview">
+          <!-- Populated dynamically by renderBOMPreview() -->
         </div>
       </div>
     </div>
@@ -1621,22 +1660,81 @@
       document.getElementById('summaryTotalComponents').textContent = totalComponents;
     }
 
-    // Render BOM preview
+    // Render BOM visual diff preview (Stage 3)
     function renderBOMPreview() {
-      const preview = document.getElementById('bomTreePreview');
+      const preview = document.getElementById('bomDiffPreview');
       let html = '';
 
-      html += `<div class="bom-tree-item bom-tree-pod">📦 ${wizardData.pod.name || 'POD'}</div>`;
+      // Build a lookup of all racks (existing + placeholder) by itemNumber
+      const rackLookup = {};
+      (wizardData.racks || []).forEach(r => { rackLookup[r.itemNumber] = r; });
+      (wizardData.existingRacks || []).forEach(r => { rackLookup[r.itemNumber] = r; });
 
+      // Render by row
       wizardData.rows.forEach(row => {
-        html += `<div class="bom-tree-item bom-tree-row">├─ 📊 ${row.name} (${row.positions.length} positions)</div>`;
+        html += `<div class="diff-row-header">📊 ${escapeHtml(row.name || ('Row ' + row.rowNumber))} — ${row.positions.length} rack(s)</div>`;
 
-        row.positions.forEach((pos, idx) => {
-          const isLast = idx === row.positions.length - 1;
-          const prefix = isLast ? '└─' : '├─';
-          html += `<div class="bom-tree-item bom-tree-rack">   ${prefix} 🔧 ${pos.itemNumber} @ Pos ${pos.position}</div>`;
+        row.positions.forEach(pos => {
+          const rack = rackLookup[pos.itemNumber];
+          if (!rack) return;
+
+          const isNew = !rack.guid;
+          const diff = rack.rackDiff || { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
+          const s = diff.summary;
+
+          const headerClass = isNew ? 'diff-rack-new' : 'diff-rack-existing';
+          const statusLabel = isNew ? '<span style="font-size:11px; background:#4caf50; color:white; border-radius:3px; padding:1px 6px;">NEW RACK</span>'
+                                    : '<span style="font-size:11px; background:#9e9e9e; color:white; border-radius:3px; padding:1px 6px;">EXISTS</span>';
+
+          let summaryHtml = '';
+          if (s.addCount > 0)    summaryHtml += `<span class="diff-summary-add">+${s.addCount}</span>`;
+          if (s.changeCount > 0) summaryHtml += `<span class="diff-summary-change">~${s.changeCount}</span>`;
+          if (s.removeCount > 0) summaryHtml += `<span class="diff-summary-remove">-${s.removeCount}</span>`;
+          if (!summaryHtml)       summaryHtml = '<span style="color:#888; font-size:11px;">no changes</span>';
+
+          html += `<div class="diff-section">`;
+          html += `<div class="diff-rack-header ${headerClass}">`;
+          html += `  <span>${escapeHtml(pos.itemNumber)} — ${escapeHtml(rack.name || '')} ${statusLabel}</span>`;
+          html += `  <div class="diff-summary">${summaryHtml}</div>`;
+          html += `</div>`;
+
+          const hasDiff = diff.added.length > 0 || diff.modified.length > 0 || diff.removed.length > 0;
+          if (!hasDiff) {
+            html += `<div class="diff-no-changes">No BOM changes — matches Arena exactly</div>`;
+          } else {
+            diff.added.forEach(item => {
+              html += `<div class="diff-line diff-add">`;
+              html += `  <span class="diff-badge badge-add">ADD</span>`;
+              html += `  <span class="diff-item-number">${escapeHtml(item.itemNumber)}</span>`;
+              html += `  <span class="diff-item-name">${escapeHtml(item.name || '')}</span>`;
+              html += `  <span class="diff-item-qty">Qty: ${escapeHtml(String(item.quantity || 1))}</span>`;
+              html += `</div>`;
+            });
+            diff.modified.forEach(item => {
+              html += `<div class="diff-line diff-change">`;
+              html += `  <span class="diff-badge badge-change">CHG</span>`;
+              html += `  <span class="diff-item-number">${escapeHtml(item.itemNumber)}</span>`;
+              html += `  <span class="diff-item-name">${escapeHtml(item.name || '')}</span>`;
+              html += `  <span class="diff-item-qty">${escapeHtml(String(item.oldQty))} → ${escapeHtml(String(item.newQty))}</span>`;
+              html += `</div>`;
+            });
+            diff.removed.forEach(item => {
+              html += `<div class="diff-line diff-remove">`;
+              html += `  <span class="diff-badge badge-remove">REM</span>`;
+              html += `  <span class="diff-item-number">${escapeHtml(item.itemNumber)}</span>`;
+              html += `  <span class="diff-item-name">${escapeHtml(item.name || '')}</span>`;
+              html += `  <span class="diff-item-qty">Qty: ${escapeHtml(String(item.quantity || 1))}</span>`;
+              html += `</div>`;
+            });
+          }
+
+          html += `</div>`; // .diff-section
         });
       });
+
+      if (!html) {
+        html = '<div style="color:#888; padding:16px; text-align:center;">No rack BOM data to preview.</div>';
+      }
 
       preview.innerHTML = html;
     }

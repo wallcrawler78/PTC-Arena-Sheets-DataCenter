@@ -232,7 +232,7 @@ function createNewRackConfiguration() {
     var itemColumns = getItemColumns();
     Logger.log('Got item columns: ' + JSON.stringify(itemColumns));
 
-    var headers = ['Item Number', 'Name', 'Description', 'Category', 'Lifecycle', 'Qty'];
+    var headers = ['Item Number', 'Name', 'Description', 'Category', 'Lifecycle', 'Qty', 'Revision'];
     Logger.log('Base headers created: ' + headers.join(', '));
 
     // Add configured attribute columns
@@ -270,6 +270,7 @@ function createNewRackConfiguration() {
   newSheet.setColumnWidth(4, 150);  // Category
   newSheet.setColumnWidth(5, 120);  // Lifecycle
   newSheet.setColumnWidth(6, 60);   // Qty
+  newSheet.setColumnWidth(7, 80);   // Revision
 
   // Step 8b: Enable text wrapping for Description column
   newSheet.getRange('C:C').setWrap(true);
@@ -719,18 +720,19 @@ function populateRackBOMFromArena(sheet, arenaBOMLines, arenaClient) {
         lifecycleName = lc.name || lc.Name || '';
       }
 
-      // Build row: [Item Number, Name, Description, Category, Lifecycle, Qty]
+      // Extract revision number
+      var revisionNumber = fullItem.revisionNumber || fullItem.RevisionNumber || '—';
+
+      // Build row: [Item Number, Name, Description, Category, Lifecycle, Qty, Revision]
       var row = [
         itemNumber,
         name,
         description,
         categoryName,
         lifecycleName,
-        quantity
+        quantity,
+        revisionNumber
       ];
-
-      // TODO: Add custom attribute columns if configured
-      // For now, just add the base 6 columns
 
       rowData.push(row);
 
@@ -743,8 +745,8 @@ function populateRackBOMFromArena(sheet, arenaBOMLines, arenaClient) {
 
   // Write data to sheet starting at row 3
   if (rowData.length > 0) {
-    sheet.getRange(DATA_START_ROW, 1, rowData.length, 6).setValues(rowData);
-    Logger.log('populateRackBOMFromArena: Wrote ' + rowData.length + ' rows to sheet');
+    sheet.getRange(DATA_START_ROW, 1, rowData.length, 7).setValues(rowData);
+    Logger.log('populateRackBOMFromArena: Wrote ' + rowData.length + ' rows to sheet (7 cols with revision)');
   } else {
     Logger.log('populateRackBOMFromArena: No data to write');
   }

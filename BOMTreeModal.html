@@ -155,6 +155,13 @@
       border-right: 1px solid #e0e0e0;
       position: relative;
       user-select: none;
+      white-space: nowrap;
+    }
+
+    /* Right-align the Qty column header and cells */
+    .bom-table-header th.col-qty,
+    .bom-table td.col-qty {
+      text-align: right;
     }
 
     .bom-table-header th:last-child {
@@ -216,11 +223,15 @@
 
     .bom-table tbody tr {
       border-bottom: 1px solid #f0f0f0;
-      transition: background 0.2s;
+      transition: background 0.15s;
     }
 
     .bom-table tbody tr:hover {
-      background: #f8f9fa;
+      background: #f0f4ff !important;
+    }
+
+    .bom-table tbody tr:nth-child(even) {
+      background: #fafbfc;
     }
 
     .bom-table td {
@@ -240,13 +251,24 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      color: #5f6368;
-      font-size: 12px;
       user-select: none;
-      transition: transform 0.2s;
+      transition: transform 0.18s ease;
+      flex-shrink: 0;
     }
 
-    .expand-icon.expanded {
+    /* CSS triangle — no emoji dependency */
+    .expand-icon::before {
+      content: '';
+      display: block;
+      width: 0;
+      height: 0;
+      border-top: 5px solid transparent;
+      border-bottom: 5px solid transparent;
+      border-left: 7px solid #5f6368;
+      transition: transform 0.18s ease;
+    }
+
+    .expand-icon.expanded::before {
       transform: rotate(90deg);
     }
 
@@ -678,7 +700,6 @@
       var isExpanded = bomTreeExpandedIds.indexOf(node.id) > -1;
       var isChecked = bomTreeSelectedIds.indexOf(node.id) > -1;
       var expandIconClass = hasChildren ? (isExpanded ? 'expanded' : '') : 'no-children';
-      var expandIcon = hasChildren ? '▶' : '';
       var indentClass = 'indent-' + Math.min(level, 5);
 
       var html = '';
@@ -692,7 +713,7 @@
 
       // Expand icon
       html += '  <td class="col-expand">';
-      html += '    <span class="expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')">' + expandIcon + '</span>';
+      html += '    <span class="expand-icon ' + expandIconClass + '" onclick="toggleBomTreeNode(\'' + escapeHtml(node.id) + '\')"></span>';
       html += '  </td>';
 
       // Item Number (with indent)

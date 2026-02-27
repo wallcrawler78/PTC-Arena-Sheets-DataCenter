@@ -16,7 +16,7 @@ function getCurrentRackBOMData(sheet) {
     return [];
   }
 
-  var dataRange = sheet.getRange(3, 1, lastRow - 2, 6); // Columns A-F (Number, Name, Desc, Category, Lifecycle, Qty)
+  var dataRange = sheet.getRange(3, 1, lastRow - 2, 7); // Columns A-G (Number, Name, Desc, Category, Lifecycle, Qty, Revision)
   var values = dataRange.getValues();
 
   var bomData = [];
@@ -33,7 +33,8 @@ function getCurrentRackBOMData(sheet) {
       description: row[2],
       category: row[3],
       lifecycle: row[4],
-      quantity: row[5]
+      quantity: row[5],
+      revision: row[6] || ''
     });
   }
 
@@ -125,6 +126,12 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
       // Quantity comes from BOM line, not item
       var quantity = line.quantity || line.Quantity || 1;
 
+      // Extract revision number from full item
+      var revisionNumber = '';
+      if (fullItem) {
+        revisionNumber = fullItem.revisionNumber || fullItem.RevisionNumber || '';
+      }
+
       arenaMap[itemNumber] = {
         itemNumber: itemNumber,
         name: name,
@@ -132,6 +139,7 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
         category: categoryName,
         lifecycle: lifecycleName,
         quantity: quantity,
+        revisionNumber: revisionNumber,
         _hasFullData: !!fullItem  // Flag to indicate we got full details
       };
 
@@ -194,6 +202,17 @@ function compareBOMs(currentBOM, arenaBOM, arenaClient) {
             field: 'Lifecycle',
             oldValue: currentItem.lifecycle,
             newValue: arenaItem.lifecycle
+          });
+        }
+
+        // Compare revision (only if Arena has it)
+        var currentRevision = currentItem.revision || '';
+        var arenaRevision = arenaItem.revisionNumber || '';
+        if (arenaRevision && arenaRevision !== currentRevision) {
+          itemChanges.push({
+            field: 'Revision',
+            oldValue: currentRevision,
+            newValue: arenaRevision
           });
         }
 
@@ -338,6 +357,9 @@ function applyBOMChanges(sheet, changes, rackItemNumber) {
         case 'Quantity':
           colIndex = 6; // Column F
           break;
+        case 'Revision':
+          colIndex = 7; // Column G
+          break;
       }
 
       if (colIndex) {
@@ -358,6 +380,26 @@ function applyBOMChanges(sheet, changes, rackItemNumber) {
         changedBy: userName
       });
     });
+
+    // Emit semantic rack history events for high-value field transitions
+    mod.changes.forEach(function(change) {
+      if (change.field === 'Revision') {
+        addRackHistoryEvent(rackItemNumber, HISTORY_EVENT.REVISION_CHANGE, {
+          statusBefore: change.oldValue,
+          statusAfter: change.newValue,
+          changesSummary: 'Revision updated: ' + change.oldValue + ' → ' + change.newValue,
+          details: 'Item ' + mod.itemNumber + ' revision changed in Arena (ECO approved)'
+        });
+      }
+      if (change.field === 'Lifecycle') {
+        addRackHistoryEvent(rackItemNumber, HISTORY_EVENT.LIFECYCLE_CHANGE, {
+          statusBefore: change.oldValue,
+          statusAfter: change.newValue,
+          changesSummary: 'Lifecycle: ' + change.oldValue + ' → ' + change.newValue,
+          details: 'Item ' + mod.itemNumber + ' lifecycle phase changed in Arena'
+        });
+      }
+    });
   });
 
   // Add new items (at the end)
@@ -374,9 +416,10 @@ function applyBOMChanges(sheet, changes, rackItemNumber) {
       sheet.getRange(row, 4).setValue(item.category);
       sheet.getRange(row, 5).setValue(item.lifecycle);
       sheet.getRange(row, 6).setValue(item.quantity);
+      sheet.getRange(row, 7).setValue(item.revisionNumber || '—');
 
       // Blue background for new items
-      sheet.getRange(row, 1, 1, 6).setBackground('#d9e7ff');
+      sheet.getRange(row, 1, 1, 7).setBackground('#d9e7ff');
 
       // Add to history
       historyEntries.push({
@@ -394,7 +437,7 @@ function applyBOMChanges(sheet, changes, rackItemNumber) {
   // Mark removed items (strikethrough + gray)
   changes.removed.forEach(function(item) {
     var row = item.rowNumber;
-    var range = sheet.getRange(row, 1, 1, 6);
+    var range = sheet.getRange(row, 1, 1, 7);
     range.setFontLine('line-through');
     range.setFontColor('#999999');
     range.setBackground('#f5f5f5');

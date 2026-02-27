@@ -65,7 +65,11 @@ var HISTORY_EVENT = {
   /** BOM checksum mismatch detected between sheet and stored value. */
   CHECKSUM_MISMATCH: 'CHECKSUM_MISMATCH',
   /** Metadata migrated from legacy Row 1 storage to History tab. */
-  MIGRATION: 'MIGRATION'
+  MIGRATION: 'MIGRATION',
+  /** Item revision number changed in Arena (ECO approved). Records old and new revision. */
+  REVISION_CHANGE: 'REVISION_CHANGE',
+  /** Item lifecycle phase changed in Arena. Records old and new lifecycle phase. */
+  LIFECYCLE_CHANGE: 'LIFECYCLE_CHANGE'
 };
 
 /**
