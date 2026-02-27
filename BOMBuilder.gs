@@ -2843,6 +2843,16 @@ function executePODPush(wizardData) {
 
     syncBOMToArena(client, podItemGuid, podBomLines);
     Logger.log('✓ Synced BOM for POD ' + podItemNumber + ' (' + podBomLines.length + ' rows)');
+
+    // Write POD info to Overview A1 so future wizard runs detect it as EXISTS
+    if (wizardData.overviewSheetName) {
+      try {
+        _writePODInfoToOverview(wizardData.overviewSheetName, podItemNumber, wizardData.pod.name || podItemNumber);
+      } catch (podWriteErr) {
+        Logger.log('⚠ Could not write POD info to overview: ' + podWriteErr.message);
+      }
+    }
+
     currentStep++;
     _setPushProgress(currentStep, totalSteps, 'Complete!');
 
@@ -3130,6 +3140,61 @@ function _writeRowItemNumbersToOverview(overviewSheetName, createdRows) {
   }
 
   Logger.log('✓ Wrote ' + written + ' row item number(s) to overview sheet "' + overviewSheetName + '"');
+}
+
+/**
+ * Writes (or updates) the POD item info in cell A1 of the Overview sheet so
+ * future wizard runs detect the POD as existing rather than prompting for
+ * re-creation.
+ *
+ * Detection in preparePODWizardDataForModal reads A1 and matches the pattern
+ * "POD: name (ITEM-NUMBER)". This helper produces exactly that format.
+ *
+ * If A1 already contains POD info (from a previous push) the row is updated
+ * in-place; otherwise a new row is inserted at the top so the header row and
+ * data rows are not overwritten.  Note: _writeRowItemNumbersToOverview must be
+ * called BEFORE this function so its sheetRow indices are written before the
+ * row-insert shifts everything down.
+ *
+ * @param {string} overviewSheetName - Name of the overview tab
+ * @param {string} podItemNumber     - Arena item number for the POD
+ * @param {string} podName           - Display name for the POD
+ */
+function _writePODInfoToOverview(overviewSheetName, podItemNumber, podName) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(overviewSheetName);
+  if (!sheet) {
+    Logger.log('⚠ _writePODInfoToOverview: sheet not found: ' + overviewSheetName);
+    return;
+  }
+
+  // Check whether A1 already holds POD info from a prior push
+  var a1Value = sheet.getRange('A1').getValue().toString();
+  var alreadyHasPodRow = /POD:\s*.+\(/.test(a1Value);
+
+  if (!alreadyHasPodRow) {
+    // Insert a blank row at the very top so we don't clobber the grid header
+    sheet.insertRowBefore(1);
+  }
+
+  // Write the POD text in the format the detection regex expects
+  var podText = 'POD: ' + (podName || podItemNumber) + ' (' + podItemNumber + ')';
+
+  // Merge across available columns (up to 10) for a banner look, suppress errors
+  // if cells are already merged or contain data
+  var numCols = Math.max(sheet.getLastColumn(), 1);
+  try {
+    sheet.getRange(1, 1, 1, Math.min(numCols, 10)).merge();
+  } catch (mergeErr) {
+    // Already merged or incompatible — just write to A1
+  }
+  sheet.getRange(1, 1)
+    .setValue(podText)
+    .setFontWeight('bold')
+    .setFontSize(12)
+    .setFontColor('#1a73e8');
+
+  Logger.log('✓ Wrote POD info to overview A1: ' + podText);
 }
 
 /**
