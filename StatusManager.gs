@@ -93,6 +93,11 @@ function updateRackSheetStatus(sheet, status, arenaGuid, eventDetails) {
       metadataUpdate.arenaGuid = arenaGuid;
     }
 
+    // Caller can supply lastPush timestamp via eventDetails
+    if (eventDetails && eventDetails.lastPush !== undefined) {
+      metadataUpdate.lastPush = eventDetails.lastPush;
+    }
+
     // Calculate and store checksum if status is SYNCED
     if (status === RACK_STATUS.SYNCED) {
       var checksum = calculateBOMChecksum(sheet);

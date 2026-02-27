@@ -2684,7 +2684,8 @@ function executePODPush(wizardData) {
       // Update rack status — use rackSheet (already fetched); rack.sheet is not passed through the modal
       updateRackSheetStatus(rackSheet, RACK_STATUS.SYNCED, newItemGuid, {
         changesSummary: 'Rack created in Arena via POD push',
-        details: 'Created with ' + bomLines.length + ' BOM items'
+        details: 'Created with ' + bomLines.length + ' BOM items',
+        lastPush: new Date()
       });
       currentStep++;
 
@@ -2695,6 +2696,32 @@ function executePODPush(wizardData) {
       });
 
       Logger.log('✓ Created rack: ' + rack.itemNumber);
+    }
+
+    // Update history for racks that were already in Arena (existingRacks).
+    // These bypass the creation loop above, so their status/GUID would never be
+    // recorded without this pass. Failures are non-fatal — log and continue.
+    if (wizardData.existingRacks && wizardData.existingRacks.length > 0) {
+      Logger.log('Updating history for ' + wizardData.existingRacks.length + ' existing rack(s)...');
+      var ss2 = SpreadsheetApp.getActiveSpreadsheet();
+      for (var e = 0; e < wizardData.existingRacks.length; e++) {
+        var existingRack = wizardData.existingRacks[e];
+        try {
+          var existingRackSheet = findRackConfigTab(existingRack.itemNumber);
+          if (existingRackSheet) {
+            updateRackSheetStatus(existingRackSheet, RACK_STATUS.SYNCED, existingRack.guid, {
+              changesSummary: 'Rack already in Arena — confirmed during POD push',
+              details: 'GUID recorded; rack was pre-existing at push time',
+              lastPush: new Date()
+            });
+            Logger.log('✓ Updated history for existing rack: ' + existingRack.itemNumber);
+          } else {
+            Logger.log('⚠ No config sheet found for existing rack: ' + existingRack.itemNumber);
+          }
+        } catch (existErr) {
+          Logger.log('⚠ Could not update history for existing rack ' + existingRack.itemNumber + ': ' + existErr.message);
+        }
+      }
     }
 
     // STEP 2: Create or update rows
