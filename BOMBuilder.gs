@@ -2367,6 +2367,33 @@ function pushPODStructureToArena() {
 }
 
 /**
+ * Returns true if the string looks like an Arena GUID (15-25 uppercase alphanumeric chars,
+ * no hyphens). Used to avoid calling getItemByNumber() for GUID identifiers, which would
+ * trigger a full refreshItemCache() per call and cause severe slowdowns.
+ */
+function _looksLikeArenaGuid(s) {
+  return typeof s === 'string' && /^[A-Z0-9]{15,25}$/.test(s);
+}
+
+/**
+ * Builds a request object suitable for UrlFetchApp.fetchAll() using the client's session.
+ * @param {ArenaAPIClient} client
+ * @param {string} endpoint  e.g. '/items/{guid}/bom'
+ * @return {Object}
+ */
+function _buildWizardFetchRequest(client, endpoint) {
+  return {
+    url: client.apiBase + endpoint,
+    method: 'GET',
+    headers: {
+      'arena_session_id': client.sessionId,
+      'Content-Type': 'application/json'
+    },
+    muteHttpExceptions: true
+  };
+}
+
+/**
  * Computes BOM diff between local rack sheet and Arena BOM lines.
  * Used by preparePODWizardDataForModal to build the Stage 3 visual diff.
  * @param {Array} localBOM - Array of {itemNumber, name, quantity, revision} from getCurrentRackBOMData
@@ -2505,84 +2532,33 @@ function preparePODWizardDataForModal() {
     });
   });
 
-  // Separate placeholder vs existing racks
+  // ── Phase 2: Rack item lookups via cache (cache-warm on first call, fast thereafter) ──────────
+  // getItemByNumber() triggers refreshItemCache() at most ONCE, then all subsequent calls are
+  // O(1) cache hits. This is far better than calling it per-rack-per-row serially.
   var placeholderRacks = [];
   var existingRacks = [];
+  var existingRackMeta = [];  // Intermediate store: {itemNumber, arenaItem, rackConfig}
 
   allRackNumbers.forEach(function(itemNumber) {
     var rackConfig = rackConfigMap[itemNumber];
-
     if (!rackConfig) {
       Logger.log('⚠ No rack config found for: ' + itemNumber);
       return;
     }
 
-    // Check if exists in Arena
-    var existsInArena = false;
     var arenaItem = null;
-
-    Logger.log('Checking if rack ' + itemNumber + ' exists in Arena...');
-
     try {
       arenaItem = client.getItemByNumber(itemNumber);
-
-      Logger.log('Arena API response for ' + itemNumber + ': ' + JSON.stringify(arenaItem));
-
-      if (arenaItem && (arenaItem.guid || arenaItem.Guid)) {
-        // Exists in Arena (has valid GUID)
-        existsInArena = true;
-        var guid = arenaItem.guid || arenaItem.Guid;
-        var name = arenaItem.name || arenaItem.Name || rackConfig.metadata.itemName;
-        Logger.log('✓ Rack ' + itemNumber + ' EXISTS in Arena (GUID: ' + guid + ', Name: ' + name + ')');
-      } else {
-        Logger.log('⚠ Arena returned response but no GUID found for ' + itemNumber);
-      }
-    } catch (error) {
-      // Error fetching = doesn't exist in Arena
-      Logger.log('✗ Rack ' + itemNumber + ' NOT FOUND in Arena: ' + error.message);
+    } catch (e) {
+      Logger.log('✗ Rack ' + itemNumber + ' NOT FOUND in Arena: ' + e.message);
     }
 
-    if (existsInArena) {
-      // Extract category info from Arena item
-      var categoryName = '';
-      if (arenaItem.category || arenaItem.Category) {
-        var cat = arenaItem.category || arenaItem.Category;
-        categoryName = cat.name || cat.Name || '';
-      }
-
-      var position = rackPositionMap[itemNumber] || {};
-      var guid = arenaItem.guid || arenaItem.Guid;
-
-      // Compute BOM diff for Stage 3 visual preview
-      var rackDiff = { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
-      try {
-        var localBOM = getCurrentRackBOMData(rackConfig.sheet);
-        var arenaBOMData = client.makeRequest('/items/' + guid + '/bom', { method: 'GET' });
-        var arenaBOMLines = arenaBOMData.results || arenaBOMData.Results || [];
-        rackDiff = _computeWizardBOMDiff(localBOM, arenaBOMLines);
-        Logger.log('  Rack BOM diff: +' + rackDiff.summary.addCount + ' ~' + rackDiff.summary.changeCount + ' -' + rackDiff.summary.removeCount);
-      } catch (diffErr) {
-        Logger.log('Warning: Could not compute BOM diff for existing rack ' + itemNumber + ': ' + diffErr.message);
-      }
-
-      existingRacks.push({
-        itemNumber: itemNumber,
-        name: arenaItem.name || arenaItem.Name || rackConfig.metadata.itemName,
-        description: arenaItem.description || arenaItem.Description || rackConfig.metadata.description || '',
-        category: categoryName,
-        childCount: rackConfig.childCount,
-        guid: guid,
-        row: position.row,
-        position: position.position,
-        rackDiff: rackDiff
-      });
-      Logger.log('→ Added ' + itemNumber + ' to EXISTING racks list (category: ' + categoryName + ')');
+    if (arenaItem && (arenaItem.guid || arenaItem.Guid)) {
+      Logger.log('✓ Rack ' + itemNumber + ' EXISTS in Arena');
+      existingRackMeta.push({ itemNumber: itemNumber, arenaItem: arenaItem, rackConfig: rackConfig });
     } else {
-      // Doesn't exist in Arena - placeholder
-      Logger.log('→ Adding ' + itemNumber + ' to PLACEHOLDER list');
+      Logger.log('→ Rack ' + itemNumber + ' is PLACEHOLDER (not in Arena)');
       var position = rackPositionMap[itemNumber] || {};
-
-      // For placeholder racks, all local BOM items are "added" (new rack)
       var placeholderDiff = { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
       try {
         var localBOM = getCurrentRackBOMData(rackConfig.sheet);
@@ -2590,17 +2566,16 @@ function preparePODWizardDataForModal() {
           placeholderDiff.added.push({ itemNumber: item.itemNumber, name: item.name || '', quantity: item.quantity });
           placeholderDiff.summary.addCount++;
         });
-      } catch (diffErr) {
-        Logger.log('Warning: Could not read local BOM for placeholder rack ' + itemNumber + ': ' + diffErr.message);
+      } catch (e) {
+        Logger.log('Warning: local BOM read error for placeholder rack ' + itemNumber + ': ' + e.message);
       }
-
       placeholderRacks.push({
         itemNumber: itemNumber,
         name: rackConfig.metadata.itemName || '',
         description: rackConfig.metadata.description || '',
-        category: null,  // User will select
+        category: null,
         childCount: rackConfig.childCount,
-        sheetName: rackConfig.sheet.getName(),  // Store name, not object (can't pass through HTML modal)
+        sheetName: rackConfig.sheet.getName(),
         row: position.row,
         position: position.position,
         rackDiff: placeholderDiff
@@ -2608,10 +2583,58 @@ function preparePODWizardDataForModal() {
     }
   });
 
+  // ── Phase 3: PARALLEL BOM fetch for all existing racks using UrlFetchApp.fetchAll() ──────────
+  // Before: 1 serial HTTP call per rack (each ~400ms). After: all racks fetched in one batch.
+  var localBOMs = existingRackMeta.map(function(rack) {
+    try { return getCurrentRackBOMData(rack.rackConfig.sheet); } catch (e) { return []; }
+  });
+
+  var bomFetchRequests = existingRackMeta.map(function(rack) {
+    var guid = rack.arenaItem.guid || rack.arenaItem.Guid;
+    return _buildWizardFetchRequest(client, '/items/' + encodeURIComponent(guid) + '/bom');
+  });
+
+  var bomResponses = bomFetchRequests.length > 0 ? UrlFetchApp.fetchAll(bomFetchRequests) : [];
+  Logger.log('Fetched ' + bomResponses.length + ' rack BOMs in parallel');
+
+  existingRackMeta.forEach(function(rack, i) {
+    var arenaItem = rack.arenaItem;
+    var guid = arenaItem.guid || arenaItem.Guid;
+    var position = rackPositionMap[rack.itemNumber] || {};
+    var categoryName = '';
+    if (arenaItem.category || arenaItem.Category) {
+      var cat = arenaItem.category || arenaItem.Category;
+      categoryName = cat.name || cat.Name || '';
+    }
+    var rackDiff = { added: [], modified: [], removed: [], summary: { addCount: 0, changeCount: 0, removeCount: 0 } };
+    try {
+      var arenaBOMLines = [];
+      if (bomResponses[i] && bomResponses[i].getResponseCode() === 200) {
+        var bomData = JSON.parse(bomResponses[i].getContentText());
+        arenaBOMLines = bomData.results || bomData.Results || [];
+      }
+      rackDiff = _computeWizardBOMDiff(localBOMs[i], arenaBOMLines);
+      Logger.log('  Rack ' + rack.itemNumber + ' BOM diff: +' + rackDiff.summary.addCount + ' ~' + rackDiff.summary.changeCount + ' -' + rackDiff.summary.removeCount);
+    } catch (e) {
+      Logger.log('Warning: BOM diff error for rack ' + rack.itemNumber + ': ' + e.message);
+    }
+    existingRacks.push({
+      itemNumber: rack.itemNumber,
+      name: arenaItem.name || arenaItem.Name || rack.rackConfig.metadata.itemName,
+      description: arenaItem.description || arenaItem.Description || rack.rackConfig.metadata.description || '',
+      category: categoryName,
+      childCount: rack.rackConfig.childCount,
+      guid: guid,
+      row: position.row,
+      position: position.position,
+      rackDiff: rackDiff
+    });
+  });
+
   Logger.log('Placeholder racks: ' + placeholderRacks.length);
   Logger.log('Existing racks: ' + existingRacks.length);
 
-  // Extract POD item number from overview sheet A1
+  // ── Phase 4: POD lookup (uses cache if item number, or direct getItem if GUID) ──────────────
   var podItemNumber = null;
   var podName = '';
   var podExists = false;
@@ -2620,29 +2643,19 @@ function preparePODWizardDataForModal() {
 
   var podCell = overviewSheet.getRange('A1').getValue();
   if (podCell && typeof podCell === 'string') {
-    // Extract item number from format "POD: name (ITEM-NUMBER)"
     var podMatch = podCell.match(/POD:\s*(.+?)\s*\(([^)]+)\)/);
     if (podMatch) {
       podName = podMatch[1].trim();
       podItemNumber = podMatch[2].trim();
       Logger.log('Found POD in overview: ' + podName + ' (' + podItemNumber + ')');
-
-      // Check if POD exists in Arena.
-      // Try by item number first; if that fails (e.g. A1 stored a GUID as fallback),
-      // try treating the stored value as a GUID via getItem().
       try {
         var podItem = null;
-        try {
-          podItem = client.getItemByNumber(podItemNumber);
-        } catch (numErr) {
-          // number lookup failed — may be a GUID stored as fallback
-        }
-        if (!podItem || !(podItem.guid || podItem.Guid)) {
-          // Try as GUID (handles edge case where auto-number wasn't assigned on prior push)
-          try {
-            podItem = client.getItem(podItemNumber);
-          } catch (guidErr) {
-            podItem = null;
+        if (_looksLikeArenaGuid(podItemNumber)) {
+          try { podItem = client.getItem(podItemNumber); } catch (e) {}
+        } else {
+          try { podItem = client.getItemByNumber(podItemNumber); } catch (e) {}
+          if (!podItem || !(podItem.guid || podItem.Guid)) {
+            try { podItem = client.getItem(podItemNumber); } catch (e) {}
           }
         }
         if (podItem && (podItem.guid || podItem.Guid)) {
@@ -2650,10 +2663,7 @@ function preparePODWizardDataForModal() {
           podGuid = podItem.guid || podItem.Guid;
           if (podItem.category || podItem.Category) {
             var cat = podItem.category || podItem.Category;
-            podCategory = {
-              guid: cat.guid || cat.Guid,
-              name: cat.name || cat.Name
-            };
+            podCategory = { guid: cat.guid || cat.Guid, name: cat.name || cat.Name };
           }
           Logger.log('✓ POD ' + podItemNumber + ' EXISTS in Arena (GUID: ' + podGuid + ')');
         }
@@ -2663,49 +2673,79 @@ function preparePODWizardDataForModal() {
     }
   }
 
-  // Prepare row data - check if each exists in Arena
-  var rowsData = overviewData.map(function(row) {
-    var rowItemNumber = row.rowItemNumber;
+  // ── Phase 5: PARALLEL row lookups ─────────────────────────────────────────────────────────────
+  // Critical perf fix: overview may store GUIDs for row items. Calling getItemByNumber(GUID)
+  // causes TWO full refreshItemCache() calls per miss (16+ calls for 8 GUID rows = 60+ seconds!).
+  // Instead: detect GUIDs, fetch them all in parallel via UrlFetchApp.fetchAll().
+  var rowWorkItems = overviewData.map(function(row) {
+    return { row: row, rowItemNumber: row.rowItemNumber, resolvedItem: null };
+  });
+
+  // Cache lookup for item-number-shaped identifiers (fast, uses pre-warmed cache)
+  rowWorkItems.forEach(function(entry) {
+    var id = entry.rowItemNumber;
+    if (!id || _looksLikeArenaGuid(id)) return;  // skip GUIDs — fetched in parallel below
+    try { entry.resolvedItem = client.getItemByNumber(id); } catch (e) {}
+  });
+
+  // Parallel fetch for GUID-shaped identifiers
+  var guidRowIndices = [];
+  var guidFetchRequests = [];
+  rowWorkItems.forEach(function(entry, i) {
+    if (entry.rowItemNumber && _looksLikeArenaGuid(entry.rowItemNumber)) {
+      guidRowIndices.push(i);
+      guidFetchRequests.push(_buildWizardFetchRequest(
+        client, '/items/' + encodeURIComponent(entry.rowItemNumber) + '?responseview=full'
+      ));
+    }
+  });
+
+  if (guidFetchRequests.length > 0) {
+    Logger.log('Fetching ' + guidFetchRequests.length + ' row items by GUID (parallel)...');
+    var guidRowResponses = UrlFetchApp.fetchAll(guidFetchRequests);
+    guidRowIndices.forEach(function(workIdx, j) {
+      try {
+        if (guidRowResponses[j].getResponseCode() === 200) {
+          rowWorkItems[workIdx].resolvedItem = normalizeArenaItem(JSON.parse(guidRowResponses[j].getContentText()));
+        }
+      } catch (e) {
+        Logger.log('Row GUID fetch error for ' + rowWorkItems[workIdx].rowItemNumber + ': ' + e.message);
+      }
+    });
+  }
+
+  var rowsData = rowWorkItems.map(function(entry) {
+    var row = entry.row;
+    var rowItemNumber = entry.rowItemNumber;
+    var rowItem = entry.resolvedItem;
     var rowExists = false;
     var rowGuid = null;
     var rowCategory = null;
-    var rowName = row.rowItemNumber || ('ROW-' + row.rowNumber);
+    var rowName = rowItemNumber || ('ROW-' + row.rowNumber);
 
-    if (rowItemNumber) {
-      // Check if row exists in Arena
-      try {
-        var rowItem = client.getItemByNumber(rowItemNumber);
-        if (rowItem && (rowItem.guid || rowItem.Guid)) {
-          rowExists = true;
-          rowGuid = rowItem.guid || rowItem.Guid;
-          rowName = rowItem.name || rowItem.Name || rowName;
-          if (rowItem.category || rowItem.Category) {
-            var cat = rowItem.category || rowItem.Category;
-            rowCategory = {
-              guid: cat.guid || cat.Guid,
-              name: cat.name || cat.Name
-            };
-          }
-          Logger.log('✓ ROW ' + rowItemNumber + ' EXISTS in Arena (GUID: ' + rowGuid + ')');
-        }
-      } catch (error) {
-        Logger.log('ROW ' + rowItemNumber + ' not found in Arena: ' + error.message);
+    if (rowItem && (rowItem.guid || rowItem.Guid)) {
+      rowExists = true;
+      rowGuid = rowItem.guid || rowItem.Guid;
+      rowName = rowItem.name || rowItem.Name || rowName;
+      if (rowItem.category || rowItem.Category) {
+        var cat = rowItem.category || rowItem.Category;
+        rowCategory = { guid: cat.guid || cat.Guid, name: cat.name || cat.Name };
       }
+      Logger.log('✓ ROW ' + rowItemNumber + ' EXISTS in Arena');
+    } else if (rowItemNumber) {
+      Logger.log('ROW ' + rowItemNumber + ' not found in Arena');
     }
 
     return {
       rowNumber: row.rowNumber,
       rowItemNumber: rowItemNumber,
       name: rowName,
-      category: rowCategory,  // May be null if new or user will select
+      category: rowCategory,
       exists: rowExists,
       guid: rowGuid,
-      sheetRow: row.sheetRow,  // 1-based sheet row index for write-back after push
+      sheetRow: row.sheetRow,
       positions: row.positions.map(function(pos) {
-        return {
-          position: pos.position,
-          itemNumber: pos.itemNumber
-        };
+        return { position: pos.position, itemNumber: pos.itemNumber };
       })
     };
   });
@@ -3610,13 +3650,22 @@ function repairPODAndRowBOMs() {
     for (var i = 0; i < rowData.length; i++) {
       var row = rowData[i];
 
-      Logger.log('Looking up Row item: ' + row.rowItemNumber);
-      var rowItem = client.getItemByNumber(row.rowItemNumber);
-      if (!rowItem) {
-        Logger.log('WARNING: Row item not found: ' + row.rowItemNumber);
-        continue;
+      // Use GUID from wizard data if available (avoids extra API call and
+      // handles the case where the overview stores a GUID instead of item number).
+      var rowGuid = row.guid || null;
+      if (!rowGuid) {
+        Logger.log('Looking up Row item: ' + row.rowItemNumber);
+        var rowItem = null;
+        try { rowItem = client.getItemByNumber(row.rowItemNumber); } catch (e) {}
+        if (!rowItem || !(rowItem.guid || rowItem.Guid)) {
+          try { rowItem = client.getItem(row.rowItemNumber); } catch (e) {}
+        }
+        if (!rowItem) {
+          Logger.log('WARNING: Row item not found: ' + row.rowItemNumber);
+          continue;
+        }
+        rowGuid = rowItem.guid || rowItem.Guid;
       }
-      var rowGuid = rowItem.guid || rowItem.Guid;
       Logger.log('Found Row GUID: ' + rowGuid);
       rowGuids.push({ number: row.rowItemNumber, guid: rowGuid });
 

@@ -1554,6 +1554,16 @@
       document.getElementById('categorySelectorOkBtn').disabled = false;
     }
 
+    // HTML escaping utility (used by renderBOMPreview and other renderers)
+    function escapeHtml(str) {
+      if (str === null || str === undefined) return '';
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
     // Navigation
     function nextStage() {
       if (!validateCurrentStage()) return;
@@ -1663,6 +1673,15 @@
     // Render BOM visual diff preview (Stage 3)
     function renderBOMPreview() {
       const preview = document.getElementById('bomDiffPreview');
+      try {
+        _renderBOMPreviewInner(preview);
+      } catch (err) {
+        preview.innerHTML = '<div style="color:#c62828; padding:16px; font-size:13px;">⚠ Error rendering BOM preview: ' + escapeHtml(err.message) + '</div>';
+        console.error('renderBOMPreview error:', err);
+      }
+    }
+
+    function _renderBOMPreviewInner(preview) {
       let html = '';
 
       // Build a lookup of all racks (existing + placeholder) by itemNumber
