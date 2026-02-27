@@ -131,7 +131,7 @@ function createOverviewLayout(sheetName, rows, cols) {
   // Set up title with dynamic terminology
   var hierarchyLevel0 = getTerminology('hierarchy_level_0');
   sheet.getRange(1, 1).setValue(hierarchyLevel0 + ' Overview');
-  sheet.getRange(1, 1, 1, cols).merge()
+  sheet.getRange(1, 1, 1, cols + 2).merge()  // +2: col A (row#) + col B (Row Item)
     .setFontSize(16)
     .setFontWeight('bold')
     .setHorizontalAlignment('center')
@@ -141,18 +141,24 @@ function createOverviewLayout(sheetName, rows, cols) {
   // Create grid
   var startRow = 3;
 
-  // Add column headers (Pos 1, Pos 2, Pos 3, etc.)
-  var colHeaders = [];
-  for (var c = 0; c < cols; c++) {
-    colHeaders.push('Pos ' + (c + 1));
-  }
-  sheet.getRange(startRow, 2, 1, cols).setValues([colHeaders]);
-  sheet.getRange(startRow, 2, 1, cols)
+  // Col B: "Row Item" header — shows Arena-assigned part numbers with clickable links
+  sheet.getRange(startRow, 2).setValue('Row Item')
     .setFontWeight('bold')
     .setHorizontalAlignment('center')
     .setBackground('#f0f0f0');
 
-  // Add row headers (1, 2, 3, etc.)
+  // Col C+: "Pos 1", "Pos 2", ... headers
+  var colHeaders = [];
+  for (var c = 0; c < cols; c++) {
+    colHeaders.push('Pos ' + (c + 1));
+  }
+  sheet.getRange(startRow, 3, 1, cols).setValues([colHeaders]);
+  sheet.getRange(startRow, 3, 1, cols)
+    .setFontWeight('bold')
+    .setHorizontalAlignment('center')
+    .setBackground('#f0f0f0');
+
+  // Add row headers (1, 2, 3, etc.) in col A
   var rowHeaders = [];
   for (var r = 0; r < rows; r++) {
     rowHeaders.push([r + 1]);
@@ -163,9 +169,10 @@ function createOverviewLayout(sheetName, rows, cols) {
     .setHorizontalAlignment('center')
     .setBackground('#f0f0f0');
 
-  // Set cell sizes for grid
-  sheet.setColumnWidth(1, COLUMN_WIDTHS.ROW_HEADER); // Row header column
-  for (var c = 2; c <= cols + 1; c++) {
+  // Set cell sizes
+  sheet.setColumnWidth(1, COLUMN_WIDTHS.ROW_HEADER);  // Col A: row sequence numbers
+  sheet.setColumnWidth(2, COLUMN_WIDTHS.ITEM_NUMBER);  // Col B: Row Item part numbers
+  for (var c = 3; c <= cols + 2; c++) {               // Col C+: Pos 1, Pos 2, ...
     sheet.setColumnWidth(c, COLUMN_WIDTHS.GRID_CELL);
   }
 
@@ -173,8 +180,8 @@ function createOverviewLayout(sheetName, rows, cols) {
     sheet.setRowHeight(r, 80);
   }
 
-  // Add borders to grid
-  var gridRange = sheet.getRange(startRow + 1, 2, rows, cols);
+  // Add borders to the rack position grid (col C+)
+  var gridRange = sheet.getRange(startRow + 1, 3, rows, cols);
   gridRange.setBorder(true, true, true, true, true, true, '#cccccc', SpreadsheetApp.BorderStyle.SOLID);
 
   // Freeze headers (only freeze rows, not columns due to merged title)
@@ -474,11 +481,39 @@ function autoLinkRacksToOverview(overviewSheetName) {
     return;
   }
 
-  // Link racks to overview grid (arrange in grid pattern)
-  var startRow = 4; // After headers
-  var startCol = 2;
-  var maxCols = 5; // 5 racks per row
+  // Dynamically locate the header row and first position column so this works
+  // regardless of whether "Row Item" column is present or what row the headers are on.
+  var startRow = 4;   // fallback defaults
+  var startCol = 3;   // col C (after "Row Item" at col B)
+  var maxCols = 5;
 
+  var overviewSheet = spreadsheet.getSheetByName(overviewSheetName);
+  if (overviewSheet) {
+    var sheetData = overviewSheet.getDataRange().getValues();
+    var foundPos = false;
+    for (var i = 0; i < sheetData.length && !foundPos; i++) {
+      for (var j = 0; j < sheetData[i].length; j++) {
+        if (sheetData[i][j] && String(sheetData[i][j]).toLowerCase().indexOf('pos ') === 0) {
+          startRow = i + 2;       // data row = header row + 1 (both 1-based)
+          startCol = j + 1;       // 1-based column index of first "Pos" header
+          // Count consecutive "Pos" columns
+          var posCount = 0;
+          for (var k = j; k < sheetData[i].length; k++) {
+            if (sheetData[i][k] && String(sheetData[i][k]).toLowerCase().indexOf('pos ') === 0) {
+              posCount++;
+            } else {
+              break;
+            }
+          }
+          if (posCount > 0) maxCols = posCount;
+          foundPos = true;
+          break;
+        }
+      }
+    }
+  }
+
+  // Link racks to overview grid (arrange in grid pattern)
   rackSheets.forEach(function(rackName, index) {
     var row = startRow + Math.floor(index / maxCols);
     var col = startCol + (index % maxCols);

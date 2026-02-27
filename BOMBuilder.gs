@@ -3122,33 +3122,21 @@ function _writeRowItemNumbersToOverview(overviewSheetName, createdRows) {
     Logger.log('Inserted "Row Item" column in overview sheet');
   }
 
-  // Write item numbers for rows that were newly created in this push
-  var client = getArenaClient();
+  // Write item numbers (with clickable Arena hyperlinks) for all rows in this push.
+  // We already have the GUID and Arena-assigned part number from the push response —
+  // no extra API call needed.  The GUID lives only in the URL; users see the part number.
   var written = 0;
   var colIdx1 = rowItemCol0 + 1;  // 1-based column index
 
   for (var r = 0; r < createdRows.length; r++) {
     var cr = createdRows[r];
-    if (!cr.wasNew) continue;         // Skip rows that already existed
-    if (!cr.sheetRow || !cr.itemNumber) continue;
+    if (!cr.sheetRow || !cr.guid) continue;
 
     var sheetRowIdx = cr.sheetRow;    // Already 1-based
-
-    // After column insert the sheetRow (row index) is unchanged — only column positions shift
-    try {
-      var arenaItem = client.getItemByNumber(cr.itemNumber);
-      if (arenaItem) {
-        var arenaUrl = buildArenaItemURLFromItem(arenaItem, cr.itemNumber);
-        var formula = '=HYPERLINK("' + arenaUrl + '","' + cr.itemNumber + '")';
-        sheet.getRange(sheetRowIdx, colIdx1).setFormula(formula).setFontColor('#0000FF');
-      } else {
-        sheet.getRange(sheetRowIdx, colIdx1).setValue(cr.itemNumber);
-      }
-    } catch (e) {
-      // Fallback: plain text so detection still works next time
-      Logger.log('Could not build hyperlink for ' + cr.itemNumber + ': ' + e.message);
-      sheet.getRange(sheetRowIdx, colIdx1).setValue(cr.itemNumber);
-    }
+    var displayText = cr.itemNumber || cr.guid;
+    var arenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + cr.guid;
+    var formula = '=HYPERLINK("' + arenaUrl + '","' + displayText + '")';
+    sheet.getRange(sheetRowIdx, colIdx1).setFormula(formula).setFontColor('#1a73e8');
     written++;
   }
 
