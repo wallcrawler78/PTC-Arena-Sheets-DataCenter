@@ -1635,9 +1635,11 @@ function scanOverviewByRow(sheet) {
       // Get row number from first column
       var rowNumber = row[0] || (rowData.length + 1);
 
-      // Get row item number from Row Item column if it exists
+      // Get row item number from Row Item column if it exists.
+      // rowItemCol = 0 means column A, which holds row sequence numbers (1, 2, 3...)
+      // not Arena item numbers — skip it unless there is a dedicated interior column.
       var rowItemNumber = null;
-      if (rowItemCol >= 0 && row[rowItemCol]) {
+      if (rowItemCol > 0 && row[rowItemCol]) {
         rowItemNumber = row[rowItemCol].toString();
       }
 
@@ -2501,6 +2503,7 @@ function preparePODWizardDataForModal() {
       category: rowCategory,  // May be null if new or user will select
       exists: rowExists,
       guid: rowGuid,
+      sheetRow: row.sheetRow,  // 1-based sheet row index for write-back after push
       positions: row.positions.map(function(pos) {
         return {
           position: pos.position,
@@ -2515,6 +2518,7 @@ function preparePODWizardDataForModal() {
     racks: placeholderRacks,
     existingRacks: existingRacks,
     rows: rowsData,
+    overviewSheetName: overviewSheet.getName(),  // Needed for post-push write-back
     pod: {
       itemNumber: podItemNumber,
       name: podName,
@@ -2778,9 +2782,22 @@ function executePODPush(wizardData) {
       createdRows.push({
         itemNumber: rowItemNumber,  // may be GUID string if Arena didn't return number
         guid: rowItemGuid,
-        name: row.name || row.rowItemNumber
+        name: row.name || row.rowItemNumber,
+        sheetRow: row.sheetRow,     // 1-based sheet row index from wizard data
+        wasNew: !row.exists          // true only for rows created in this push
       });
       currentStep++;
+    }
+
+    // Write newly created row item numbers back to the Overview sheet so future
+    // runs detect them as existing instead of prompting for re-creation.
+    if (wizardData.overviewSheetName) {
+      try {
+        _writeRowItemNumbersToOverview(wizardData.overviewSheetName, createdRows);
+      } catch (writeErr) {
+        // Non-fatal: log and continue — wizard results are unaffected
+        Logger.log('⚠ Could not write row item numbers to overview: ' + writeErr.message);
+      }
     }
 
     // STEP 3: Create or update POD
@@ -3014,7 +3031,109 @@ function updateOverviewWithPODInfo(sheet, podItem, rowItems) {
 }
 
 /**
- * Repairs existing POD/Row BOMs from overview sheet  
+ * Writes row item numbers created during a wizard push back to the Overview sheet.
+ * Inserts a "Row Item" column between column A (row numbers) and "Pos 1" when
+ * the column doesn't already exist so future wizard runs detect existing rows.
+ *
+ * @param {string} overviewSheetName - Name of the overview tab
+ * @param {Array}  createdRows       - Array of {itemNumber, guid, sheetRow, wasNew}
+ *                                     from executePODPush's createdRows array
+ */
+function _writeRowItemNumbersToOverview(overviewSheetName, createdRows) {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(overviewSheetName);
+  if (!sheet) {
+    Logger.log('⚠ _writeRowItemNumbersToOverview: sheet not found: ' + overviewSheetName);
+    return;
+  }
+
+  var data = sheet.getDataRange().getValues();
+
+  // Locate header row and first position column
+  var headerRow = -1;
+  var firstPosCol = -1;
+  for (var i = 0; i < data.length; i++) {
+    for (var j = 0; j < data[i].length; j++) {
+      if (data[i][j] && data[i][j].toString().toLowerCase().indexOf('pos') === 0) {
+        headerRow = i;
+        firstPosCol = j;
+        break;
+      }
+    }
+    if (headerRow !== -1) break;
+  }
+
+  if (headerRow === -1) {
+    Logger.log('⚠ _writeRowItemNumbersToOverview: no position headers found');
+    return;
+  }
+
+  // Determine whether a "Row Item" column already exists.
+  // It would be the column immediately before the first "Pos" column (index firstPosCol - 1).
+  // Column A (index 0) holds row sequence numbers and is never the "Row Item" column.
+  var rowItemCol0;   // 0-indexed column that holds (or will hold) row item numbers
+  var needsInsert = false;
+
+  var candidateCol = firstPosCol - 1;
+  if (candidateCol > 0) {
+    // There's a column between A and the first Pos — check its header
+    var candidateHeader = (data[headerRow][candidateCol] || '').toString().toLowerCase();
+    if (candidateHeader.indexOf('row') !== -1) {
+      rowItemCol0 = candidateCol;  // Column already exists, use it
+    } else {
+      // An unexpected column — insert a new one after column A anyway
+      needsInsert = true;
+    }
+  } else {
+    // firstPosCol is 1 (column B is "Pos 1") — no "Row Item" column yet
+    needsInsert = true;
+  }
+
+  if (needsInsert) {
+    // insertColumnAfter uses 1-based index; we want to insert after column A (col 1)
+    sheet.insertColumnAfter(1);
+    rowItemCol0 = 1;  // 0-indexed: new column B
+    // Write header in 1-based row, 1-based col
+    var headerCell = sheet.getRange(headerRow + 1, rowItemCol0 + 1);
+    headerCell.setValue('Row Item').setFontWeight('bold').setBackground('#f0f0f0');
+    Logger.log('Inserted "Row Item" column in overview sheet');
+  }
+
+  // Write item numbers for rows that were newly created in this push
+  var client = getArenaClient();
+  var written = 0;
+  var colIdx1 = rowItemCol0 + 1;  // 1-based column index
+
+  for (var r = 0; r < createdRows.length; r++) {
+    var cr = createdRows[r];
+    if (!cr.wasNew) continue;         // Skip rows that already existed
+    if (!cr.sheetRow || !cr.itemNumber) continue;
+
+    var sheetRowIdx = cr.sheetRow;    // Already 1-based
+
+    // After column insert the sheetRow (row index) is unchanged — only column positions shift
+    try {
+      var arenaItem = client.getItemByNumber(cr.itemNumber);
+      if (arenaItem) {
+        var arenaUrl = buildArenaItemURLFromItem(arenaItem, cr.itemNumber);
+        var formula = '=HYPERLINK("' + arenaUrl + '","' + cr.itemNumber + '")';
+        sheet.getRange(sheetRowIdx, colIdx1).setFormula(formula).setFontColor('#0000FF');
+      } else {
+        sheet.getRange(sheetRowIdx, colIdx1).setValue(cr.itemNumber);
+      }
+    } catch (e) {
+      // Fallback: plain text so detection still works next time
+      Logger.log('Could not build hyperlink for ' + cr.itemNumber + ': ' + e.message);
+      sheet.getRange(sheetRowIdx, colIdx1).setValue(cr.itemNumber);
+    }
+    written++;
+  }
+
+  Logger.log('✓ Wrote ' + written + ' row item number(s) to overview sheet "' + overviewSheetName + '"');
+}
+
+/**
+ * Repairs existing POD/Row BOMs from overview sheet
  * For when items were already created but BOMs are empty due to previous bugs
  */
 function repairPODAndRowBOMs() {
