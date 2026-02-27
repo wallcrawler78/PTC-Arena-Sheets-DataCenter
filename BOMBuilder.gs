@@ -489,8 +489,8 @@ function syncBOMToArena(client, parentGuid, bomLines, options) {
 
       Logger.log('✓ Added BOM line ' + (index + 1) + ': ' + line.itemNumber + ' (GUID: ' + line.itemGuid + ')');
 
-      // Add delay to avoid rate limiting
-      Utilities.sleep(100);
+      // Add delay to avoid rate limiting (250ms reduces bandwidth quota pressure)
+      Utilities.sleep(250);
 
     } catch (error) {
       var errorMsg = 'Failed to add BOM line ' + (index + 1) + ' (' + line.itemNumber + '): ' + error.message;

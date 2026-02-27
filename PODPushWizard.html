@@ -1473,7 +1473,7 @@
             document.getElementById('pushProgressLabel').textContent = progress.message || '';
           })
           .getPushProgress();
-      }, 1500);
+      }, 3000); // 3s interval reduces concurrent GAS executions vs 1.5s
 
       // Store interval IDs for cleanup
       window._pushTimerInterval = pushTimerInterval;

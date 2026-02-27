@@ -165,6 +165,24 @@ ArenaAPIClient.prototype.makeRequest = function(endpoint, options) {
       throw new Error(errorMessage);
     }
   } catch (error) {
+    // GAS's own URL Fetch service throws "Bandwidth quota exceeded" when the script
+    // is making requests too rapidly. Sleep 10s and retry once before failing.
+    if (error.message && error.message.indexOf('Bandwidth quota exceeded') !== -1) {
+      Logger.log('GAS URL Fetch bandwidth quota hit — waiting 10s before retry...');
+      Utilities.sleep(10000);
+      try {
+        var retryResponse = UrlFetchApp.fetch(url, requestOptions);
+        var retryCode = retryResponse.getResponseCode();
+        var retryText = retryResponse.getContentText();
+        if (retryCode >= 200 && retryCode < 300) {
+          return retryText ? JSON.parse(retryText) : { success: true };
+        }
+        // Non-2xx retry response — fall through to throw
+        Logger.log('Retry returned HTTP ' + retryCode + ' — failing');
+      } catch (retryErr) {
+        Logger.log('Retry also failed: ' + retryErr.message);
+      }
+    }
     Logger.log('API request error: ' + error.message);
     throw error;
   }
