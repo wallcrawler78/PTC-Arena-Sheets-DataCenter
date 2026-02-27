@@ -2452,9 +2452,24 @@ function preparePODWizardDataForModal() {
       podItemNumber = podMatch[2].trim();
       Logger.log('Found POD in overview: ' + podName + ' (' + podItemNumber + ')');
 
-      // Check if POD exists in Arena
+      // Check if POD exists in Arena.
+      // Try by item number first; if that fails (e.g. A1 stored a GUID as fallback),
+      // try treating the stored value as a GUID via getItem().
       try {
-        var podItem = client.getItemByNumber(podItemNumber);
+        var podItem = null;
+        try {
+          podItem = client.getItemByNumber(podItemNumber);
+        } catch (numErr) {
+          // number lookup failed — may be a GUID stored as fallback
+        }
+        if (!podItem || !(podItem.guid || podItem.Guid)) {
+          // Try as GUID (handles edge case where auto-number wasn't assigned on prior push)
+          try {
+            podItem = client.getItem(podItemNumber);
+          } catch (guidErr) {
+            podItem = null;
+          }
+        }
         if (podItem && (podItem.guid || podItem.Guid)) {
           podExists = true;
           podGuid = podItem.guid || podItem.Guid;
@@ -2827,7 +2842,7 @@ function executePODPush(wizardData) {
     }
 
     // STEP 3: Create or update POD
-    var podItemGuid, podItemNumber;
+    var podItemGuid, podItemNumber, podNumericId = null, podVersionId = null;
     _setPushProgress(currentStep, totalSteps, 'Creating POD item...');
 
     if (wizardData.pod.exists) {
@@ -2835,6 +2850,14 @@ function executePODPush(wizardData) {
       Logger.log('Step 3: POD ' + wizardData.pod.itemNumber + ' exists - updating BOM...');
       podItemGuid = wizardData.pod.guid;
       podItemNumber = wizardData.pod.itemNumber;
+      // Fetch numeric ID so the "Open POD in Arena" button gets a correct URL
+      try {
+        var existingPodRaw = client.getItem(podItemGuid);
+        podNumericId = existingPodRaw._raw && existingPodRaw._raw.id;
+        podVersionId = existingPodRaw._raw && existingPodRaw._raw.workingRevision && existingPodRaw._raw.workingRevision.id;
+      } catch (e) {
+        Logger.log('Could not fetch existing POD numeric ID: ' + e.message);
+      }
     } else {
       // Create new POD
       Logger.log('Step 3: Creating new POD...');
@@ -2848,9 +2871,12 @@ function executePODPush(wizardData) {
       });
 
       podItemGuid = podItem.guid || podItem.Guid;
-      // Fall back to GUID if Arena doesn't return number in the create response
-      podItemNumber = podItem.number || podItem.Number || podItemGuid;
-      Logger.log('✓ Created POD: ' + podItemNumber);
+      // Use Arena-assigned part number; don't fall back to GUID (would break re-push detection)
+      podItemNumber = podItem.number || podItem.Number || '';
+      // Capture numeric item/version IDs for Arena web app URLs (different from API GUID)
+      podNumericId = podItem.id || null;
+      podVersionId = (podItem.workingRevision && podItem.workingRevision.id) || null;
+      Logger.log('✓ Created POD: ' + (podItemNumber || podItemGuid) + ' (numericId: ' + podNumericId + ')');
     }
 
     _setPushProgress(currentStep, totalSteps, 'Syncing POD BOM (' + createdRows.length + ' rows)...');
@@ -2883,15 +2909,22 @@ function executePODPush(wizardData) {
     _setPushProgress(currentStep, totalSteps, 'Complete!');
 
     // Build the Arena web URL for the "Open POD in Arena" button.
-    // The GUID we already have IS the item_id used by Arena's web UI — no
-    // extra API call needed.
-    var podArenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + encodeURIComponent(podItemGuid);
+    // Arena's web app requires numeric item_id, not the GUID used by the REST API.
+    var podArenaUrl;
+    if (podNumericId) {
+      podArenaUrl = 'https://app.bom.com/items/detail-spec?item_id=' + podNumericId;
+      if (podVersionId) podArenaUrl += '&version_id=' + podVersionId;
+    } else {
+      // Fallback: search by name if numeric ID unavailable
+      podArenaUrl = 'https://app.bom.com/items/searches?searchQuery=' + encodeURIComponent(wizardData.pod.name || podItemNumber);
+    }
 
-    // Store results for completion modal
+    // Store results for completion modal.
+    // podItemNumber may be empty if Arena auto-number hasn't fired yet — store name as fallback.
     PropertiesService.getUserProperties().setProperty('podPush_results', JSON.stringify({
       racksCreated: createdRacks.length,
       rowsCreated: createdRows.length,
-      podItemNumber: podItemNumber,
+      podItemNumber: podItemNumber || wizardData.pod.name || podItemGuid,
       podGuid: podItemGuid,
       podArenaUrl: podArenaUrl
     }));
