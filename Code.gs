@@ -130,10 +130,10 @@ function _checkFirstRunAsync() {
 }
 
 /**
- * Runs when selection changes (e.g., clicking on a cell or switching tabs)
- * Auto-opens History Filter sidebar whenever the user navigates TO the Rack History tab.
- * Uses a short UserProperties flag to avoid re-opening on every cell click within the tab —
- * only fires once per tab visit (cleared when user leaves the tab).
+ * Simple trigger — fires on every selection change.
+ * NOTE: Simple triggers CANNOT open sidebars (Google Apps Script platform restriction).
+ * Only tracks the active sheet so the installable trigger can detect tab transitions.
+ * The actual sidebar-open logic lives in onSelectionChangeInstallable() below.
  */
 function onSelectionChange(e) {
   try {
@@ -142,22 +142,38 @@ function onSelectionChange(e) {
     var props = PropertiesService.getUserProperties();
     var lastSheet = props.getProperty('lastActiveSheet') || '';
 
-    var isHistoryTab = (sheetName === SHEET_NAMES.HISTORY);
-    var wasHistoryTab = (lastSheet === SHEET_NAMES.HISTORY);
+    if (sheetName !== lastSheet) {
+      props.setProperty('lastActiveSheet', sheetName);
+    }
+  } catch (error) {
+    // Silent — simple triggers must not throw
+  }
+}
 
-    // Track current sheet for next call
+/**
+ * INSTALLABLE trigger handler — registered by _ensureHistoryAutoOpenTrigger().
+ * Unlike the simple onSelectionChange above, installable triggers CAN open sidebars.
+ * Opens the History Filter sidebar whenever the user navigates TO the Rack History tab.
+ */
+function onSelectionChangeInstallable(e) {
+  try {
+    var sheet = SpreadsheetApp.getActiveSheet();
+    var sheetName = sheet ? sheet.getName() : '';
+    var props = PropertiesService.getUserProperties();
+    var lastSheet = props.getProperty('lastActiveSheet') || '';
+
+    // Track for next call
     if (sheetName !== lastSheet) {
       props.setProperty('lastActiveSheet', sheetName);
     }
 
-    // Open sidebar only when transitioning INTO the History tab (not on every cell click)
-    if (isHistoryTab && !wasHistoryTab) {
-      Logger.log('Navigated to Rack History tab — opening History Filter sidebar');
+    // Open sidebar only on transition INTO History tab
+    if (sheetName === SHEET_NAMES.HISTORY && lastSheet !== SHEET_NAMES.HISTORY) {
+      Logger.log('onSelectionChangeInstallable: navigated to Rack History — opening sidebar');
       showHistoryFilterSidebar();
     }
-
   } catch (error) {
-    Logger.log('Error in onSelectionChange: ' + error.message);
+    Logger.log('onSelectionChangeInstallable error: ' + error.message);
   }
 }
 

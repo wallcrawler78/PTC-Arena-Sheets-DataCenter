@@ -841,10 +841,39 @@ function updateHistoryTabFreeze() {
 }
 
 /**
+ * Registers an installable onSelectionChange trigger for History tab auto-open.
+ * Called from showHistoryFilterSidebar() (authorized context) so the trigger is
+ * created automatically on the user's first manual sidebar open.
+ * Safe to call repeatedly — checks for existing trigger before creating.
+ */
+function _ensureHistoryAutoOpenTrigger() {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var triggers = ScriptApp.getUserTriggers(ss);
+    for (var i = 0; i < triggers.length; i++) {
+      if (triggers[i].getHandlerFunction() === 'onSelectionChangeInstallable') {
+        return; // Already registered — nothing to do
+      }
+    }
+    ScriptApp.newTrigger('onSelectionChangeInstallable')
+      .forSpreadsheet(ss)
+      .onSelectionChange()
+      .create();
+    Logger.log('Registered installable onSelectionChange trigger for History tab auto-open');
+  } catch (error) {
+    Logger.log('_ensureHistoryAutoOpenTrigger error: ' + error.message);
+  }
+}
+
+/**
  * Shows the History Filter Sidebar
  */
 function showHistoryFilterSidebar() {
   try {
+    // Ensure the installable trigger is registered so future tab navigations
+    // to Rack History will auto-open this sidebar (simple triggers cannot do this).
+    _ensureHistoryAutoOpenTrigger();
+
     var html = HtmlService.createHtmlOutputFromFile('HistoryFilterSidebar')
       .setTitle('Rack History Filter')
       .setWidth(300);
