@@ -444,6 +444,66 @@
       min-height: 16px;
     }
 
+    /* Bulk-apply category bar (Rows step) */
+    .bulk-apply-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #f0f4ff;
+      border: 1px solid #c5d4f5;
+      border-radius: 8px;
+      padding: 10px 14px;
+      margin-bottom: 12px;
+    }
+
+    .bulk-apply-label {
+      font-size: 13px;
+      color: #3c4043;
+      white-space: nowrap;
+      font-weight: 500;
+    }
+
+    .bulk-apply-category {
+      flex: 1;
+      padding: 6px 10px;
+      background: white;
+      border: 1px solid #dadce0;
+      border-radius: 4px;
+      font-size: 13px;
+      color: #9aa0a6;
+      font-style: italic;
+      min-width: 0;
+    }
+
+    .bulk-apply-category.selected {
+      color: #1a73e8;
+      font-style: normal;
+      font-weight: 500;
+    }
+
+    .btn-bulk-apply {
+      padding: 6px 14px;
+      background: #34a853;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.2s;
+    }
+
+    .btn-bulk-apply:hover:not(:disabled) {
+      background: #2d7d45;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+    }
+
+    .btn-bulk-apply:disabled {
+      opacity: 0.45;
+      cursor: default;
+    }
+
     .error-message {
       background: #fce8e6;
       border-left: 4px solid #d93025;
@@ -768,6 +828,14 @@
         Rows are auto-generated from your overview layout. Customize names and categories as needed.
       </div>
 
+      <!-- Bulk category fill — optional helper, individual rows can still be overridden -->
+      <div class="bulk-apply-bar">
+        <span class="bulk-apply-label">Apply one category to all new rows:</span>
+        <div class="bulk-apply-category" id="bulkRowCategoryDisplay">Choose category…</div>
+        <button class="btn-select-category" onclick="selectBulkRowCategory()">Select…</button>
+        <button class="btn-bulk-apply" id="bulkApplyBtn" disabled onclick="applyBulkRowCategory()">Apply to All ›</button>
+      </div>
+
       <div class="data-table">
         <table>
           <thead>
@@ -903,6 +971,7 @@
     let categories = [];
     let favorites = [];
     let selectedCategory = null;
+    let bulkRowCategory = null; // shared category for "Apply to All" on the Rows step
 
     // Initialize wizard with data from server
     function initializeWizard(data) {
@@ -1094,6 +1163,26 @@
       showCategorySelectorOverlay('Select Category', 'Choose category for Row ' + rowNumber);
     }
 
+    // Bulk: open category selector for the "Apply to All" bar
+    function selectBulkRowCategory() {
+      selectedCategoryRow = { type: 'rowBulk', index: null };
+      showCategorySelectorOverlay('Select Category', 'This category will be applied to all new rows');
+    }
+
+    // Bulk: apply the chosen category to every new (non-existing) row
+    function applyBulkRowCategory() {
+      if (!bulkRowCategory) return;
+      wizardData.rows.forEach(function(row, idx) {
+        if (row.exists) return; // leave existing Arena items untouched
+        row.category = bulkRowCategory;
+        const display = document.getElementById('rowCategory' + idx);
+        if (display) {
+          display.textContent = bulkRowCategory.name;
+          display.classList.add('selected');
+        }
+      });
+    }
+
     // Select category for POD
     function selectPODCategory() {
       selectedCategoryRow = { type: 'pod', index: null };
@@ -1132,6 +1221,12 @@
           wizardData.rows[idx].category = selectedCategory;
           document.getElementById('rowCategory' + idx).textContent = selectedCategory.name;
           document.getElementById('rowCategory' + idx).classList.add('selected');
+        } else if (selectedCategoryRow.type === 'rowBulk') {
+          bulkRowCategory = selectedCategory;
+          const display = document.getElementById('bulkRowCategoryDisplay');
+          display.textContent = selectedCategory.name;
+          display.classList.add('selected');
+          document.getElementById('bulkApplyBtn').disabled = false;
         } else if (selectedCategoryRow.type === 'pod') {
           wizardData.pod.category = selectedCategory;
           document.getElementById('podCategoryDisplay').textContent = selectedCategory.name;
