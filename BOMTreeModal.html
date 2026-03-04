@@ -295,6 +295,18 @@
       font-size: 12px;
     }
 
+    .rev-changed-badge {
+      background: #fff3cd;
+      color: #856404;
+      border: 1px solid #ffc107;
+      border-radius: 3px;
+      padding: 1px 5px;
+      font-size: 10px;
+      font-weight: 600;
+      margin-left: 5px;
+      white-space: nowrap;
+    }
+
     .item-description {
       color: #80868b;
       font-size: 12px;
@@ -734,6 +746,9 @@
       // Revision
       html += '  <td class="col-revision">';
       html += '    <span class="item-revision">' + escapeHtml(node.revision || '-') + '</span>';
+      if (node.storedRevision !== undefined && node.storedRevision !== node.revision) {
+        html += '    <span class="rev-changed-badge" title="Sheet has: ' + escapeHtml(node.storedRevision || '(none)') + '">⟳ Rev changed</span>';
+      }
       html += '  </td>';
 
       // Custom attribute columns

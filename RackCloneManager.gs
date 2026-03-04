@@ -811,18 +811,34 @@ function getMultiLevelBOM(itemNumber) {
     // Uses UrlFetchApp.fetchAll() to fetch each BOM level in one parallel batch.
     // Deduplication ensures shared rack/component GUIDs are only fetched once,
     // collapsing the ~147 sequential calls into ~4 parallel rounds (~4-8s).
+    var bomTree;
     try {
       Logger.log('Attempting parallel BFS approach...');
-      var bomTree = fetchBOMParallel(arenaClient, rootGuid);
+      bomTree = fetchBOMParallel(arenaClient, rootGuid);
       Logger.log('Parallel BFS success: ' + _countBOMNodes(bomTree) + ' nodes');
-      return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
     } catch (parallelErr) {
       Logger.log('Parallel BFS failed, falling back to recursive: ' + parallelErr.message);
+      // Step 3: Last-resort fallback — sequential recursive /items/{guid}/bom calls
+      Logger.log('Using sequential recursive BOM approach for ' + itemNumber);
+      bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
     }
 
-    // Step 3: Last-resort fallback — sequential recursive /items/{guid}/bom calls
-    Logger.log('Using sequential recursive BOM approach for ' + itemNumber);
-    var bomTree = fetchBOMRecursive(arenaClient, rootGuid, rootItem, 0);
+    // Step 4: Annotate tree nodes with storedRevision from the local rack sheet.
+    // This lets the BOM Tree Modal show a badge when Arena's revision differs
+    // from what was last synced to the sheet.
+    try {
+      var rackSheet = findRackConfigTab(itemNumber);
+      if (rackSheet) {
+        var localBOM = getCurrentRackBOMData(rackSheet);
+        var storedRevMap = {};
+        localBOM.forEach(function(row) { storedRevMap[row.itemNumber] = row.revision; });
+        _annotateTreeWithStoredRevisions(bomTree, storedRevMap);
+        Logger.log('Annotated BOM tree with stored revisions from rack sheet');
+      }
+    } catch (annotateErr) {
+      Logger.log('Warning: could not annotate stored revisions: ' + annotateErr.message);
+    }
+
     return { success: true, itemNumber: itemNumber, itemName: rootName, bomTree: bomTree };
 
   } catch (error) {
@@ -845,6 +861,24 @@ function _countBOMNodes(nodes) {
     }
   }
   return count;
+}
+
+/**
+ * Recursively walks a BOM tree and sets node.storedRevision from a map.
+ * storedRevMap = { [itemNumber]: revisionString }
+ * @param {Array} nodes
+ * @param {Object} storedRevMap
+ */
+function _annotateTreeWithStoredRevisions(nodes, storedRevMap) {
+  if (!nodes) return;
+  nodes.forEach(function(node) {
+    if (node.itemNumber && storedRevMap.hasOwnProperty(node.itemNumber)) {
+      node.storedRevision = storedRevMap[node.itemNumber];
+    }
+    if (node.children && node.children.length > 0) {
+      _annotateTreeWithStoredRevisions(node.children, storedRevMap);
+    }
+  });
 }
 
 /**
